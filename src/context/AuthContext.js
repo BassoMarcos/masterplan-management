@@ -30,22 +30,7 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
-    const superAdmin = email === SUPERADMIN_EMAIL;
-
-    if (superAdmin) {
-      return { isSuperAdmin: true, empresaActiva: false, logout: () => signOut(auth) };
-    }
-
-    const snap = await getDoc(doc(db, "empresas", cred.user.uid));
-    const data = snap.data();
-    const activa = data?.estado === "activo";
-
-    if (!activa) {
-      await signOut(auth);
-    }
-
-    return { isSuperAdmin: false, empresaActiva: activa, logout: () => signOut(auth) };
+    return signInWithEmailAndPassword(auth, email, password);
   }
 
   async function logout() {
