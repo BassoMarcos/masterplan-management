@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
 
 export default function AuthPage() {
   const [modo, setModo] = useState("login");
@@ -11,8 +10,7 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registroExitoso, setRegistroExitoso] = useState(false);
-  const { login, register, isSuperAdmin, empresaData } = useAuth();
-  const navigate = useNavigate();
+  const { login, register } = useAuth();
 
   async function handleSubmit(e) {
     e.preventDefault();
