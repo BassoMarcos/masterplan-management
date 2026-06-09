@@ -1,12 +1,9 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "../firebase/config";
-import {
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged
-} from "firebase/auth";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, setDoc } from "firebase/firestore";
+
+const SUPERADMIN_EMAIL = "marky.basso98@gmail.com";
 
 const AuthContext = createContext();
 
@@ -17,6 +14,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [empresaData, setEmpresaData] = useState(null);
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   async function register(email, password, empresa) {
@@ -25,13 +23,29 @@ export function AuthProvider({ children }) {
       nombre: empresa,
       email,
       creadoEn: new Date().toISOString(),
-      plan: "free"
+      estado: "pendiente"
     });
+    await signOut(auth);
     return cred;
   }
 
   async function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const superAdmin = email === SUPERADMIN_EMAIL;
+
+    if (superAdmin) {
+      return { isSuperAdmin: true, empresaActiva: false, logout: () => signOut(auth) };
+    }
+
+    const snap = await getDoc(doc(db, "empresas", cred.user.uid));
+    const data = snap.data();
+    const activa = data?.estado === "activo";
+
+    if (!activa) {
+      await signOut(auth);
+    }
+
+    return { isSuperAdmin: false, empresaActiva: activa, logout: () => signOut(auth) };
   }
 
   async function logout() {
@@ -42,17 +56,22 @@ export function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        const snap = await getDoc(doc(db, "empresas", user.uid));
-        if (snap.exists()) setEmpresaData(snap.data());
+        const superAdmin = user.email === SUPERADMIN_EMAIL;
+        setIsSuperAdmin(superAdmin);
+        if (!superAdmin) {
+          const snap = await getDoc(doc(db, "empresas", user.uid));
+          if (snap.exists()) setEmpresaData(snap.data());
+        }
       } else {
         setEmpresaData(null);
+        setIsSuperAdmin(false);
       }
       setLoading(false);
     });
     return unsub;
   }, []);
 
-  const value = { currentUser, empresaData, register, login, logout };
+  const value = { currentUser, empresaData, isSuperAdmin, register, login, logout };
 
   return (
     <AuthContext.Provider value={value}>
