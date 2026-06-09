@@ -3,6 +3,11 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, getDocs, doc, updateDoc, orderBy, query } from "firebase/firestore";
+import emailjs from "@emailjs/browser";
+
+const EMAILJS_SERVICE = "service_hitlzvt";
+const EMAILJS_TEMPLATE = "template_nmympyf";
+const EMAILJS_PUBLIC_KEY = "WjAT2u4juvwDfPndb";
 
 const ESTADO_COLOR = {
   pendiente: { bg: "#fef9c3", color: "#854d0e", label: "Pendiente" },
@@ -18,6 +23,7 @@ export default function SuperAdmin() {
   const [filtro, setFiltro] = useState("todos");
 
   useEffect(() => {
+    emailjs.init(EMAILJS_PUBLIC_KEY);
     cargarEmpresas();
   }, []);
 
@@ -33,13 +39,29 @@ export default function SuperAdmin() {
     setLoading(false);
   }
 
-  async function cambiarEstado(id, nuevoEstado) {
+  async function cambiarEstado(id, nuevoEstado, empresa) {
     await updateDoc(doc(db, "empresas", id), { estado: nuevoEstado });
     setEmpresas(prev => prev.map(e => e.id === id ? { ...e, estado: nuevoEstado } : e));
+
+    if (nuevoEstado === "activo" && empresa.email) {
+      try {
+        await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
+          to_email: empresa.email,
+          empresa_nombre: empresa.nombre,
+        });
+      } catch (e) {
+        console.error("Error enviando email:", e);
+      }
+    }
   }
 
   const empresasFiltradas = filtro === "todos" ? empresas : empresas.filter(e => e.estado === filtro);
-  const counts = { todos: empresas.length, pendiente: empresas.filter(e => e.estado === "pendiente").length, activo: empresas.filter(e => e.estado === "activo").length, inactivo: empresas.filter(e => e.estado === "inactivo").length };
+  const counts = {
+    todos: empresas.length,
+    pendiente: empresas.filter(e => e.estado === "pendiente").length,
+    activo: empresas.filter(e => e.estado === "activo").length,
+    inactivo: empresas.filter(e => e.estado === "inactivo").length
+  };
 
   return (
     <div style={styles.container}>
@@ -57,7 +79,6 @@ export default function SuperAdmin() {
       <main style={styles.main}>
         <h2 style={styles.titulo}>Empresas Registradas</h2>
 
-        {/* Filtros */}
         <div style={styles.filtros}>
           {["todos", "pendiente", "activo", "inactivo"].map(f => (
             <button
@@ -77,33 +98,33 @@ export default function SuperAdmin() {
         ) : (
           <div style={styles.tabla}>
             <div style={styles.tablaHeader}>
-              <span style={styles.colEmpresa}>Empresa</span>
-              <span style={styles.colEmail}>Email</span>
-              <span style={styles.colFecha}>Registro</span>
-              <span style={styles.colEstado}>Estado</span>
-              <span style={styles.colAcciones}>Acciones</span>
+              <span>Empresa</span>
+              <span>Email</span>
+              <span>Registro</span>
+              <span>Estado</span>
+              <span>Acciones</span>
             </div>
             {empresasFiltradas.map(e => (
               <div key={e.id} style={styles.tablaFila}>
-                <span style={styles.colEmpresa}>
-                  <strong>{e.nombre}</strong>
+                <span style={{ color: "#0f172a", fontWeight: "600" }}>{e.nombre}</span>
+                <span style={{ color: "#64748b" }}>{e.email}</span>
+                <span style={{ color: "#64748b", fontSize: "13px" }}>
+                  {e.creadoEn ? new Date(e.creadoEn).toLocaleDateString("es-AR") : "-"}
                 </span>
-                <span style={styles.colEmail}>{e.email}</span>
-                <span style={styles.colFecha}>{e.creadoEn ? new Date(e.creadoEn).toLocaleDateString("es-AR") : "-"}</span>
-                <span style={styles.colEstado}>
+                <span>
                   <span style={{ ...styles.estadoBadge, background: ESTADO_COLOR[e.estado]?.bg, color: ESTADO_COLOR[e.estado]?.color }}>
                     {ESTADO_COLOR[e.estado]?.label || e.estado}
                   </span>
                 </span>
-                <span style={styles.colAcciones}>
+                <span>
                   {e.estado === "pendiente" && (
-                    <button style={styles.btnAprobar} onClick={() => cambiarEstado(e.id, "activo")}>Aprobar</button>
+                    <button style={styles.btnAprobar} onClick={() => cambiarEstado(e.id, "activo", e)}>Aprobar</button>
                   )}
                   {e.estado === "activo" && (
-                    <button style={styles.btnDesactivar} onClick={() => cambiarEstado(e.id, "inactivo")}>Desactivar</button>
+                    <button style={styles.btnDesactivar} onClick={() => cambiarEstado(e.id, "inactivo", e)}>Desactivar</button>
                   )}
                   {e.estado === "inactivo" && (
-                    <button style={styles.btnAprobar} onClick={() => cambiarEstado(e.id, "activo")}>Reactivar</button>
+                    <button style={styles.btnAprobar} onClick={() => cambiarEstado(e.id, "activo", e)}>Reactivar</button>
                   )}
                 </span>
               </div>
@@ -131,11 +152,6 @@ const styles = {
   tabla: { background: "#fff", borderRadius: "12px", border: "1.5px solid #e2e8f0", overflow: "hidden" },
   tablaHeader: { display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr", padding: "14px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" },
   tablaFila: { display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr", padding: "16px 20px", borderBottom: "1px solid #f1f5f9", alignItems: "center", fontSize: "14px" },
-  colEmpresa: { color: "#0f172a" },
-  colEmail: { color: "#64748b" },
-  colFecha: { color: "#64748b", fontSize: "13px" },
-  colEstado: {},
-  colAcciones: {},
   estadoBadge: { padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600" },
   btnAprobar: { padding: "6px 14px", background: "#16a34a", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   btnDesactivar: { padding: "6px 14px", background: "#dc2626", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
