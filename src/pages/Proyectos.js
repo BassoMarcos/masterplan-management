@@ -1,10 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
-import {
-  collection, addDoc, getDocs, query, where, serverTimestamp
-} from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
 
@@ -15,38 +13,31 @@ export default function Proyectos() {
   const [proyectos, setProyectos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-
-  // Form nuevo proyecto
   const [nombre, setNombre] = useState("");
   const [icono, setIcono] = useState("🏘️");
-  const [foto, setFoto] = useState(null);
   const [fotoPreview, setFotoPreview] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    cargarProyectos();
-  }, []);
-
-  async function cargarProyectos() {
+  const cargarProyectos = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(
-        collection(db, "proyectos"),
-        where("empresaId", "==", currentUser.uid)
-      );
+      const q = query(collection(db, "proyectos"), where("empresaId", "==", currentUser.uid));
       const snap = await getDocs(q);
       setProyectos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }
+  }, [currentUser.uid]);
+
+  useEffect(() => {
+    cargarProyectos();
+  }, [cargarProyectos]);
 
   function handleFoto(e) {
     const file = e.target.files[0];
     if (!file) return;
-    setFoto(file);
     const reader = new FileReader();
     reader.onload = ev => setFotoPreview(ev.target.result);
     reader.readAsDataURL(file);
@@ -58,17 +49,15 @@ export default function Proyectos() {
     setGuardando(true);
     setError("");
     try {
-      let logoData = fotoPreview || null;
       await addDoc(collection(db, "proyectos"), {
         nombre: nombre.trim(),
-        icono: logoData ? null : icono,
-        logo: logoData,
+        icono: fotoPreview ? null : icono,
+        logo: fotoPreview || null,
         empresaId: currentUser.uid,
         creadoEn: serverTimestamp()
       });
       setNombre("");
       setIcono("🏘️");
-      setFoto(null);
       setFotoPreview(null);
       setShowModal(false);
       cargarProyectos();
@@ -82,14 +71,12 @@ export default function Proyectos() {
     setShowModal(false);
     setNombre("");
     setIcono("🏘️");
-    setFoto(null);
     setFotoPreview(null);
     setError("");
   }
 
   return (
     <div style={styles.container}>
-      {/* Header */}
       <header style={styles.header}>
         <div style={styles.headerLeft}>
           <span style={{ fontSize: "22px" }}>🏗️</span>
@@ -98,12 +85,9 @@ export default function Proyectos() {
             <p style={styles.headerSub}>{empresaData?.nombre || "Mi Empresa"}</p>
           </div>
         </div>
-        <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>
-          Salir
-        </button>
+        <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
       </header>
 
-      {/* Contenido */}
       <main style={styles.main}>
         <h2 style={styles.titulo}>Mis Proyectos</h2>
         <p style={styles.subtitulo}>Seleccioná un proyecto para trabajar</p>
@@ -112,7 +96,6 @@ export default function Proyectos() {
           <p style={styles.cargando}>Cargando proyectos...</p>
         ) : (
           <div style={styles.grilla}>
-            {/* Tarjetas de proyectos existentes */}
             {proyectos.map(p => (
               <div
                 key={p.id}
@@ -131,8 +114,6 @@ export default function Proyectos() {
                 <p style={styles.tarjetaSub}>Ver proyecto →</p>
               </div>
             ))}
-
-            {/* Botón agregar */}
             <div
               style={styles.tarjetaAgregar}
               onClick={() => setShowModal(true)}
@@ -146,7 +127,6 @@ export default function Proyectos() {
         )}
       </main>
 
-      {/* Modal crear proyecto */}
       {showModal && (
         <div style={styles.overlay} onClick={cerrarModal}>
           <div style={styles.modal} onClick={e => e.stopPropagation()}>
@@ -154,9 +134,7 @@ export default function Proyectos() {
               <h3 style={styles.modalTitulo}>Nuevo Proyecto</h3>
               <button style={styles.cerrarBtn} onClick={cerrarModal}>✕</button>
             </div>
-
             <form onSubmit={handleCrear} style={styles.form}>
-              {/* Nombre */}
               <div style={styles.field}>
                 <label style={styles.label}>Nombre del proyecto *</label>
                 <input
@@ -168,8 +146,6 @@ export default function Proyectos() {
                   autoFocus
                 />
               </div>
-
-              {/* Logo o ícono */}
               <div style={styles.field}>
                 <label style={styles.label}>Logo o imagen del proyecto</label>
                 <div style={styles.logoArea}>
@@ -183,13 +159,11 @@ export default function Proyectos() {
                   <input type="file" accept="image/*" onChange={handleFoto} style={{ display: "none" }} />
                 </label>
                 {fotoPreview && (
-                  <button type="button" style={styles.quitarBtn} onClick={() => { setFoto(null); setFotoPreview(null); }}>
+                  <button type="button" style={styles.quitarBtn} onClick={() => setFotoPreview(null)}>
                     Quitar imagen
                   </button>
                 )}
               </div>
-
-              {/* Selector de ícono (solo si no hay foto) */}
               {!fotoPreview && (
                 <div style={styles.field}>
                   <label style={styles.label}>O elegí un ícono</label>
@@ -207,9 +181,7 @@ export default function Proyectos() {
                   </div>
                 </div>
               )}
-
               {error && <p style={styles.error}>{error}</p>}
-
               <button type="submit" style={styles.crearBtn} disabled={guardando}>
                 {guardando ? "Creando..." : "Crear Proyecto"}
               </button>
@@ -238,16 +210,11 @@ const styles = {
   titulo: { fontSize: "28px", fontWeight: "700", color: "#0f172a", margin: "0 0 8px" },
   subtitulo: { fontSize: "15px", color: "#64748b", margin: "0 0 40px" },
   cargando: { color: "#64748b", fontSize: "15px" },
-  grilla: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-    gap: "20px"
-  },
+  grilla: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "20px" },
   tarjeta: {
     background: "#fff", border: "1.5px solid #e2e8f0", borderRadius: "16px",
     padding: "32px 20px 24px", textAlign: "center", cursor: "pointer",
-    transition: "transform 0.2s, box-shadow 0.2s",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
+    transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.05)"
   },
   tarjetaIcono: { marginBottom: "16px", height: "64px", display: "flex", alignItems: "center", justifyContent: "center" },
   logoImg: { width: "64px", height: "64px", borderRadius: "12px", objectFit: "cover" },
@@ -263,55 +230,28 @@ const styles = {
   masTexto: { fontSize: "14px", color: "#64748b", margin: 0, fontWeight: "600" },
   overlay: {
     position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    zIndex: 1000, padding: "20px"
+    display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px"
   },
   modal: {
     background: "#fff", borderRadius: "16px", width: "100%", maxWidth: "480px",
     maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)"
   },
   modalHeader: {
-    display: "flex", alignItems: "center", justifyContent: "space-between",
-    padding: "24px 24px 0"
+    display: "flex", alignItems: "center", justifyContent: "space-between", padding: "24px 24px 0"
   },
   modalTitulo: { margin: 0, fontSize: "20px", fontWeight: "700", color: "#0f172a" },
-  cerrarBtn: {
-    background: "none", border: "none", fontSize: "20px", cursor: "pointer",
-    color: "#64748b", padding: "4px 8px"
-  },
+  cerrarBtn: { background: "none", border: "none", fontSize: "20px", cursor: "pointer", color: "#64748b", padding: "4px 8px" },
   form: { padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: "20px" },
   field: { display: "flex", flexDirection: "column", gap: "8px" },
   label: { fontSize: "13px", fontWeight: "600", color: "#374151" },
-  input: {
-    padding: "12px 14px", border: "1.5px solid #e2e8f0", borderRadius: "8px",
-    fontSize: "14px", outline: "none", fontFamily: "inherit"
-  },
-  logoArea: {
-    height: "100px", border: "1.5px solid #e2e8f0", borderRadius: "12px",
-    display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc"
-  },
+  input: { padding: "12px 14px", border: "1.5px solid #e2e8f0", borderRadius: "8px", fontSize: "14px", outline: "none", fontFamily: "inherit" },
+  logoArea: { height: "100px", border: "1.5px solid #e2e8f0", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc" },
   preview: { width: "90px", height: "90px", borderRadius: "10px", objectFit: "cover" },
-  uploadBtn: {
-    display: "inline-block", padding: "8px 16px", background: "#f1f5f9",
-    border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px",
-    cursor: "pointer", textAlign: "center", fontWeight: "500", color: "#374151"
-  },
-  quitarBtn: {
-    background: "none", border: "none", color: "#ef4444", fontSize: "13px",
-    cursor: "pointer", textDecoration: "underline", padding: 0
-  },
+  uploadBtn: { display: "inline-block", padding: "8px 16px", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "8px", fontSize: "13px", cursor: "pointer", textAlign: "center", fontWeight: "500", color: "#374151" },
+  quitarBtn: { background: "none", border: "none", color: "#ef4444", fontSize: "13px", cursor: "pointer", textDecoration: "underline", padding: 0 },
   iconosGrid: { display: "flex", flexWrap: "wrap", gap: "8px" },
-  iconoBtn: {
-    fontSize: "28px", padding: "8px", borderRadius: "8px", border: "2px solid transparent",
-    background: "#f1f5f9", cursor: "pointer", transition: "all 0.15s"
-  },
+  iconoBtn: { fontSize: "28px", padding: "8px", borderRadius: "8px", border: "2px solid transparent", background: "#f1f5f9", cursor: "pointer", transition: "all 0.15s" },
   iconoBtnActive: { border: "2px solid #3b82f6", background: "#eff6ff" },
-  error: {
-    background: "#fef2f2", color: "#dc2626", padding: "10px 14px",
-    borderRadius: "8px", fontSize: "13px", margin: 0
-  },
-  crearBtn: {
-    padding: "13px", background: "#0f172a", color: "#fff", border: "none",
-    borderRadius: "8px", fontSize: "15px", fontWeight: "600", cursor: "pointer"
-  }
+  error: { background: "#fef2f2", color: "#dc2626", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", margin: 0 },
+  crearBtn: { padding: "13px", background: "#0f172a", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }
 };
