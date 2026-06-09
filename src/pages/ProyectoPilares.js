@@ -33,7 +33,7 @@ export default function ProyectoPilares() {
       setLoading(false);
     }
     cargar();
-  }, [proyectoId]);
+  }, [proyectoId, currentUser.uid, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif" }}>Cargando...</div>;
 
