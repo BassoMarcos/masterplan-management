@@ -11,7 +11,7 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registroExitoso, setRegistroExitoso] = useState(false);
-  const { login, register } = useAuth();
+  const { login, register, isSuperAdmin, empresaData } = useAuth();
   const navigate = useNavigate();
 
   async function handleSubmit(e) {
@@ -27,15 +27,8 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (modo === "login") {
-        const result = await login(email, password);
-        if (result.isSuperAdmin) {
-          navigate("/superadmin");
-        } else if (result.empresaActiva) {
-          navigate("/proyectos");
-        } else {
-          setError("Tu cuenta está pendiente de aprobación. Te avisaremos cuando sea activada.");
-          await result.logout();
-        }
+        await login(email, password);
+        // La navegación la maneja el useEffect en App via las rutas
       } else {
         await register(email, password, empresa);
         setRegistroExitoso(true);
