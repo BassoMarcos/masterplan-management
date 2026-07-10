@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth } from "../firebase/config";
 
 export default function AuthPage() {
   const [modo, setModo] = useState("login");
@@ -10,7 +12,24 @@ export default function AuthPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [registroExitoso, setRegistroExitoso] = useState(false);
+  const [resetEnviado, setResetEnviado] = useState(false);
   const { login, register } = useAuth();
+
+  async function handleOlvidePassword() {
+    setError("");
+    setResetEnviado(false);
+    if (!email.trim()) { setError("Escribí tu email arriba y volvé a apretar el link"); return; }
+    setLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setResetEnviado(true);
+    } catch (err) {
+      if (err.code === "auth/user-not-found") setError("No existe una cuenta con ese email");
+      else if (err.code === "auth/invalid-email") setError("El email no es válido");
+      else setError("No se pudo enviar el correo. Intentá de nuevo.");
+    }
+    setLoading(false);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -111,6 +130,13 @@ export default function AuthPage() {
             </div>
           )}
 
+          {modo === "login" && (
+            <button type="button" onClick={handleOlvidePassword} disabled={loading} style={styles.linkBtn}>
+              ¿Olvidaste tu contraseña?
+            </button>
+          )}
+
+          {resetEnviado && <p style={styles.resetOk}>📧 Te enviamos un correo para restablecer tu contraseña. Revisá tu bandeja de entrada (y spam).</p>}
           {error && <p style={styles.error}>{error}</p>}
 
           <button type="submit" style={styles.btn} disabled={loading}>
@@ -140,6 +166,8 @@ const styles = {
   matchError: { fontSize: "12px", color: "#ef4444" },
   matchOk: { fontSize: "12px", color: "#16a34a" },
   error: { background: "#fef2f2", color: "#dc2626", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", margin: 0 },
+  linkBtn: { background: "none", border: "none", color: "#1e3a5f", fontSize: "13px", cursor: "pointer", textDecoration: "underline", padding: 0, textAlign: "right", marginTop: "-8px", fontFamily: "inherit" },
+  resetOk: { background: "#f0fdf4", color: "#16a34a", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", margin: 0 },
   btn: { padding: "13px", background: "#1e3a5f", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: "600", cursor: "pointer", marginTop: "4px" },
   successIcon: { textAlign: "center", fontSize: "56px", marginBottom: "16px" },
   successTitle: { textAlign: "center", fontSize: "22px", fontWeight: "700", color: "#0f172a", margin: "0 0 12px" },
