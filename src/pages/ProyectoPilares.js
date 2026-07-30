@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
+import PizarraFlotante from "../components/PizarraFlotante";
 
 const PILARES = [
   { id: "administracion", nombre: "Administración", icono: "📊", desc: "Cobro de cuotas, mora, balances", activo: true },
@@ -80,6 +81,8 @@ export default function ProyectoPilares() {
           ))}
         </div>
       </main>
+
+      <PizarraFlotante contextoId={`proyecto_${proyectoId}`} titulo={`Proyecto · ${proyecto?.nombre || ""}`} />
     </div>
   );
 }

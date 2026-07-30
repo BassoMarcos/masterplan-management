@@ -6,7 +6,6 @@ import { sendEmailVerification } from "firebase/auth";
 import AuthPage from "./pages/AuthPage";
 import Proyectos from "./pages/Proyectos";
 import ProyectoPilares from "./pages/ProyectoPilares";
-import Pizarra from "./pages/Pizarra";
 import SuperAdmin from "./pages/SuperAdmin";
 
 function VerificarEmailPage() {
@@ -95,7 +94,6 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/proyectos" element={<PrivateRoute><Proyectos /></PrivateRoute>} />
-      <Route path="/pizarra" element={<PrivateRoute><Pizarra /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
       <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
