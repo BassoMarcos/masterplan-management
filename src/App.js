@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { sendEmailVerification } from "firebase/auth";
 import AuthPage from "./pages/AuthPage";
 import Proyectos from "./pages/Proyectos";
 import ProyectoPilares from "./pages/ProyectoPilares";
+import AreaSecciones from "./pages/AreaSecciones";
 import SuperAdmin from "./pages/SuperAdmin";
 
 function VerificarEmailPage() {
@@ -64,6 +65,28 @@ const pageStyle = {
   link: { background: "none", border: "none", color: "#94a3b8", fontSize: "13px", cursor: "pointer", marginTop: "8px", display: "block", textDecoration: "underline" },
 };
 
+function SeccionPlaceholder() {
+  const { proyectoId, pilarId, seccionId } = useParams();
+  const navigate = useNavigate();
+  return (
+    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--text)", fontFamily: "'Segoe UI', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}>
+      <div style={{ textAlign: "center", background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "48px 40px", maxWidth: "440px" }}>
+        <div style={{ fontSize: "48px", marginBottom: "12px" }}>🚧</div>
+        <h2 style={{ fontSize: "20px", fontWeight: "700", margin: "0 0 8px", textTransform: "capitalize" }}>{seccionId.replace(/-/g, " ")}</h2>
+        <p style={{ fontSize: "14px", color: "var(--text2)", lineHeight: "1.6", margin: "0 0 24px" }}>
+          Esta sección está en construcción. La vamos a desarrollar próximamente.
+        </p>
+        <button
+          style={{ padding: "10px 20px", background: "var(--acc)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "14px", fontWeight: "600", cursor: "pointer" }}
+          onClick={() => navigate(`/proyecto/${proyectoId}/${pilarId}`)}
+        >
+          ← Volver
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PrivateRoute({ children }) {
   const { currentUser, isSuperAdmin, empresaData } = useAuth();
   if (!currentUser) return <Navigate to="/" />;
@@ -95,6 +118,8 @@ function AppRoutes() {
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/proyectos" element={<PrivateRoute><Proyectos /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/:pilarId/:seccionId" element={<PrivateRoute><SeccionPlaceholder /></PrivateRoute>} />
       <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

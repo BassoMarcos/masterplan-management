@@ -8,9 +8,9 @@ import PizarraFlotante from "../components/PizarraFlotante";
 
 const PILARES = [
   { id: "administracion", nombre: "Administración", icono: "📊", desc: "Cobro de cuotas, mora, balances", activo: true },
-  { id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Reservas, boletos, clientes", activo: false },
-  { id: "legales", nombre: "Legales", icono: "⚖️", desc: "Contratos, escrituras, verificaciones", activo: false },
-  { id: "desarrollos", nombre: "Desarrollos y Obras", icono: "🏗️", desc: "Etapas, lotes, avances de obra", activo: false },
+  { id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Reservas, boletos, clientes", activo: true },
+  { id: "legales", nombre: "Legales", icono: "⚖️", desc: "Contratos, escrituras, verificaciones", activo: true },
+  { id: "desarrollos", nombre: "Desarrollos y Obras", icono: "🏗️", desc: "Etapas, lotes, avances de obra", activo: true },
 ];
 
 export default function ProyectoPilares() {
