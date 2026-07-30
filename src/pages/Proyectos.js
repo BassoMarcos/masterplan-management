@@ -93,9 +93,13 @@ export default function Proyectos() {
       </header>
 
       <main style={styles.main}>
-        <h2 style={styles.titulo}>Mis Proyectos</h2>
-        <p style={styles.subtitulo}>Seleccioná un proyecto para trabajar</p>
-
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
+          <div>
+            <h2 style={styles.titulo}>Mis Proyectos</h2>
+            <p style={styles.subtitulo}>Seleccioná un proyecto para trabajar</p>
+          </div>
+          <button style={styles.pizarraBtn} onClick={() => navigate("/pizarra")}>📋 Pizarra de organización</button>
+        </div>
         {loading ? (
           <p style={styles.cargando}>Cargando proyectos...</p>
         ) : (
@@ -257,5 +261,6 @@ const styles = {
   iconoBtn: { fontSize: "28px", padding: "8px", borderRadius: "8px", border: "2px solid transparent", background: "var(--hov)", cursor: "pointer", transition: "all 0.15s" },
   iconoBtnActive: { border: "2px solid var(--acc)", background: "var(--blu-bg)" },
   error: { background: "#fef2f2", color: "#dc2626", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", margin: 0 },
-  crearBtn: { padding: "13px", background: "var(--acc)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }
+  crearBtn: { padding: "13px", background: "var(--acc)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: "600", cursor: "pointer" },
+  pizarraBtn: { padding: "12px 18px", background: "var(--card)", color: "var(--text)", border: "1.5px solid var(--border2)", borderRadius: "10px", fontSize: "14px", fontWeight: "600", cursor: "pointer" }
 };
