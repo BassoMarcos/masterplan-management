@@ -103,7 +103,7 @@ export default function AuthPage() {
           {modo === "registro" && (
             <div style={styles.field}>
               <label style={styles.label}>Nombre de la empresa</label>
-              <input style={styles.input} type="text" placeholder="Ej: FJ Desarrollos Inmobiliarios" value={empresa} onChange={e => setEmpresa(e.target.value)} required />
+              <input style={styles.input} type="text" placeholder="Ej: Desarrollos Inmobiliarios" value={empresa} onChange={e => setEmpresa(e.target.value)} required />
             </div>
           )}
           <div style={styles.field}>
