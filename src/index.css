@@ -1,0 +1,32 @@
+:root {
+  --bg: #0d1520;
+  --surface: #101d2e;
+  --card: #152436;
+  --hov: #1a2d42;
+  --border: #1f3650;
+  --border2: #243d5e;
+  --text: #e4edf5;
+  --text2: #7a9ab5;
+  --text3: #3d5a72;
+  --brand: #378ADD;
+  --acc: #378ADD;
+  --acc2: #85B7EB;
+  --acc3: #b5d4f4;
+  --blu-bg: #0c2a4a;
+  --blu: #85B7EB;
+  --blue-bg: #0c2a4a;
+  --blue: #85B7EB;
+  --blue-border: #85B7EB88;
+  --nav: #090f1a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.2s ease, color 0.2s ease;
+}

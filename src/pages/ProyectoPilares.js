@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
+import ThemeSelector from "../components/ThemeSelector";
 
 const PILARES = [
   { id: "administracion", nombre: "Administración", icono: "📊", desc: "Cobro de cuotas, mora, balances", activo: true },
@@ -35,7 +36,7 @@ export default function ProyectoPilares() {
     cargar();
   }, [proyectoId, currentUser.uid, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif" }}>Cargando...</div>;
+  if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>Cargando...</div>;
 
   return (
     <div style={styles.container}>
@@ -53,9 +54,12 @@ export default function ProyectoPilares() {
             </div>
           </div>
         </div>
-        <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>
-          Salir
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <ThemeSelector />
+          <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>
+            Salir
+          </button>
+        </div>
       </header>
 
       <main style={styles.main}>
@@ -81,22 +85,22 @@ export default function ProyectoPilares() {
 }
 
 const styles = {
-  container: { minHeight: "100vh", background: "#f8fafc", fontFamily: "'Segoe UI', sans-serif" },
+  container: { minHeight: "100vh", background: "var(--bg)", fontFamily: "'Segoe UI', sans-serif" },
   header: {
-    background: "#0f172a", color: "#fff", padding: "16px 32px",
+    background: "var(--nav)", color: "var(--text)", padding: "16px 32px",
     display: "flex", alignItems: "center", justifyContent: "space-between"
   },
   headerLeft: { display: "flex", alignItems: "center", gap: "16px" },
   backBtn: {
-    background: "transparent", border: "1px solid #334155", color: "#94a3b8",
+    background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)",
     padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px"
   },
   proyectoInfo: { display: "flex", alignItems: "center", gap: "12px" },
   proyectoLogo: { width: "36px", height: "36px", borderRadius: "8px", objectFit: "cover" },
   headerTitle: { margin: 0, fontSize: "20px", fontWeight: "700" },
-  headerSub: { margin: 0, fontSize: "13px", color: "#94a3b8" },
+  headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
   logoutBtn: {
-    background: "transparent", border: "1px solid #334155", color: "#94a3b8",
+    background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)",
     padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px"
   },
   main: { maxWidth: "1100px", margin: "0 auto", padding: "48px 24px" },
@@ -106,19 +110,19 @@ const styles = {
     transition: "transform 0.2s, box-shadow 0.2s", position: "relative"
   },
   cardActivo: {
-    background: "#fff", border: "1.5px solid #e2e8f0",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)"
+    background: "var(--card)", border: "1.5px solid var(--border)",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
   },
   cardInactivo: {
-    background: "#f1f5f9", border: "1.5px solid #e2e8f0",
-    cursor: "default", opacity: 0.7
+    background: "var(--surface)", border: "1.5px solid var(--border)",
+    cursor: "default", opacity: 0.6
   },
   cardIcono: { fontSize: "40px", display: "block", marginBottom: "16px" },
-  cardNombre: { fontSize: "17px", fontWeight: "700", color: "#0f172a", margin: "0 0 8px" },
-  cardDesc: { fontSize: "13px", color: "#64748b", margin: 0, lineHeight: "1.5" },
+  cardNombre: { fontSize: "17px", fontWeight: "700", color: "var(--text)", margin: "0 0 8px" },
+  cardDesc: { fontSize: "13px", color: "var(--text2)", margin: 0, lineHeight: "1.5" },
   proximamente: {
     position: "absolute", top: "14px", right: "14px",
-    background: "#e2e8f0", color: "#64748b", fontSize: "11px",
+    background: "var(--hov)", color: "var(--text2)", fontSize: "11px",
     padding: "3px 8px", borderRadius: "20px", fontWeight: "600"
   }
 };

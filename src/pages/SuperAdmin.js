@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, getDocs, doc, updateDoc, orderBy, query } from "firebase/firestore";
+import ThemeSelector from "../components/ThemeSelector";
 import emailjs from "@emailjs/browser";
 
 const EMAILJS_SERVICE = "service_hitlzvt";
@@ -73,7 +74,10 @@ export default function SuperAdmin() {
             <p style={styles.headerSub}>Panel de Administración</p>
           </div>
         </div>
-        <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <ThemeSelector />
+          <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
+        </div>
       </header>
 
       <main style={styles.main}>
@@ -106,9 +110,9 @@ export default function SuperAdmin() {
             </div>
             {empresasFiltradas.map(e => (
               <div key={e.id} style={styles.tablaFila}>
-                <span style={{ color: "#0f172a", fontWeight: "600" }}>{e.nombre}</span>
-                <span style={{ color: "#64748b" }}>{e.email}</span>
-                <span style={{ color: "#64748b", fontSize: "13px" }}>
+                <span style={{ color: "var(--text)", fontWeight: "600" }}>{e.nombre}</span>
+                <span style={{ color: "var(--text2)" }}>{e.email}</span>
+                <span style={{ color: "var(--text2)", fontSize: "13px" }}>
                   {e.creadoEn ? new Date(e.creadoEn).toLocaleDateString("es-AR") : "-"}
                 </span>
                 <span>
@@ -137,21 +141,21 @@ export default function SuperAdmin() {
 }
 
 const styles = {
-  container: { minHeight: "100vh", background: "#f8fafc", fontFamily: "'Segoe UI', sans-serif" },
-  header: { background: "#0f172a", color: "#fff", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" },
+  container: { minHeight: "100vh", background: "var(--bg)", fontFamily: "'Segoe UI', sans-serif" },
+  header: { background: "var(--nav)", color: "var(--text)", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { display: "flex", alignItems: "center", gap: "12px" },
   headerTitle: { margin: 0, fontSize: "20px", fontWeight: "700" },
   headerSub: { margin: 0, fontSize: "13px", color: "#f59e0b" },
-  logoutBtn: { background: "transparent", border: "1px solid #334155", color: "#94a3b8", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
+  logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "1100px", margin: "0 auto", padding: "48px 24px" },
-  titulo: { fontSize: "26px", fontWeight: "700", color: "#0f172a", margin: "0 0 24px" },
+  titulo: { fontSize: "26px", fontWeight: "700", color: "var(--text)", margin: "0 0 24px" },
   filtros: { display: "flex", gap: "10px", marginBottom: "24px", flexWrap: "wrap" },
-  filtroBtn: { padding: "8px 16px", borderRadius: "20px", border: "1.5px solid #e2e8f0", background: "#fff", cursor: "pointer", fontSize: "13px", fontWeight: "500", color: "#64748b" },
-  filtroBtnActive: { background: "#0f172a", color: "#fff", border: "1.5px solid #0f172a" },
-  cargando: { color: "#64748b" },
-  tabla: { background: "#fff", borderRadius: "12px", border: "1.5px solid #e2e8f0", overflow: "hidden" },
-  tablaHeader: { display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr", padding: "14px 20px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0", fontSize: "12px", fontWeight: "700", color: "#64748b", textTransform: "uppercase" },
-  tablaFila: { display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr", padding: "16px 20px", borderBottom: "1px solid #f1f5f9", alignItems: "center", fontSize: "14px" },
+  filtroBtn: { padding: "8px 16px", borderRadius: "20px", border: "1.5px solid var(--border2)", background: "var(--card)", cursor: "pointer", fontSize: "13px", fontWeight: "500", color: "var(--text2)" },
+  filtroBtnActive: { background: "var(--acc)", color: "#fff", border: "1.5px solid var(--acc)" },
+  cargando: { color: "var(--text2)" },
+  tabla: { background: "var(--card)", borderRadius: "12px", border: "1.5px solid var(--border)", overflow: "hidden" },
+  tablaHeader: { display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr", padding: "14px 20px", background: "var(--surface)", borderBottom: "1px solid var(--border)", fontSize: "12px", fontWeight: "700", color: "var(--text2)", textTransform: "uppercase" },
+  tablaFila: { display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr 1fr", padding: "16px 20px", borderBottom: "1px solid var(--border)", alignItems: "center", fontSize: "14px" },
   estadoBadge: { padding: "4px 10px", borderRadius: "20px", fontSize: "12px", fontWeight: "600" },
   btnAprobar: { padding: "6px 14px", background: "#16a34a", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   btnDesactivar: { padding: "6px 14px", background: "#dc2626", color: "#fff", border: "none", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },

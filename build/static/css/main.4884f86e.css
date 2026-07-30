@@ -1,0 +1,2 @@
+:root{--bg:#0d1520;--surface:#101d2e;--card:#152436;--hov:#1a2d42;--border:#1f3650;--border2:#243d5e;--text:#e4edf5;--text2:#7a9ab5;--text3:#3d5a72;--brand:#378add;--acc:#378add;--acc2:#85b7eb;--acc3:#b5d4f4;--blu-bg:#0c2a4a;--blu:#85b7eb;--blue-bg:#0c2a4a;--blue:#85b7eb;--blue-border:#85b7eb88;--nav:#090f1a}*{box-sizing:border-box}body{background:#0d1520;background:var(--bg);color:#e4edf5;color:var(--text);margin:0;transition:background .2s ease,color .2s ease}
+/*# sourceMappingURL=main.4884f86e.css.map*/
