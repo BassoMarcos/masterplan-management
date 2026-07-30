@@ -5,6 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
+import { areasVisibles } from "../config/appConfig";
 
 // Definición de cada área y sus secciones
 const AREAS = {
@@ -47,12 +48,14 @@ const AREAS = {
 
 export default function AreaSecciones() {
   const { proyectoId, pilarId } = useParams();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, empresaData, logout } = useAuth();
   const navigate = useNavigate();
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const area = AREAS[pilarId];
+  const visibles = areasVisibles(empresaData);
+  const areaPermitida = visibles.some(a => a.id === pilarId);
 
   useEffect(() => {
     async function cargar() {
@@ -73,11 +76,11 @@ export default function AreaSecciones() {
 
   if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>Cargando...</div>;
 
-  if (!area) {
+  if (!area || !areaPermitida) {
     return (
       <div style={styles.container}>
         <div style={styles.emptyWrap}>
-          <p style={{ color: "var(--text2)" }}>Área no encontrada.</p>
+          <p style={{ color: "var(--text2)" }}>Esta área no está disponible.</p>
           <button style={styles.backBtn} onClick={() => navigate(`/proyecto/${proyectoId}`)}>← Volver</button>
         </div>
       </div>

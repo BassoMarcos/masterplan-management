@@ -5,20 +5,17 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
+import { areasVisibles } from "../config/appConfig";
 
-const PILARES = [
-  { id: "administracion", nombre: "Administración", icono: "📊", desc: "Cobro de cuotas, mora, balances", activo: true },
-  { id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Reservas, boletos, clientes", activo: true },
-  { id: "legales", nombre: "Legales", icono: "⚖️", desc: "Contratos, escrituras, verificaciones", activo: true },
-  { id: "desarrollos", nombre: "Desarrollos y Obras", icono: "🏗️", desc: "Etapas, lotes, avances de obra", activo: true },
-];
 
 export default function ProyectoPilares() {
   const { proyectoId } = useParams();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, empresaData, logout } = useAuth();
   const navigate = useNavigate();
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const PILARES = areasVisibles(empresaData);
 
   useEffect(() => {
     async function cargar() {
@@ -68,15 +65,14 @@ export default function ProyectoPilares() {
           {PILARES.map(p => (
             <div
               key={p.id}
-              style={{ ...styles.card, ...(p.activo ? styles.cardActivo : styles.cardInactivo) }}
-              onClick={() => p.activo && navigate(`/proyecto/${proyectoId}/${p.id}`)}
-              onMouseEnter={e => p.activo && (e.currentTarget.style.transform = "translateY(-4px)")}
+              style={{ ...styles.card, ...styles.cardActivo }}
+              onClick={() => navigate(`/proyecto/${proyectoId}/${p.id}`)}
+              onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-4px)")}
               onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
             >
               <span style={styles.cardIcono}>{p.icono}</span>
               <h3 style={styles.cardNombre}>{p.nombre}</h3>
               <p style={styles.cardDesc}>{p.desc}</p>
-              {!p.activo && <span style={styles.proximamente}>Próximamente</span>}
             </div>
           ))}
         </div>
