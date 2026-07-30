@@ -108,11 +108,11 @@ export default function AuthPage() {
           )}
           <div style={styles.field}>
             <label style={styles.label}>Email</label>
-            <input style={styles.input} type="email" placeholder="email@empresa.com" value={email} onChange={e => setEmail(e.target.value)} required />
+            <input style={styles.input} type="email" name="email" autoComplete="email" placeholder="email@empresa.com" value={email} onChange={e => setEmail(e.target.value)} required />
           </div>
           <div style={styles.field}>
             <label style={styles.label}>Contraseña</label>
-            <input style={styles.input} type="password" placeholder={modo === "registro" ? "Mínimo 6 caracteres" : "Tu contraseña"} value={password} onChange={e => setPassword(e.target.value)} required />
+            <input style={styles.input} type="password" name="password" autoComplete={modo === "registro" ? "new-password" : "current-password"} placeholder={modo === "registro" ? "Mínimo 6 caracteres" : "Tu contraseña"} value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
           {modo === "registro" && (
             <div style={styles.field}>
@@ -120,6 +120,8 @@ export default function AuthPage() {
               <input
                 style={{ ...styles.input, ...(password2 && password !== password2 ? styles.inputError : {}) }}
                 type="password"
+                name="password2"
+                autoComplete="new-password"
                 placeholder="Repetí tu contraseña"
                 value={password2}
                 onChange={e => setPassword2(e.target.value)}
