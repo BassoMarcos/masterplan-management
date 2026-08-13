@@ -7,6 +7,7 @@ import AuthPage from "./pages/AuthPage";
 import Proyectos from "./pages/Proyectos";
 import ProyectoPilares from "./pages/ProyectoPilares";
 import AreaSecciones from "./pages/AreaSecciones";
+import DesarrollosSecciones from "./pages/DesarrollosSecciones";
 import SuperAdmin from "./pages/SuperAdmin";
 
 function VerificarEmailPage() {
@@ -119,6 +120,7 @@ function AppRoutes() {
       <Route path="/proyectos" element={<PrivateRoute><Proyectos /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/desarrollos/:seccionId" element={<PrivateRoute><DesarrollosSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId/:seccionId" element={<PrivateRoute><SeccionPlaceholder /></PrivateRoute>} />
       <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
