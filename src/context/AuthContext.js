@@ -46,10 +46,16 @@ export function AuthProvider({ children }) {
 
   // Registro de un integrante del equipo: se engancha a la empresa que tenga el código dado.
   async function registerEmpleado(email, password, nombre, apellido, codigo) {
-    // 1. Buscar la empresa por su código
+    // 1. Crear la cuenta primero (así queda autenticado y puede leer empresas según las reglas)
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+
+    // 2. Buscar la empresa por su código
     const q = query(collection(db, "empresas"), where("codigoEmpresa", "==", codigo.trim()));
     const snap = await getDocs(q);
     if (snap.empty) {
+      // Código inválido: deshacemos la cuenta recién creada para no dejar basura
+      try { await cred.user.delete(); } catch (e) { /* noop */ }
+      await signOut(auth);
       const err = new Error("codigo-invalido");
       err.code = "codigo-invalido";
       throw err;
@@ -57,8 +63,6 @@ export function AuthProvider({ children }) {
     const empresaDoc = snap.docs[0];
     const empresaId = empresaDoc.id;
 
-    // 2. Crear la cuenta del empleado
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
     await sendEmailVerification(cred.user);
 
     // 3. Crear su perfil de empleado, pendiente de aprobación, atado a la empresa
