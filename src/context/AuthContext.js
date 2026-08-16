@@ -26,6 +26,7 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [empresaData, setEmpresaData] = useState(null);
+  const [empleadoData, setEmpleadoData] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -99,29 +100,43 @@ export function AuthProvider({ children }) {
         const superAdmin = user.email === SUPERADMIN_EMAIL;
         setIsSuperAdmin(superAdmin);
         if (!superAdmin) {
-          // Si el email fue verificado, actualizamos Firestore
-          if (user.emailVerified) {
-            const ref = doc(db, "empresas", user.uid);
-            const snap = await getDoc(ref);
-            if (snap.exists()) {
-              let data = snap.data();
+          // Primero intentamos como EMPRESA (dueño)
+          const empRef = doc(db, "empresas", user.uid);
+          const empSnap = await getDoc(empRef);
+          if (empSnap.exists()) {
+            let data = empSnap.data();
+            if (user.emailVerified) {
               const updates = {};
               if (!data.emailVerificado) updates.emailVerificado = true;
-              // Empresas viejas sin código: se les genera uno la primera vez
               if (!data.codigoEmpresa) updates.codigoEmpresa = generarCodigoEmpresa();
               if (Object.keys(updates).length) {
                 data = { ...data, ...updates };
-                await setDoc(ref, data);
+                await setDoc(empRef, data);
               }
-              setEmpresaData(data);
             }
+            setEmpresaData(data);
+            setEmpleadoData(null);
           } else {
-            const snap = await getDoc(doc(db, "empresas", user.uid));
-            if (snap.exists()) setEmpresaData(snap.data());
+            // No es empresa: puede ser un EMPLEADO
+            const emplRef = doc(db, "empleados", user.uid);
+            const emplSnap = await getDoc(emplRef);
+            if (emplSnap.exists()) {
+              let data = emplSnap.data();
+              if (user.emailVerified && !data.emailVerificado) {
+                data = { ...data, emailVerificado: true };
+                await setDoc(emplRef, data);
+              }
+              setEmpleadoData(data);
+              setEmpresaData(null);
+            } else {
+              setEmpresaData(null);
+              setEmpleadoData(null);
+            }
           }
         }
       } else {
         setEmpresaData(null);
+        setEmpleadoData(null);
         setIsSuperAdmin(false);
       }
       setLoading(false);
@@ -129,7 +144,7 @@ export function AuthProvider({ children }) {
     return unsub;
   }, []);
 
-  const value = { currentUser, empresaData, isSuperAdmin, register, registerEmpleado, login, logout };
+  const value = { currentUser, empresaData, empleadoData, isSuperAdmin, register, registerEmpleado, login, logout };
 
   return (
     <AuthContext.Provider value={value}>
