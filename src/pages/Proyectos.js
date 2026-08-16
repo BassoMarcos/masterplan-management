@@ -111,6 +111,7 @@ export default function Proyectos() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <ThemeSelector />
+          <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>
           <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
