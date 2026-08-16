@@ -233,10 +233,10 @@ export default function Proyectos() {
                     style={styles.codigoInput}
                     value={codigoInput}
                     onChange={e => setCodigoInput(e.target.value)}
-                    placeholder="Ej: fyj.2847"
+                    placeholder="Escribí un código"
                     autoFocus
                   />
-                  <p style={styles.codigoAyuda}>Escribí el código como quieras (prefijo y números). Ej: fyj.2847</p>
+                  <p style={styles.codigoAyuda}>Escribí el código como quieras (prefijo y números).</p>
                   <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
                     <button style={styles.copiarBtn} onClick={guardarCodigo} disabled={guardandoCod}>
                       {guardandoCod ? "Guardando..." : "Guardar"}
