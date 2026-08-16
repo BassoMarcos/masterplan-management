@@ -90,12 +90,14 @@ function SeccionPlaceholder() {
 }
 
 function PrivateRoute({ children }) {
-  const { currentUser, isSuperAdmin, empresaData } = useAuth();
+  const { currentUser, isSuperAdmin, empresaData, empleadoData } = useAuth();
   if (!currentUser) return <Navigate to="/" />;
   if (isSuperAdmin) return <Navigate to="/superadmin" />;
   if (!currentUser.emailVerified) return <VerificarEmailPage />;
-  if (empresaData?.estado !== "activo") return <PendientePage />;
-  return children;
+  // Empresa activa (dueño) o empleado aprobado
+  if (empresaData?.estado === "activo") return children;
+  if (empleadoData?.estado === "aprobado") return children;
+  return <PendientePage />;
 }
 
 function SuperAdminRoute({ children }) {
@@ -106,11 +108,12 @@ function SuperAdminRoute({ children }) {
 }
 
 function PublicRoute({ children }) {
-  const { currentUser, isSuperAdmin, empresaData } = useAuth();
+  const { currentUser, isSuperAdmin, empresaData, empleadoData } = useAuth();
   if (!currentUser) return children;
   if (isSuperAdmin) return <Navigate to="/superadmin" />;
   if (!currentUser.emailVerified) return <VerificarEmailPage />;
   if (empresaData?.estado === "activo") return <Navigate to="/proyectos" />;
+  if (empleadoData?.estado === "aprobado") return <Navigate to="/proyectos" />;
   return <PendientePage />;
 }
 
