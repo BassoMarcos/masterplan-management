@@ -20,6 +20,8 @@ export default function Proyectos() {
   const [fotoPreview, setFotoPreview] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
+  const [showAjustes, setShowAjustes] = useState(false);
+  const [copiado, setCopiado] = useState(false);
 
   const cargarProyectos = useCallback(async () => {
     setLoading(true);
@@ -89,6 +91,7 @@ export default function Proyectos() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <ThemeSelector />
+          <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
       </header>
@@ -195,6 +198,35 @@ export default function Proyectos() {
         </div>
       )}
 
+      {showAjustes && (
+        <div style={styles.modalOverlay} onClick={() => setShowAjustes(false)}>
+          <div style={styles.ajustesModal} onClick={e => e.stopPropagation()}>
+            <h2 style={styles.ajustesTitle}>⚙️ Ajustes de la empresa</h2>
+            <p style={styles.ajustesSub}>{empresaData?.nombre || "Mi Empresa"}</p>
+
+            <div style={styles.codigoBox}>
+              <div style={styles.codigoLabel}>🔑 Código de tu empresa</div>
+              <div style={styles.codigoTexto}>{empresaData?.codigoEmpresa || "—"}</div>
+              <p style={styles.codigoAyuda}>Pasale este código a tu equipo. Lo necesitan una sola vez, al registrarse por primera vez en "Acceso Personal".</p>
+              <button
+                style={styles.copiarBtn}
+                onClick={() => {
+                  if (empresaData?.codigoEmpresa) {
+                    navigator.clipboard.writeText(empresaData.codigoEmpresa);
+                    setCopiado(true);
+                    setTimeout(() => setCopiado(false), 2000);
+                  }
+                }}
+              >
+                {copiado ? "✓ Copiado" : "📋 Copiar código"}
+              </button>
+            </div>
+
+            <button style={styles.cerrarAjustesBtn} onClick={() => setShowAjustes(false)}>Cerrar</button>
+          </div>
+        </div>
+      )}
+
       <PizarraFlotante contextoId="general" titulo="General · Desarrolladora" />
     </div>
   );
@@ -209,6 +241,16 @@ const styles = {
   headerLeft: { display: "flex", alignItems: "center", gap: "12px" },
   headerTitle: { margin: 0, fontSize: "20px", fontWeight: "700" },
   headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
+  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" },
+  ajustesModal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "440px", width: "100%" },
+  ajustesTitle: { margin: "0 0 4px", fontSize: "20px", fontWeight: "700", color: "var(--text)" },
+  ajustesSub: { margin: "0 0 20px", fontSize: "14px", color: "var(--text2)" },
+  codigoBox: { background: "var(--bg)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "20px", textAlign: "center" },
+  codigoLabel: { fontSize: "13px", fontWeight: "600", color: "var(--text2)", marginBottom: "8px" },
+  codigoTexto: { fontSize: "28px", fontWeight: "800", color: "var(--acc)", letterSpacing: "1px", fontFamily: "monospace" },
+  codigoAyuda: { fontSize: "12px", color: "var(--text2)", lineHeight: "1.5", margin: "12px 0 16px" },
+  copiarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
+  cerrarAjustesBtn: { width: "100%", marginTop: "20px", background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   logoutBtn: {
     background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)",
     padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px"
