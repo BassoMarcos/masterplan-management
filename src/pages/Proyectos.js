@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
-import { collection, addDoc, getDocs, query, where, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
 
@@ -22,6 +22,10 @@ export default function Proyectos() {
   const [error, setError] = useState("");
   const [showAjustes, setShowAjustes] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [editandoCod, setEditandoCod] = useState(false);
+  const [codigoInput, setCodigoInput] = useState("");
+  const [codigoLocal, setCodigoLocal] = useState(null);
+  const [guardandoCod, setGuardandoCod] = useState(false);
 
   const cargarProyectos = useCallback(async () => {
     setLoading(true);
@@ -77,6 +81,22 @@ export default function Proyectos() {
     setIcono("🏘️");
     setFotoPreview(null);
     setError("");
+  }
+
+  const codigoMostrar = codigoLocal || empresaData?.codigoEmpresa || "—";
+
+  async function guardarCodigo() {
+    const nuevo = codigoInput.trim();
+    if (!nuevo) { alert("El código no puede quedar vacío."); return; }
+    setGuardandoCod(true);
+    try {
+      await updateDoc(doc(db, "empresas", currentUser.uid), { codigoEmpresa: nuevo });
+      setCodigoLocal(nuevo);
+      setEditandoCod(false);
+    } catch (e) {
+      alert("Error al guardar el código: " + e.message);
+    }
+    setGuardandoCod(false);
   }
 
   return (
@@ -206,20 +226,49 @@ export default function Proyectos() {
 
             <div style={styles.codigoBox}>
               <div style={styles.codigoLabel}>🔑 Código de tu empresa</div>
-              <div style={styles.codigoTexto}>{empresaData?.codigoEmpresa || "—"}</div>
-              <p style={styles.codigoAyuda}>Pasale este código a tu equipo. Lo necesitan una sola vez, al registrarse por primera vez en "Acceso Personal".</p>
-              <button
-                style={styles.copiarBtn}
-                onClick={() => {
-                  if (empresaData?.codigoEmpresa) {
-                    navigator.clipboard.writeText(empresaData.codigoEmpresa);
-                    setCopiado(true);
-                    setTimeout(() => setCopiado(false), 2000);
-                  }
-                }}
-              >
-                {copiado ? "✓ Copiado" : "📋 Copiar código"}
-              </button>
+              {editandoCod ? (
+                <>
+                  <input
+                    style={styles.codigoInput}
+                    value={codigoInput}
+                    onChange={e => setCodigoInput(e.target.value)}
+                    placeholder="Ej: fyj.2847"
+                    autoFocus
+                  />
+                  <p style={styles.codigoAyuda}>Escribí el código como quieras (prefijo y números). Ej: fyj.2847</p>
+                  <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                    <button style={styles.copiarBtn} onClick={guardarCodigo} disabled={guardandoCod}>
+                      {guardandoCod ? "Guardando..." : "Guardar"}
+                    </button>
+                    <button style={styles.cancelarCodBtn} onClick={() => setEditandoCod(false)} disabled={guardandoCod}>Cancelar</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div style={styles.codigoTexto}>{codigoMostrar}</div>
+                  <p style={styles.codigoAyuda}>Pasale este código a tu equipo. Lo necesitan una sola vez, al registrarse por primera vez en "Acceso Personal".</p>
+                  <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                    <button
+                      style={styles.copiarBtn}
+                      onClick={() => {
+                        if (codigoMostrar !== "—") {
+                          navigator.clipboard.writeText(codigoMostrar);
+                          setCopiado(true);
+                          setTimeout(() => setCopiado(false), 2000);
+                        }
+                      }}
+                    >
+                      {copiado ? "✓ Copiado" : "📋 Copiar"}
+                    </button>
+                    <button
+                      style={styles.editarCodBtn}
+                      onClick={() => { setCodigoInput(codigoMostrar === "—" ? "" : codigoMostrar); setEditandoCod(true); }}
+                    >
+                      ✏️ Editar
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
 
             <button style={styles.cerrarAjustesBtn} onClick={() => setShowAjustes(false)}>Cerrar</button>
@@ -250,6 +299,9 @@ const styles = {
   codigoTexto: { fontSize: "28px", fontWeight: "800", color: "var(--acc)", letterSpacing: "1px", fontFamily: "monospace" },
   codigoAyuda: { fontSize: "12px", color: "var(--text2)", lineHeight: "1.5", margin: "12px 0 16px" },
   copiarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
+  editarCodBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
+  cancelarCodBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
+  codigoInput: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--acc)", background: "var(--card)", color: "var(--text)", fontSize: "20px", fontWeight: "700", textAlign: "center", fontFamily: "monospace", boxSizing: "border-box", letterSpacing: "1px" },
   cerrarAjustesBtn: { width: "100%", marginTop: "20px", background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   logoutBtn: {
     background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)",
