@@ -5,6 +5,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { sendEmailVerification } from "firebase/auth";
 import AuthPage from "./pages/AuthPage";
 import Proyectos from "./pages/Proyectos";
+import Empleados from "./pages/Empleados";
 import ProyectoPilares from "./pages/ProyectoPilares";
 import AreaSecciones from "./pages/AreaSecciones";
 import DesarrollosSecciones from "./pages/DesarrollosSecciones";
@@ -118,6 +119,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<PublicRoute><AuthPage /></PublicRoute>} />
       <Route path="/proyectos" element={<PrivateRoute><Proyectos /></PrivateRoute>} />
+      <Route path="/empleados" element={<PrivateRoute><Empleados /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/desarrollos/:seccionId" element={<PrivateRoute><DesarrollosSecciones /></PrivateRoute>} />
