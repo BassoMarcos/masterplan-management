@@ -93,10 +93,12 @@ function PrivateRoute({ children }) {
   const { currentUser, isSuperAdmin, empresaData, empleadoData } = useAuth();
   if (!currentUser) return <Navigate to="/" />;
   if (isSuperAdmin) return <Navigate to="/superadmin" />;
-  if (!currentUser.emailVerified) return <VerificarEmailPage />;
-  // Empresa activa (dueño) o empleado aprobado
-  if (empresaData?.estado === "activo") return children;
+  // Empleado aprobado: entra sin necesidad de verificar email (lo controla el código + la aprobación del dueño)
   if (empleadoData?.estado === "aprobado") return children;
+  if (empleadoData && empleadoData.estado !== "aprobado") return <PendientePage />;
+  // Empresa (dueño): sí requiere verificar email
+  if (!currentUser.emailVerified) return <VerificarEmailPage />;
+  if (empresaData?.estado === "activo") return children;
   return <PendientePage />;
 }
 
@@ -111,9 +113,12 @@ function PublicRoute({ children }) {
   const { currentUser, isSuperAdmin, empresaData, empleadoData } = useAuth();
   if (!currentUser) return children;
   if (isSuperAdmin) return <Navigate to="/superadmin" />;
+  // Empleado aprobado: entra directo (sin verificación de email)
+  if (empleadoData?.estado === "aprobado") return <Navigate to="/proyectos" />;
+  if (empleadoData && empleadoData.estado !== "aprobado") return <PendientePage />;
+  // Empresa (dueño): requiere verificar email
   if (!currentUser.emailVerified) return <VerificarEmailPage />;
   if (empresaData?.estado === "activo") return <Navigate to="/proyectos" />;
-  if (empleadoData?.estado === "aprobado") return <Navigate to="/proyectos" />;
   return <PendientePage />;
 }
 
