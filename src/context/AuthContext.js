@@ -11,6 +11,12 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const SUPERADMIN_EMAIL = "marky.basso98@gmail.com";
 
+// Genera un código de empresa tipo "gru.rom.6942" (4 dígitos aleatorios, sin patrón)
+function generarCodigoEmpresa() {
+  const n = Math.floor(1000 + Math.random() * 9000); // 1000-9999
+  return "gru.rom." + n;
+}
+
 const AuthContext = createContext();
 
 export function useAuth() {
@@ -31,7 +37,8 @@ export function AuthProvider({ children }) {
       email,
       creadoEn: new Date().toISOString(),
       estado: "pendiente",
-      emailVerificado: false
+      emailVerificado: false,
+      codigoEmpresa: generarCodigoEmpresa()
     });
     await signOut(auth);
     return cred;
@@ -57,13 +64,16 @@ export function AuthProvider({ children }) {
             const ref = doc(db, "empresas", user.uid);
             const snap = await getDoc(ref);
             if (snap.exists()) {
-              const data = snap.data();
-              if (!data.emailVerificado) {
-                await setDoc(ref, { ...data, emailVerificado: true });
-                setEmpresaData({ ...data, emailVerificado: true });
-              } else {
-                setEmpresaData(data);
+              let data = snap.data();
+              const updates = {};
+              if (!data.emailVerificado) updates.emailVerificado = true;
+              // Empresas viejas sin código: se les genera uno la primera vez
+              if (!data.codigoEmpresa) updates.codigoEmpresa = generarCodigoEmpresa();
+              if (Object.keys(updates).length) {
+                data = { ...data, ...updates };
+                await setDoc(ref, data);
               }
+              setEmpresaData(data);
             }
           } else {
             const snap = await getDoc(doc(db, "empresas", user.uid));
