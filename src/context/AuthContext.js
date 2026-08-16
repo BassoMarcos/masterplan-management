@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
   sendEmailVerification
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 const SUPERADMIN_EMAIL = "marky.basso98@gmail.com";
 
@@ -40,6 +40,42 @@ export function AuthProvider({ children }) {
       emailVerificado: false,
       codigoEmpresa: generarCodigoEmpresa()
     });
+    await signOut(auth);
+    return cred;
+  }
+
+  // Registro de un integrante del equipo: se engancha a la empresa que tenga el código dado.
+  async function registerEmpleado(email, password, nombre, apellido, codigo) {
+    // 1. Buscar la empresa por su código
+    const q = query(collection(db, "empresas"), where("codigoEmpresa", "==", codigo.trim()));
+    const snap = await getDocs(q);
+    if (snap.empty) {
+      const err = new Error("codigo-invalido");
+      err.code = "codigo-invalido";
+      throw err;
+    }
+    const empresaDoc = snap.docs[0];
+    const empresaId = empresaDoc.id;
+
+    // 2. Crear la cuenta del empleado
+    const cred = await createUserWithEmailAndPassword(auth, email, password);
+    await sendEmailVerification(cred.user);
+
+    // 3. Crear su perfil de empleado, pendiente de aprobación, atado a la empresa
+    await setDoc(doc(db, "empleados", cred.user.uid), {
+      empresaId,
+      empresaNombre: empresaDoc.data().nombre || "",
+      email,
+      nombre: nombre.trim(),
+      apellido: apellido.trim(),
+      estado: "pendiente",       // pendiente | aprobado | rechazado
+      legajo: "",
+      permisos: {},               // se completa al aprobar
+      accesoTotal: false,
+      creadoEn: new Date().toISOString(),
+      emailVerificado: false
+    });
+
     await signOut(auth);
     return cred;
   }
@@ -89,7 +125,7 @@ export function AuthProvider({ children }) {
     return unsub;
   }, []);
 
-  const value = { currentUser, empresaData, isSuperAdmin, register, login, logout };
+  const value = { currentUser, empresaData, isSuperAdmin, register, registerEmpleado, login, logout };
 
   return (
     <AuthContext.Provider value={value}>
