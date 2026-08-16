@@ -143,7 +143,7 @@ export default function AuthPage() {
                   </div>
                   <div style={styles.field}>
                     <label style={styles.label}>Código de la empresa</label>
-                    <input style={styles.input} type="text" placeholder="Ej: fyj.2847" value={codigo} onChange={e => setCodigo(e.target.value)} required />
+                    <input style={styles.input} type="text" placeholder="Pegá el código que te dieron" value={codigo} onChange={e => setCodigo(e.target.value)} required />
                     <span style={styles.hint}>Te lo da tu empresa. Solo lo necesitás esta primera vez.</span>
                   </div>
                 </>
