@@ -40,6 +40,14 @@ function VerificarEmailPage() {
   );
 }
 
+function CargandoPage() {
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg, #0f172a)", color: "var(--text, #fff)", fontFamily: "sans-serif", fontSize: "15px" }}>
+      Cargando...
+    </div>
+  );
+}
+
 function PendientePage() {
   const { logout } = useAuth();
   return (
@@ -90,9 +98,11 @@ function SeccionPlaceholder() {
 }
 
 function PrivateRoute({ children }) {
-  const { currentUser, isSuperAdmin, empresaData, empleadoData } = useAuth();
+  const { currentUser, isSuperAdmin, empresaData, empleadoData, cargandoDatos } = useAuth();
   if (!currentUser) return <Navigate to="/" />;
   if (isSuperAdmin) return <Navigate to="/superadmin" />;
+  // Mientras se resuelve si es empresa o empleado, mostrar carga (evita el parpadeo de "pendiente")
+  if (cargandoDatos) return <CargandoPage />;
   // Empleado aprobado: entra sin necesidad de verificar email (lo controla el código + la aprobación del dueño)
   if (empleadoData?.estado === "aprobado") return children;
   if (empleadoData && empleadoData.estado !== "aprobado") return <PendientePage />;
@@ -110,9 +120,10 @@ function SuperAdminRoute({ children }) {
 }
 
 function PublicRoute({ children }) {
-  const { currentUser, isSuperAdmin, empresaData, empleadoData } = useAuth();
+  const { currentUser, isSuperAdmin, empresaData, empleadoData, cargandoDatos } = useAuth();
   if (!currentUser) return children;
   if (isSuperAdmin) return <Navigate to="/superadmin" />;
+  if (cargandoDatos) return <CargandoPage />;
   // Empleado aprobado: entra directo (sin verificación de email)
   if (empleadoData?.estado === "aprobado") return <Navigate to="/proyectos" />;
   if (empleadoData && empleadoData.estado !== "aprobado") return <PendientePage />;
