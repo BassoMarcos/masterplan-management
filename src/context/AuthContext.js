@@ -29,6 +29,7 @@ export function AuthProvider({ children }) {
   const [empleadoData, setEmpleadoData] = useState(null);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [cargandoDatos, setCargandoDatos] = useState(false);
 
   async function register(email, password, empresa) {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
@@ -97,6 +98,7 @@ export function AuthProvider({ children }) {
     const unsub = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
+        setCargandoDatos(true);
         const superAdmin = user.email === SUPERADMIN_EMAIL;
         setIsSuperAdmin(superAdmin);
         if (!superAdmin) {
@@ -139,6 +141,7 @@ export function AuthProvider({ children }) {
         setEmpleadoData(null);
         setIsSuperAdmin(false);
       }
+      setCargandoDatos(false);
       setLoading(false);
     });
     return unsub;
@@ -151,7 +154,7 @@ export function AuthProvider({ children }) {
   // ¿el usuario actual es un empleado (no dueño)?
   const esEmpleado = !!empleadoData;
 
-  const value = { currentUser, empresaData, empleadoData, empresaUid, esEmpleado, isSuperAdmin, register, registerEmpleado, login, logout };
+  const value = { currentUser, empresaData, empleadoData, empresaUid, esEmpleado, isSuperAdmin, cargandoDatos, register, registerEmpleado, login, logout };
 
   return (
     <AuthContext.Provider value={value}>
