@@ -125,7 +125,7 @@ function badgeColor(estado) {
 
 export default function DesarrollosSecciones() {
   const { proyectoId, seccionId } = useParams();
-  const { currentUser, logout } = useAuth();
+  const { empresaUid, logout } = useAuth();
   const navigate = useNavigate();
 
   const cfg = SECCIONES[seccionId];
@@ -143,7 +143,7 @@ export default function DesarrollosSecciones() {
     async function cargar() {
       try {
         const snap = await getDoc(doc(db, "proyectos", proyectoId));
-        if (snap.exists() && snap.data().empresaId === currentUser.uid) {
+        if (snap.exists() && snap.data().empresaId === empresaUid) {
           setProyecto({ id: snap.id, ...snap.data() });
         } else {
           navigate("/proyectos");
@@ -154,7 +154,7 @@ export default function DesarrollosSecciones() {
       setLoading(false);
     }
     cargar();
-  }, [proyectoId, currentUser.uid, navigate]);
+  }, [proyectoId, empresaUid, navigate]);
 
   // Suscripción en vivo a la colección de la sección
   useEffect(() => {
