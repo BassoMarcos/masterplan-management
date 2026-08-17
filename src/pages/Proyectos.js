@@ -9,7 +9,7 @@ import PizarraFlotante from "../components/PizarraFlotante";
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
 
 export default function Proyectos() {
-  const { currentUser, empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
+  const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
 
   const [proyectos, setProyectos] = useState([]);
