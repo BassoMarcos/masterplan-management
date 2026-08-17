@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
-import { AREAS_DEFAULT } from "../config/appConfig";
+import { AREAS_DEFAULT, areasVisibles } from "../config/appConfig";
 
 const NIVELES = [
   { id: "ninguno", label: "Sin acceso", color: "#94a3b8" },
@@ -17,6 +17,7 @@ export default function Empleados() {
   const navigate = useNavigate();
 
   const [empleados, setEmpleados] = useState([]);
+  const [proyectos, setProyectos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [aprobando, setAprobando] = useState(null); // empleado en proceso de aprobación
   const [legajo, setLegajo] = useState("");
@@ -32,6 +33,10 @@ export default function Empleados() {
       const q = query(collection(db, "empleados"), where("empresaId", "==", currentUser.uid));
       const snap = await getDocs(q);
       setEmpleados(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      // Proyectos de la empresa (para asignar permisos por proyecto)
+      const qp = query(collection(db, "proyectos"), where("empresaId", "==", currentUser.uid));
+      const snapP = await getDocs(qp);
+      setProyectos(snapP.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       console.error(e);
     }
@@ -45,10 +50,27 @@ export default function Empleados() {
     setLegajo(emp.legajo || "");
     setNombre(emp.nombre || "");
     setApellido(emp.apellido || "");
-    const permIni = {};
-    AREAS_DEFAULT.forEach(a => { permIni[a.id] = (emp.permisos && emp.permisos[a.id]) || "ninguno"; });
+    // permisos.proyectos[proyId][areaId] = "ninguno" | "ver" | "editar"
+    const permIni = { proyectos: {} };
+    const previos = emp.permisos?.proyectos || {};
+    proyectos.forEach(proy => {
+      permIni.proyectos[proy.id] = {};
+      AREAS_DEFAULT.forEach(a => {
+        permIni.proyectos[proy.id][a.id] = previos[proy.id]?.[a.id] || "ninguno";
+      });
+    });
     setPermisos(permIni);
     setAccesoTotal(!!emp.accesoTotal);
+  }
+
+  function setNivel(proyId, areaId, nivel) {
+    setPermisos(prev => ({
+      ...prev,
+      proyectos: {
+        ...prev.proyectos,
+        [proyId]: { ...(prev.proyectos?.[proyId] || {}), [areaId]: nivel },
+      },
+    }));
   }
 
   function cerrarAprobacion() {
@@ -231,27 +253,40 @@ export default function Empleados() {
             </label>
 
             {!accesoTotal && (
-              <div style={styles.permisosBox}>
-                <div style={styles.permisosTitle}>Permisos por área</div>
-                {AREAS_DEFAULT.map(a => (
-                  <div key={a.id} style={styles.permisoRow}>
-                    <div style={styles.permisoArea}>{a.icono} {a.nombre}</div>
-                    <div style={styles.nivelesRow}>
-                      {NIVELES.map(n => (
-                        <button
-                          key={n.id}
-                          onClick={() => setPermisos({ ...permisos, [a.id]: n.id })}
-                          style={{
-                            ...styles.nivelBtn,
-                            ...(permisos[a.id] === n.id ? { background: n.color, color: "#fff", borderColor: n.color } : {}),
-                          }}
-                        >
-                          {n.label}
-                        </button>
+              <div>
+                <div style={styles.permisosTitle}>Permisos por proyecto y área</div>
+                {proyectos.length === 0 && <p style={styles.empty}>No hay proyectos creados todavía.</p>}
+                {proyectos.map(proy => {
+                  const permProy = permisos.proyectos?.[proy.id] || {};
+                  const areasEmpresa = areasVisibles(empresaData);
+                  return (
+                    <div key={proy.id} style={styles.proyectoBox}>
+                      <div style={styles.proyectoBoxTitle}>
+                        {proy.logo ? <img src={proy.logo} alt="" style={styles.proyMini} /> : <span>{proy.icono || "📁"}</span>}
+                        {proy.nombre}
+                      </div>
+                      {areasEmpresa.map(a => (
+                        <div key={a.id} style={styles.permisoRow}>
+                          <div style={styles.permisoArea}>{a.icono} {a.nombre}</div>
+                          <div style={styles.nivelesRow}>
+                            {NIVELES.map(n => (
+                              <button
+                                key={n.id}
+                                onClick={() => setNivel(proy.id, a.id, n.id)}
+                                style={{
+                                  ...styles.nivelBtn,
+                                  ...((permProy[a.id] || "ninguno") === n.id ? { background: n.color, color: "#fff", borderColor: n.color } : {}),
+                                }}
+                              >
+                                {n.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                       ))}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
 
@@ -269,10 +304,13 @@ export default function Empleados() {
 }
 
 function resumenPermisos(permisos) {
-  if (!permisos) return "Sin permisos";
-  const activos = AREAS_DEFAULT.filter(a => permisos[a.id] && permisos[a.id] !== "ninguno");
-  if (activos.length === 0) return "Sin acceso a áreas";
-  return activos.map(a => a.nombre).join(", ");
+  const proys = permisos?.proyectos;
+  if (!proys) return "Sin acceso";
+  const conAcceso = Object.values(proys).filter(areas =>
+    areas && Object.values(areas).some(n => n && n !== "ninguno")
+  ).length;
+  if (conAcceso === 0) return "Sin acceso a proyectos";
+  return conAcceso + " proyecto" + (conAcceso !== 1 ? "s" : "");
 }
 
 const styles = {
@@ -312,6 +350,9 @@ const styles = {
   input: { width: "100%", padding: "9px 11px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box", fontFamily: "inherit" },
   accesoTotalRow: { display: "flex", alignItems: "center", gap: "12px", background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "10px", padding: "12px 16px", cursor: "pointer", marginBottom: "16px" },
   permisosBox: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "10px", padding: "14px" },
+  proyectoBox: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "10px", padding: "14px", marginBottom: "12px" },
+  proyectoBoxTitle: { display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "10px", paddingBottom: "8px", borderBottom: "1.5px solid var(--border)" },
+  proyMini: { width: "22px", height: "22px", borderRadius: "5px", objectFit: "cover" },
   permisosTitle: { fontSize: "13px", fontWeight: "700", color: "var(--text2)", marginBottom: "10px" },
   permisoRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 0", borderBottom: "1px solid var(--border)", flexWrap: "wrap", gap: "8px" },
   permisoArea: { fontSize: "14px", fontWeight: "600", color: "var(--text)" },
