@@ -88,7 +88,7 @@ export default function Proyectos() {
     if (!window.confirm(`Confirmá otra vez: se va a eliminar "${p.nombre}" definitivamente.`)) return;
     try {
       await deleteDoc(doc(db, "proyectos", p.id));
-      cargar();
+      cargarProyectos();
     } catch (err) {
       alert("Error al eliminar el proyecto: " + err.message);
     }
