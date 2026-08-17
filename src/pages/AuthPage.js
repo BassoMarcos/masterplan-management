@@ -105,7 +105,7 @@ export default function AuthPage() {
   const esPersonal = vista === "personal";
 
   return (
-    <div style={{ ...styles.container, background: esPersonal ? "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)" : "linear-gradient(135deg, #374151 0%, #6b7280 100%)" }}>
+    <div style={styles.container}>
       {/* Acceso Empresas arriba a la derecha */}
       <button
         style={styles.empresaToggle}
@@ -114,7 +114,7 @@ export default function AuthPage() {
         {esPersonal ? "🏢 Acceso Empresas" : "← Volver a Acceso Personal"}
       </button>
 
-      <div style={styles.card}>
+      <div style={{ ...styles.card, background: esPersonal ? "#fff" : "#e5e7eb" }}>
         <div style={styles.logo}>
           <span style={styles.logoIcon}>🏗️</span>
           <h1 style={styles.logoText}>MasterPlan</h1>
