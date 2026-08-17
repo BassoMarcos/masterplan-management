@@ -33,3 +33,46 @@ export function areasVisibles(empresaData) {
 export function esPersonalizada(empresaData) {
   return !!(empresaData?.config?.personalizada);
 }
+
+// ───────────────────────────────────────────────────────────────
+// PERMISOS DE EMPLEADO
+//
+// Estructura del permiso de un empleado (empleados/{uid}):
+//   accesoTotal: true            -> ve y edita todo, como un dueño
+//   permisos: {
+//     proyectos: {
+//       "<proyectoId>": { administracion: "editar", comercial: "ver", ... }
+//     }
+//   }
+// Niveles por área: "ninguno" | "ver" | "editar"
+// ───────────────────────────────────────────────────────────────
+
+// ¿El empleado puede ver este proyecto? (tiene al menos un área con acceso)
+export function empleadoPuedeVerProyecto(empleadoData, proyectoId) {
+  if (!empleadoData) return false;
+  if (empleadoData.accesoTotal) return true;
+  const proy = empleadoData.permisos?.proyectos?.[proyectoId];
+  if (!proy) return false;
+  return Object.values(proy).some(nivel => nivel && nivel !== "ninguno");
+}
+
+// Nivel de acceso del empleado a un área dentro de un proyecto: "ninguno" | "ver" | "editar"
+export function empleadoNivelArea(empleadoData, proyectoId, areaId) {
+  if (!empleadoData) return "ninguno";
+  if (empleadoData.accesoTotal) return "editar";
+  const nivel = empleadoData.permisos?.proyectos?.[proyectoId]?.[areaId];
+  return nivel || "ninguno";
+}
+
+// Áreas visibles para un empleado dentro de un proyecto (respeta también las ocultas de la empresa)
+export function areasVisiblesEmpleado(empresaData, empleadoData, proyectoId) {
+  const base = areasVisibles(empresaData);
+  if (!empleadoData) return base;
+  if (empleadoData.accesoTotal) return base;
+  return base.filter(a => empleadoNivelArea(empleadoData, proyectoId, a.id) !== "ninguno");
+}
+
+// Devuelve el uid de empresa efectivo (dueño = su uid; empleado = empresaId)
+export function uidEmpresaEfectivo(currentUser, empleadoData) {
+  return empleadoData?.empresaId || currentUser?.uid || null;
+}
