@@ -29,12 +29,12 @@ export const AREAS_DEFAULT = [
     ],
   },
   {
-    id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Reservas, boletos, clientes",
+    id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Datos, filtrado y ventas",
     paneles: [
-      { id: "vendedores", nombre: "Panel de vendedores" },
-      { id: "contactos", nombre: "Contactos / consultas" },
-      { id: "reservas", nombre: "Reservas y boletos" },
-      { id: "clientes", nombre: "Clientes" },
+      { id: "datos", nombre: "Datos" },
+      { id: "filtrado", nombre: "Filtrado" },
+      { id: "ventas", nombre: "Ventas" },
+      { id: "config_filtro", nombre: "Configurar formulario de filtro" },
     ],
   },
   {
