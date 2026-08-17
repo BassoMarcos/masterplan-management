@@ -302,6 +302,13 @@ export default function Proyectos() {
               )}
             </div>
 
+            <button
+              style={styles.mapaBtn}
+              onClick={() => window.open("/mapa.html", "_blank")}
+            >
+              🧠 Mapa de arquitectura
+            </button>
+
             <button style={styles.cerrarAjustesBtn} onClick={() => setShowAjustes(false)}>Cerrar</button>
           </div>
         </div>
@@ -333,6 +340,7 @@ const styles = {
   editarCodBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   cancelarCodBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   codigoInput: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--acc)", background: "var(--card)", color: "var(--text)", fontSize: "20px", fontWeight: "700", textAlign: "center", fontFamily: "monospace", boxSizing: "border-box", letterSpacing: "1px" },
+  mapaBtn: { width: "100%", marginTop: "16px", background: "linear-gradient(135deg,#2FE0B0,#3FA9FF)", border: "none", color: "#04060a", padding: "11px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
   cerrarAjustesBtn: { width: "100%", marginTop: "20px", background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   logoutBtn: {
     background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)",
