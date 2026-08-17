@@ -15,12 +15,53 @@
 // Regla de oro: el código nunca dice "F&J ve esto". El código pregunta
 // "¿qué tiene configurado esta empresa?" y actúa según eso.
 
+// Cada área tiene sus SUB-PANELES declarados acá. Para agregar un panel nuevo
+// (o un área nueva), solo se edita esta lista: el sistema de permisos y las
+// vistas lo toman automáticamente, sin tocar más código.
 export const AREAS_DEFAULT = [
-  { id: "administracion", nombre: "Administración", icono: "📊", desc: "Cobro de cuotas, mora, balances" },
-  { id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Reservas, boletos, clientes" },
-  { id: "legales", nombre: "Legales", icono: "⚖️", desc: "Contratos, escrituras, verificaciones" },
-  { id: "desarrollos", nombre: "Desarrollos y Obras", icono: "🏗️", desc: "Etapas, lotes, avances de obra" },
+  {
+    id: "administracion", nombre: "Administración", icono: "📊", desc: "Cobro de cuotas, mora, balances",
+    paneles: [
+      { id: "cobros", nombre: "Cobros y cuotas" },
+      { id: "mora", nombre: "Mora" },
+      { id: "caja", nombre: "Caja / Balances" },
+      { id: "cierres", nombre: "Cierres" },
+    ],
+  },
+  {
+    id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Reservas, boletos, clientes",
+    paneles: [
+      { id: "vendedores", nombre: "Panel de vendedores" },
+      { id: "contactos", nombre: "Contactos / consultas" },
+      { id: "reservas", nombre: "Reservas y boletos" },
+      { id: "clientes", nombre: "Clientes" },
+    ],
+  },
+  {
+    id: "legales", nombre: "Legales", icono: "⚖️", desc: "Contratos, escrituras, verificaciones",
+    paneles: [
+      { id: "contratos", nombre: "Contratos" },
+      { id: "escrituras", nombre: "Escrituras" },
+      { id: "verificaciones", nombre: "Verificaciones / trámites" },
+    ],
+  },
+  {
+    id: "desarrollos", nombre: "Desarrollos y Obras", icono: "🏗️", desc: "Etapas, lotes, avances de obra",
+    paneles: [
+      { id: "etapas", nombre: "Etapas" },
+      { id: "lotes", nombre: "Manzanas y lotes" },
+      { id: "avance", nombre: "Avance de obra" },
+      { id: "infraestructura", nombre: "Infraestructura" },
+      { id: "agrimensura", nombre: "Agrimensura" },
+    ],
+  },
 ];
+
+// Devuelve los sub-paneles de un área por su id.
+export function panelesDeArea(areaId) {
+  const a = AREAS_DEFAULT.find(x => x.id === areaId);
+  return (a && a.paneles) ? a.paneles : [];
+}
 
 // Devuelve las áreas que una empresa concreta debe ver, según su config.
 export function areasVisibles(empresaData) {
@@ -35,33 +76,69 @@ export function esPersonalizada(empresaData) {
 }
 
 // ───────────────────────────────────────────────────────────────
-// PERMISOS DE EMPLEADO
+// PERMISOS DE EMPLEADO  (autoextensible: áreas y sub-paneles se leen de AREAS_DEFAULT)
 //
 // Estructura del permiso de un empleado (empleados/{uid}):
 //   accesoTotal: true            -> ve y edita todo, como un dueño
 //   permisos: {
 //     proyectos: {
-//       "<proyectoId>": { administracion: "editar", comercial: "ver", ... }
+//       "<proyectoId>": {
+//         "<areaId>": {
+//           _area: "editar"|"ver"|"ninguno",   // atajo: aplica a TODA el área (paneles actuales y futuros)
+//           "<panelId>": "editar"|"ver"|"ninguno"  // permiso puntual de un sub-panel
+//         }
+//       }
 //     }
 //   }
-// Niveles por área: "ninguno" | "ver" | "editar"
+// Niveles: "ninguno" | "ver" | "editar"
+//
+// Compatibilidad: si el área guarda un string ("editar"/"ver") en vez de un objeto,
+// se interpreta como el atajo _area (formato viejo). Nada se rompe.
 // ───────────────────────────────────────────────────────────────
 
-// ¿El empleado puede ver este proyecto? (tiene al menos un área con acceso)
-export function empleadoPuedeVerProyecto(empleadoData, proyectoId) {
-  if (!empleadoData) return false;
-  if (empleadoData.accesoTotal) return true;
-  const proy = empleadoData.permisos?.proyectos?.[proyectoId];
-  if (!proy) return false;
-  return Object.values(proy).some(nivel => nivel && nivel !== "ninguno");
+const RANK = { ninguno: 0, ver: 1, editar: 2 };
+function maxNivel(a, b) { return (RANK[a] || 0) >= (RANK[b] || 0) ? (a || "ninguno") : (b || "ninguno"); }
+
+// Lee el permiso crudo de un área dentro de un proyecto (puede ser string viejo u objeto nuevo)
+function permisoAreaCrudo(empleadoData, proyectoId, areaId) {
+  return empleadoData?.permisos?.proyectos?.[proyectoId]?.[areaId];
 }
 
-// Nivel de acceso del empleado a un área dentro de un proyecto: "ninguno" | "ver" | "editar"
+// Nivel del atajo "toda el área"
+function nivelAtajoArea(empleadoData, proyectoId, areaId) {
+  const raw = permisoAreaCrudo(empleadoData, proyectoId, areaId);
+  if (!raw) return "ninguno";
+  if (typeof raw === "string") return raw;          // formato viejo
+  return raw._area || "ninguno";
+}
+
+// Nivel de acceso del empleado a un SUB-PANEL: combina el atajo de área con el permiso puntual
+export function empleadoNivelPanel(empleadoData, proyectoId, areaId, panelId) {
+  if (!empleadoData) return "ninguno";
+  if (empleadoData.accesoTotal) return "editar";
+  const raw = permisoAreaCrudo(empleadoData, proyectoId, areaId);
+  if (!raw) return "ninguno";
+  const nivelArea = typeof raw === "string" ? raw : (raw._area || "ninguno");
+  const nivelPanel = (typeof raw === "object" && raw[panelId]) ? raw[panelId] : "ninguno";
+  return maxNivel(nivelArea, nivelPanel);
+}
+
+// Nivel de acceso del empleado a un ÁREA (el mayor entre el atajo y cualquiera de sus paneles)
 export function empleadoNivelArea(empleadoData, proyectoId, areaId) {
   if (!empleadoData) return "ninguno";
   if (empleadoData.accesoTotal) return "editar";
-  const nivel = empleadoData.permisos?.proyectos?.[proyectoId]?.[areaId];
-  return nivel || "ninguno";
+  let nivel = nivelAtajoArea(empleadoData, proyectoId, areaId);
+  panelesDeArea(areaId).forEach(p => {
+    nivel = maxNivel(nivel, empleadoNivelPanel(empleadoData, proyectoId, areaId, p.id));
+  });
+  return nivel;
+}
+
+// ¿El empleado puede ver este proyecto? (tiene al menos un área/panel con acceso)
+export function empleadoPuedeVerProyecto(empleadoData, proyectoId) {
+  if (!empleadoData) return false;
+  if (empleadoData.accesoTotal) return true;
+  return AREAS_DEFAULT.some(a => empleadoNivelArea(empleadoData, proyectoId, a.id) !== "ninguno");
 }
 
 // Áreas visibles para un empleado dentro de un proyecto (respeta también las ocultas de la empresa)
@@ -70,6 +147,13 @@ export function areasVisiblesEmpleado(empresaData, empleadoData, proyectoId) {
   if (!empleadoData) return base;
   if (empleadoData.accesoTotal) return base;
   return base.filter(a => empleadoNivelArea(empleadoData, proyectoId, a.id) !== "ninguno");
+}
+
+// Sub-paneles visibles para un empleado dentro de un área/proyecto
+export function panelesVisiblesEmpleado(empleadoData, proyectoId, areaId) {
+  const todos = panelesDeArea(areaId);
+  if (!empleadoData || empleadoData.accesoTotal) return todos;
+  return todos.filter(p => empleadoNivelPanel(empleadoData, proyectoId, areaId, p.id) !== "ninguno");
 }
 
 // Devuelve el uid de empresa efectivo (dueño = su uid; empleado = empresaId)
