@@ -144,7 +144,14 @@ export function AuthProvider({ children }) {
     return unsub;
   }, []);
 
-  const value = { currentUser, empresaData, empleadoData, isSuperAdmin, register, registerEmpleado, login, logout };
+  // uid de la empresa a la que pertenece el usuario:
+  // - si es dueño: su propio uid
+  // - si es empleado: el empresaId de su registro
+  const empresaUid = empleadoData?.empresaId || currentUser?.uid || null;
+  // ¿el usuario actual es un empleado (no dueño)?
+  const esEmpleado = !!empleadoData;
+
+  const value = { currentUser, empresaData, empleadoData, empresaUid, esEmpleado, isSuperAdmin, register, registerEmpleado, login, logout };
 
   return (
     <AuthContext.Provider value={value}>
