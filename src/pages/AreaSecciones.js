@@ -5,7 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
-import { areasVisibles } from "../config/appConfig";
+import { areasVisibles, areasVisiblesEmpleado, empleadoNivelArea } from "../config/appConfig";
 
 // Definición de cada área y sus secciones
 const AREAS = {
@@ -48,20 +48,23 @@ const AREAS = {
 
 export default function AreaSecciones() {
   const { proyectoId, pilarId } = useParams();
-  const { currentUser, empresaData, logout } = useAuth();
+  const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const area = AREAS[pilarId];
-  const visibles = areasVisibles(empresaData);
+  const visibles = esEmpleado
+    ? areasVisiblesEmpleado(empresaData, empleadoData, proyectoId)
+    : areasVisibles(empresaData);
   const areaPermitida = visibles.some(a => a.id === pilarId);
+  const soloLectura = esEmpleado && empleadoNivelArea(empleadoData, proyectoId, pilarId) === "ver";
 
   useEffect(() => {
     async function cargar() {
       try {
         const snap = await getDoc(doc(db, "proyectos", proyectoId));
-        if (snap.exists() && snap.data().empresaId === currentUser.uid) {
+        if (snap.exists() && snap.data().empresaId === empresaUid) {
           setProyecto({ id: snap.id, ...snap.data() });
         } else {
           navigate("/proyectos");
@@ -72,7 +75,7 @@ export default function AreaSecciones() {
       setLoading(false);
     }
     cargar();
-  }, [proyectoId, currentUser.uid, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [proyectoId, empresaUid, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>Cargando...</div>;
 
@@ -96,7 +99,7 @@ export default function AreaSecciones() {
             <span style={{ fontSize: "26px" }}>{area.icono}</span>
             <div>
               <h1 style={styles.headerTitle}>{area.nombre}</h1>
-              <p style={styles.headerSub}>{proyecto?.nombre}</p>
+              <p style={styles.headerSub}>{proyecto?.nombre}{soloLectura && " · 👁️ Solo lectura"}</p>
             </div>
           </div>
         </div>
