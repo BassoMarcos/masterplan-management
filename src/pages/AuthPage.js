@@ -103,6 +103,13 @@ export default function AuthPage() {
   }
 
   const esPersonal = vista === "personal";
+  // Estilos que cambian según el fondo (blanco en Personal, gris oscuro en Empresas)
+  const labelDin = { ...styles.label, color: esPersonal ? "#374151" : "#e5e7eb" };
+  const hintDin = { ...styles.hint, color: esPersonal ? "#64748b" : "#cbd5e1" };
+  const inputDin = { ...styles.input, ...(esPersonal ? {} : { background: "#1f2937", color: "#fff", border: "1.5px solid #4b5563" }) };
+  const tabsDin = { ...styles.tabs, background: esPersonal ? "#f1f5f9" : "#1f2937" };
+  const tabDin = { ...styles.tab, color: esPersonal ? "#64748b" : "#cbd5e1" };
+  const tabActiveDin = esPersonal ? styles.tabActive : { background: "#4b5563", color: "#fff", boxShadow: "0 1px 4px rgba(0,0,0,0.3)" };
 
   return (
     <div style={styles.container}>
@@ -114,18 +121,18 @@ export default function AuthPage() {
         {esPersonal ? "🏢 Acceso Empresas" : "← Volver a Acceso Personal"}
       </button>
 
-      <div style={{ ...styles.card, background: esPersonal ? "#fff" : "#e5e7eb" }}>
+      <div style={{ ...styles.card, background: esPersonal ? "#fff" : "#374151" }}>
         <div style={styles.logo}>
           <span style={styles.logoIcon}>🏗️</span>
-          <h1 style={styles.logoText}>MasterPlan</h1>
-          <p style={styles.logoSub}>{esPersonal ? "Acceso Personal" : "Acceso Empresas"}</p>
+          <h1 style={{ ...styles.logoText, color: esPersonal ? "#0f172a" : "#fff" }}>MasterPlan</h1>
+          <p style={{ ...styles.logoSub, color: esPersonal ? "#64748b" : "#cbd5e1" }}>{esPersonal ? "Acceso Personal" : "Acceso Empresas"}</p>
         </div>
 
         {esPersonal ? (
           <>
-            <div style={styles.tabs}>
-              <button style={{ ...styles.tab, ...(modoPersonal === "login" ? styles.tabActive : {}) }} onClick={() => { setModoPersonal("login"); limpiar(); }}>Ingresar</button>
-              <button style={{ ...styles.tab, ...(modoPersonal === "registro" ? styles.tabActive : {}) }} onClick={() => { setModoPersonal("registro"); limpiar(); }}>Primera vez</button>
+            <div style={tabsDin}>
+              <button style={{ ...tabDin, ...(modoPersonal === "login" ? tabActiveDin : {}) }} onClick={() => { setModoPersonal("login"); limpiar(); }}>Ingresar</button>
+              <button style={{ ...tabDin, ...(modoPersonal === "registro" ? tabActiveDin : {}) }} onClick={() => { setModoPersonal("registro"); limpiar(); }}>Primera vez</button>
             </div>
 
             <form onSubmit={handleSubmit} style={styles.form} autoComplete="on">
@@ -133,33 +140,33 @@ export default function AuthPage() {
                 <>
                   <div style={styles.row}>
                     <div style={{ ...styles.field, flex: 1 }}>
-                      <label style={styles.label}>Nombre</label>
-                      <input style={styles.input} type="text" placeholder="Tu nombre" value={nombre} onChange={e => setNombre(e.target.value)} required />
+                      <label style={labelDin}>Nombre</label>
+                      <input style={inputDin} type="text" placeholder="Tu nombre" value={nombre} onChange={e => setNombre(e.target.value)} required />
                     </div>
                     <div style={{ ...styles.field, flex: 1 }}>
-                      <label style={styles.label}>Apellido</label>
-                      <input style={styles.input} type="text" placeholder="Tu apellido" value={apellido} onChange={e => setApellido(e.target.value)} required />
+                      <label style={labelDin}>Apellido</label>
+                      <input style={inputDin} type="text" placeholder="Tu apellido" value={apellido} onChange={e => setApellido(e.target.value)} required />
                     </div>
                   </div>
                   <div style={styles.field}>
-                    <label style={styles.label}>Código de la empresa</label>
-                    <input style={styles.input} type="text" placeholder="Pegá el código que te dieron" value={codigo} onChange={e => setCodigo(e.target.value)} required />
-                    <span style={styles.hint}>Te lo da tu empresa. Solo lo necesitás esta primera vez.</span>
+                    <label style={labelDin}>Código de la empresa</label>
+                    <input style={inputDin} type="text" placeholder="Pegá el código que te dieron" value={codigo} onChange={e => setCodigo(e.target.value)} required />
+                    <span style={hintDin}>Te lo da tu empresa. Solo lo necesitás esta primera vez.</span>
                   </div>
                 </>
               )}
               <div style={styles.field}>
-                <label style={styles.label}>Email</label>
-                <input style={styles.input} type="email" id="email" name="email" autoComplete="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                <label style={labelDin}>Email</label>
+                <input style={inputDin} type="email" id="email" name="email" autoComplete="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div style={styles.field}>
-                <label style={styles.label}>Contraseña</label>
-                <input style={styles.input} type="password" id="password" name="password" autoComplete={modoPersonal === "registro" ? "new-password" : "current-password"} placeholder={modoPersonal === "registro" ? "Mínimo 6 caracteres" : "Tu contraseña"} value={password} onChange={e => setPassword(e.target.value)} required />
+                <label style={labelDin}>Contraseña</label>
+                <input style={inputDin} type="password" id="password" name="password" autoComplete={modoPersonal === "registro" ? "new-password" : "current-password"} placeholder={modoPersonal === "registro" ? "Mínimo 6 caracteres" : "Tu contraseña"} value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
               {modoPersonal === "registro" && (
                 <div style={styles.field}>
-                  <label style={styles.label}>Repetir contraseña</label>
-                  <input style={{ ...styles.input, ...(password2 && password !== password2 ? styles.inputError : {}) }} type="password" name="password2" autoComplete="new-password" placeholder="Repetí tu contraseña" value={password2} onChange={e => setPassword2(e.target.value)} required />
+                  <label style={labelDin}>Repetir contraseña</label>
+                  <input style={{ ...inputDin, ...(password2 && password !== password2 ? styles.inputError : {}) }} type="password" name="password2" autoComplete="new-password" placeholder="Repetí tu contraseña" value={password2} onChange={e => setPassword2(e.target.value)} required />
                   {password2 && password !== password2 && <span style={styles.matchError}>Las contraseñas no coinciden</span>}
                   {password2 && password === password2 && password.length >= 6 && <span style={styles.matchOk}>✓ Las contraseñas coinciden</span>}
                 </div>
@@ -176,30 +183,30 @@ export default function AuthPage() {
           </>
         ) : (
           <>
-            <div style={styles.tabs}>
-              <button style={{ ...styles.tab, ...(modoEmpresa === "login" ? styles.tabActive : {}) }} onClick={() => { setModoEmpresa("login"); limpiar(); }}>Ingresar</button>
-              <button style={{ ...styles.tab, ...(modoEmpresa === "registro" ? styles.tabActive : {}) }} onClick={() => { setModoEmpresa("registro"); limpiar(); }}>Registrarse</button>
+            <div style={tabsDin}>
+              <button style={{ ...tabDin, ...(modoEmpresa === "login" ? tabActiveDin : {}) }} onClick={() => { setModoEmpresa("login"); limpiar(); }}>Ingresar</button>
+              <button style={{ ...tabDin, ...(modoEmpresa === "registro" ? tabActiveDin : {}) }} onClick={() => { setModoEmpresa("registro"); limpiar(); }}>Registrarse</button>
             </div>
 
             <form onSubmit={handleSubmit} style={styles.form} autoComplete="on">
               {modoEmpresa === "registro" && (
                 <div style={styles.field}>
-                  <label style={styles.label}>Nombre de la empresa</label>
-                  <input style={styles.input} type="text" placeholder="Ej: Desarrollos Inmobiliarios" value={empresa} onChange={e => setEmpresa(e.target.value)} required />
+                  <label style={labelDin}>Nombre de la empresa</label>
+                  <input style={inputDin} type="text" placeholder="Ej: Desarrollos Inmobiliarios" value={empresa} onChange={e => setEmpresa(e.target.value)} required />
                 </div>
               )}
               <div style={styles.field}>
-                <label style={styles.label}>Email</label>
-                <input style={styles.input} type="email" name="email" autoComplete="email" placeholder="email@empresa.com" value={email} onChange={e => setEmail(e.target.value)} required />
+                <label style={labelDin}>Email</label>
+                <input style={inputDin} type="email" name="email" autoComplete="email" placeholder="email@empresa.com" value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
               <div style={styles.field}>
-                <label style={styles.label}>Contraseña</label>
-                <input style={styles.input} type="password" name="password" autoComplete={modoEmpresa === "registro" ? "new-password" : "current-password"} placeholder={modoEmpresa === "registro" ? "Mínimo 6 caracteres" : "Tu contraseña"} value={password} onChange={e => setPassword(e.target.value)} required />
+                <label style={labelDin}>Contraseña</label>
+                <input style={inputDin} type="password" name="password" autoComplete={modoEmpresa === "registro" ? "new-password" : "current-password"} placeholder={modoEmpresa === "registro" ? "Mínimo 6 caracteres" : "Tu contraseña"} value={password} onChange={e => setPassword(e.target.value)} required />
               </div>
               {modoEmpresa === "registro" && (
                 <div style={styles.field}>
-                  <label style={styles.label}>Repetir contraseña</label>
-                  <input style={{ ...styles.input, ...(password2 && password !== password2 ? styles.inputError : {}) }} type="password" name="password2" autoComplete="new-password" placeholder="Repetí tu contraseña" value={password2} onChange={e => setPassword2(e.target.value)} required />
+                  <label style={labelDin}>Repetir contraseña</label>
+                  <input style={{ ...inputDin, ...(password2 && password !== password2 ? styles.inputError : {}) }} type="password" name="password2" autoComplete="new-password" placeholder="Repetí tu contraseña" value={password2} onChange={e => setPassword2(e.target.value)} required />
                   {password2 && password !== password2 && <span style={styles.matchError}>Las contraseñas no coinciden</span>}
                   {password2 && password === password2 && password.length >= 6 && <span style={styles.matchOk}>✓ Las contraseñas coinciden</span>}
                 </div>
