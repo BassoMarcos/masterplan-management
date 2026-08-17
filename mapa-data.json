@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "actualizado": "2026-08-17",
+  "colores": {
+    "fj":"#3FA9FF","mp":"#2FE0B0","mig":"#FF8A3C","plan":"#FFC24D","hub":"#C089FF"
+  },
+  "grupos": [
+    {"key":"mp","name":"MasterPlan","ids":["mp","multi","fire","login","perm","aprob","super","temas","piza"]},
+    {"key":"hub","name":"Pilares","ids":["admin","comer","legal","obras"]},
+    {"key":"mig","name":"Migración","ids":["mig"]},
+    {"key":"fj","name":"FJ App","ids":["fj","rtdb","clie","agri","lotes","presta","cob","gpagos","caja","cierr","mora","transf","colab","icc","robot","stats","rend","mapa","termin","public"]}
+  ],
+  "nodos": [
+    {"id":"mp","col":"mp","s":"done","l":"MasterPlan","d":"React · Firestore · SaaS multi-tenant","x":0,"y":-380,"z":40,"w":11,"hub":1},
+    {"id":"multi","col":"mp","s":"done","l":"Multi-tenant","d":"4 pilares por proyecto · empresas/{uid}","x":-150,"y":-430,"z":-40,"w":5},
+    {"id":"fire","col":"mp","s":"done","l":"Firestore","d":"masterplanproyects.web.app · base de datos","x":150,"y":-430,"z":-40,"w":6},
+    {"id":"login","col":"mp","s":"done","l":"Login empleados","d":"Código gru.rom.XXXX · cuentas + permisos","x":-250,"y":-320,"z":20,"w":5},
+    {"id":"perm","col":"mp","s":"done","l":"Permisos","d":"Por empresa · config.areasOcultas","x":-275,"y":-210,"z":-30,"w":4},
+    {"id":"aprob","col":"mp","s":"done","l":"Aprobaciones","d":"Workflow de altas + EmailJS bienvenida","x":250,"y":-320,"z":20,"w":4},
+    {"id":"super","col":"mp","s":"done","l":"SuperAdmin","d":"Panel de control global","x":275,"y":-210,"z":-30,"w":4},
+    {"id":"temas","col":"mp","s":"done","l":"Temas","d":"10 colores · preferencia por usuario","x":-60,"y":-470,"z":30,"w":3},
+    {"id":"piza","col":"mp","s":"done","l":"Pizarra","d":"Whiteboard real-time · notas draggables","x":60,"y":-470,"z":30,"w":4},
+    {"id":"admin","col":"hub","s":"wip","l":"Administración","d":"PILAR · acá se absorbe FJ App entera","x":0,"y":-120,"z":60,"w":9,"hub":1},
+    {"id":"comer","col":"plan","s":"plan","l":"Comercial","d":"PILAR · reservas → flujo a Legales","x":-260,"y":-120,"z":-20,"w":6},
+    {"id":"legal","col":"plan","s":"plan","l":"Legales","d":"PILAR · activa cliente en Administración","x":260,"y":-120,"z":-20,"w":6},
+    {"id":"obras","col":"plan","s":"plan","l":"Desarrollos y Obras","d":"PILAR · archivos vía Cloudinary","x":260,"y":0,"z":-50,"w":6},
+    {"id":"mig","col":"mig","s":"plan","l":"Migración","d":"FJ App → Administración, módulo a módulo","x":0,"y":90,"z":100,"w":8,"hub":1},
+    {"id":"fj","col":"fj","s":"done","l":"FJ App","d":"index.html single-file · Firebase RTDB","x":0,"y":320,"z":60,"w":10,"hub":1},
+    {"id":"rtdb","col":"fj","s":"done","l":"Firebase RTDB","d":"fj-app-44df3 · pagoStore, BASE, balances","x":0,"y":430,"z":-40,"w":6},
+    {"id":"clie","col":"fj","s":"done","l":"Clientes","d":"285 activos · 266 cobrables · array BASE","x":-120,"y":250,"z":90,"w":5},
+    {"id":"agri","col":"fj","s":"done","l":"Agrimensores","d":"Set dinámico de lotes · 18 lotes","x":-240,"y":230,"z":30,"w":4},
+    {"id":"lotes","col":"fj","s":"done","l":"Lotes vacantes","d":"E1-E3 libres · inventario E4","x":-340,"y":300,"z":-20,"w":4},
+    {"id":"presta","col":"fj","s":"done","l":"Préstamos","d":"6 lotes autopago · absorbidos","x":-380,"y":400,"z":20,"w":4},
+    {"id":"cob","col":"fj","s":"done","l":"Cobros","d":"marcarPago · individual + bloque","x":-180,"y":400,"z":70,"w":6},
+    {"id":"gpagos","col":"fj","s":"done","l":"Gestión pagos","d":"Grilla por etapa/manzana · marcar en bloque","x":-300,"y":490,"z":30,"w":4},
+    {"id":"caja","col":"fj","s":"done","l":"Caja del día","d":"bal.abierto · efectivo físico + CP","x":-260,"y":590,"z":-20,"w":5},
+    {"id":"cierr","col":"fj","s":"done","l":"Cierres","d":"Mensuales · avanza ca · origI preservado","x":-120,"y":640,"z":20,"w":5},
+    {"id":"mora","col":"fj","s":"done","l":"Mora","d":"Caja de Mora · sistema Rendir","x":180,"y":400,"z":70,"w":5},
+    {"id":"transf","col":"fj","s":"done","l":"Transferencias","d":"Totales = chip · parciales = pago normal","x":320,"y":480,"z":-20,"w":4},
+    {"id":"colab","col":"fj","s":"done","l":"Colab cobro","d":"Cola de aprobación del admin","x":120,"y":250,"z":90,"w":4},
+    {"id":"icc","col":"fj","s":"done","l":"ICC","d":"Ajuste trimestral · solo pesos base","x":60,"y":640,"z":20,"w":5},
+    {"id":"robot","col":"fj","s":"done","l":"ICC robot","d":"Playwright diario 8am → icc-data.json","x":0,"y":730,"z":0,"w":3},
+    {"id":"stats","col":"fj","s":"done","l":"Estadísticas","d":"renderStats · gráficos y totales","x":260,"y":590,"z":20,"w":4},
+    {"id":"rend","col":"fj","s":"done","l":"Rendición Dueños","d":"cobrablesD · por etapa/manzana","x":340,"y":660,"z":-30,"w":4},
+    {"id":"mapa","col":"fj","s":"done","l":"Mapa de lotes","d":"Chips con tooltip titular/cuota/saldo","x":180,"y":640,"z":60,"w":4},
+    {"id":"termin","col":"fj","s":"done","l":"Lotes Finalizados","d":"Certificados · auto-finalización","x":120,"y":730,"z":-20,"w":4},
+    {"id":"public","col":"fj","s":"done","l":"Consulta pública","d":"Cliente consulta su cuota","x":-40,"y":760,"z":40,"w":3}
+  ],
+  "aristas": [
+    ["mp","multi"],["mp","fire"],["mp","login"],["mp","aprob"],["mp","temas"],["mp","piza"],["mp","super"],
+    ["login","perm"],["perm","multi"],["aprob","super"],["fire","multi"],["fire","piza"],["login","fire"],
+    ["mp","admin"],["mp","comer"],["mp","legal"],["mp","obras"],["multi","admin"],["multi","comer"],["multi","legal"],["multi","obras"],
+    ["comer","legal"],["legal","admin"],["admin","fire"],["comer","fire"],["legal","fire"],["obras","fire"],["admin","perm"],
+    ["admin","mig"],["mig","fj"],
+    ["fj","clie"],["fj","cob"],["fj","mora"],["fj","icc"],["fj","stats"],["fj","mapa"],["fj","colab"],["fj","termin"],["fj","public"],["fj","rtdb"],
+    ["clie","agri"],["clie","lotes"],["clie","presta"],["clie","cob"],["clie","mapa"],["agri","caja"],["lotes","termin"],["presta","cierr"],["clie","rtdb"],
+    ["cob","gpagos"],["cob","caja"],["cob","mora"],["cob","colab"],["cob","termin"],["gpagos","caja"],["caja","cierr"],["caja","rend"],["caja","stats"],
+    ["mora","caja"],["mora","cierr"],["transf","caja"],["transf","mora"],["colab","cob"],
+    ["cierr","icc"],["icc","robot"],["icc","clie"],
+    ["stats","rend"],["stats","caja"],["mapa","clie"],["termin","clie"],["rend","caja"],["public","clie"],["rtdb","caja"]
+  ]
+}
