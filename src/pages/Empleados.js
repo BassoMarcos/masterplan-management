@@ -11,6 +11,7 @@ const NIVELES = [
   { id: "ver", label: "Solo ver", color: "#2563eb" },
   { id: "editar", label: "Ver y modificar", color: "#16a34a" },
 ];
+const RANK = { ninguno: 0, ver: 1, editar: 2 };
 
 export default function Empleados() {
   const { currentUser, empresaData, logout } = useAuth();
@@ -50,27 +51,57 @@ export default function Empleados() {
     setLegajo(emp.legajo || "");
     setNombre(emp.nombre || "");
     setApellido(emp.apellido || "");
-    // permisos.proyectos[proyId][areaId] = "ninguno" | "ver" | "editar"
+    // permisos.proyectos[proyId][areaId] = { _area: nivel, <panelId>: nivel }
     const permIni = { proyectos: {} };
     const previos = emp.permisos?.proyectos || {};
     proyectos.forEach(proy => {
       permIni.proyectos[proy.id] = {};
       AREAS_DEFAULT.forEach(a => {
-        permIni.proyectos[proy.id][a.id] = previos[proy.id]?.[a.id] || "ninguno";
+        const prevArea = previos[proy.id]?.[a.id];
+        const obj = {};
+        // Compatibilidad: formato viejo (string) -> se toma como atajo _area
+        if (typeof prevArea === "string") {
+          obj._area = prevArea;
+        } else if (prevArea && typeof prevArea === "object") {
+          obj._area = prevArea._area || "ninguno";
+          (a.paneles || []).forEach(p => { obj[p.id] = prevArea[p.id] || "ninguno"; });
+        } else {
+          obj._area = "ninguno";
+        }
+        (a.paneles || []).forEach(p => { if (!(p.id in obj)) obj[p.id] = "ninguno"; });
+        permIni.proyectos[proy.id][a.id] = obj;
       });
     });
     setPermisos(permIni);
     setAccesoTotal(!!emp.accesoTotal);
   }
 
-  function setNivel(proyId, areaId, nivel) {
-    setPermisos(prev => ({
-      ...prev,
-      proyectos: {
-        ...prev.proyectos,
-        [proyId]: { ...(prev.proyectos?.[proyId] || {}), [areaId]: nivel },
-      },
-    }));
+  // Setea el atajo "toda el área"
+  function setNivelArea(proyId, areaId, nivel) {
+    setPermisos(prev => {
+      const areaPrev = prev.proyectos?.[proyId]?.[areaId] || {};
+      return {
+        ...prev,
+        proyectos: {
+          ...prev.proyectos,
+          [proyId]: { ...(prev.proyectos?.[proyId] || {}), [areaId]: { ...areaPrev, _area: nivel } },
+        },
+      };
+    });
+  }
+
+  // Setea el nivel de un sub-panel puntual
+  function setNivelPanel(proyId, areaId, panelId, nivel) {
+    setPermisos(prev => {
+      const areaPrev = prev.proyectos?.[proyId]?.[areaId] || {};
+      return {
+        ...prev,
+        proyectos: {
+          ...prev.proyectos,
+          [proyId]: { ...(prev.proyectos?.[proyId] || {}), [areaId]: { ...areaPrev, [panelId]: nivel } },
+        },
+      };
+    });
   }
 
   function cerrarAprobacion() {
@@ -265,25 +296,63 @@ export default function Empleados() {
                         {proy.logo ? <img src={proy.logo} alt="" style={styles.proyMini} /> : <span>{proy.icono || "📁"}</span>}
                         {proy.nombre}
                       </div>
-                      {areasEmpresa.map(a => (
-                        <div key={a.id} style={styles.permisoRow}>
-                          <div style={styles.permisoArea}>{a.icono} {a.nombre}</div>
-                          <div style={styles.nivelesRow}>
-                            {NIVELES.map(n => (
-                              <button
-                                key={n.id}
-                                onClick={() => setNivel(proy.id, a.id, n.id)}
-                                style={{
-                                  ...styles.nivelBtn,
-                                  ...((permProy[a.id] || "ninguno") === n.id ? { background: n.color, color: "#fff", borderColor: n.color } : {}),
-                                }}
-                              >
-                                {n.label}
-                              </button>
-                            ))}
+                      {areasEmpresa.map(a => {
+                        const permArea = permProy[a.id] || {};
+                        const nivelArea = permArea._area || "ninguno";
+                        const paneles = a.paneles || [];
+                        return (
+                          <div key={a.id} style={styles.areaBloque}>
+                            {/* Fila del atajo: toda el área */}
+                            <div style={styles.permisoRow}>
+                              <div style={styles.permisoArea}>{a.icono} {a.nombre} <span style={styles.todaLabel}>(toda el área)</span></div>
+                              <div style={styles.nivelesRow}>
+                                {NIVELES.map(n => (
+                                  <button
+                                    key={n.id}
+                                    onClick={() => setNivelArea(proy.id, a.id, n.id)}
+                                    style={{
+                                      ...styles.nivelBtn,
+                                      ...(nivelArea === n.id ? { background: n.color, color: "#fff", borderColor: n.color } : {}),
+                                    }}
+                                  >
+                                    {n.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {/* Sub-paneles: solo se muestran/usan si el atajo NO da acceso total al área */}
+                            {paneles.length > 0 && nivelArea !== "editar" && (
+                              <div style={styles.panelesWrap}>
+                                {paneles.map(p => {
+                                  // nivel efectivo del panel = el mayor entre el atajo y el puntual
+                                  const nivelPuntual = permArea[p.id] || "ninguno";
+                                  const heredado = nivelArea !== "ninguno" && RANK[nivelArea] >= RANK[nivelPuntual];
+                                  const nivelMostrar = heredado ? nivelArea : nivelPuntual;
+                                  return (
+                                    <div key={p.id} style={styles.panelRow}>
+                                      <div style={styles.panelNombre}>↳ {p.nombre}{heredado && nivelArea !== "ninguno" && <span style={styles.heredaTag}>heredado</span>}</div>
+                                      <div style={styles.nivelesRow}>
+                                        {NIVELES.map(n => (
+                                          <button
+                                            key={n.id}
+                                            onClick={() => setNivelPanel(proy.id, a.id, p.id, n.id)}
+                                            style={{
+                                              ...styles.nivelBtnSm,
+                                              ...(nivelMostrar === n.id ? { background: n.color, color: "#fff", borderColor: n.color } : {}),
+                                            }}
+                                          >
+                                            {n.label}
+                                          </button>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   );
                 })}
@@ -306,8 +375,13 @@ export default function Empleados() {
 function resumenPermisos(permisos) {
   const proys = permisos?.proyectos;
   if (!proys) return "Sin acceso";
+  const tieneAcceso = (areaObj) => {
+    if (!areaObj) return false;
+    if (typeof areaObj === "string") return areaObj !== "ninguno"; // formato viejo
+    return Object.values(areaObj).some(n => n && n !== "ninguno");
+  };
   const conAcceso = Object.values(proys).filter(areas =>
-    areas && Object.values(areas).some(n => n && n !== "ninguno")
+    areas && Object.values(areas).some(tieneAcceso)
   ).length;
   if (conAcceso === 0) return "Sin acceso a proyectos";
   return conAcceso + " proyecto" + (conAcceso !== 1 ? "s" : "");
@@ -358,6 +432,13 @@ const styles = {
   permisoArea: { fontSize: "14px", fontWeight: "600", color: "var(--text)" },
   nivelesRow: { display: "flex", gap: "6px" },
   nivelBtn: { background: "var(--bg)", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "5px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" },
+  nivelBtnSm: { background: "var(--bg)", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "3px 8px", borderRadius: "6px", cursor: "pointer", fontSize: "11px", fontWeight: "600" },
+  areaBloque: { padding: "8px 0", borderBottom: "1px solid var(--border)" },
+  todaLabel: { fontSize: "11px", fontWeight: "400", color: "var(--text2)" },
+  panelesWrap: { marginTop: "6px", marginLeft: "12px", paddingLeft: "10px", borderLeft: "2px solid var(--border)", display: "flex", flexDirection: "column", gap: "6px" },
+  panelRow: { display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "6px" },
+  panelNombre: { fontSize: "12.5px", color: "var(--text)", display: "flex", alignItems: "center", gap: "6px" },
+  heredaTag: { fontSize: "10px", background: "var(--surface)", color: "var(--text2)", padding: "1px 6px", borderRadius: "20px", border: "1px solid var(--border)" },
   modalActions: { display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "24px" },
   cancelBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   confirmBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
