@@ -9,7 +9,7 @@ import PizarraFlotante from "../components/PizarraFlotante";
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
 
 export default function Proyectos() {
-  const { currentUser, empresaData, logout } = useAuth();
+  const { currentUser, empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
 
   const [proyectos, setProyectos] = useState([]);
@@ -30,14 +30,14 @@ export default function Proyectos() {
   const cargarProyectos = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, "proyectos"), where("empresaId", "==", currentUser.uid));
+      const q = query(collection(db, "proyectos"), where("empresaId", "==", empresaUid));
       const snap = await getDocs(q);
       setProyectos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, [currentUser.uid]);
+  }, [empresaUid]);
 
   useEffect(() => {
     cargarProyectos();
@@ -61,7 +61,7 @@ export default function Proyectos() {
         nombre: nombre.trim(),
         icono: fotoPreview ? null : icono,
         logo: fotoPreview || null,
-        empresaId: currentUser.uid,
+        empresaId: empresaUid,
         creadoEn: serverTimestamp()
       });
       setNombre("");
@@ -90,7 +90,7 @@ export default function Proyectos() {
     if (!nuevo) { alert("El código no puede quedar vacío."); return; }
     setGuardandoCod(true);
     try {
-      await updateDoc(doc(db, "empresas", currentUser.uid), { codigoEmpresa: nuevo });
+      await updateDoc(doc(db, "empresas", empresaUid), { codigoEmpresa: nuevo });
       setCodigoLocal(nuevo);
       setEditandoCod(false);
     } catch (e) {
@@ -106,13 +106,13 @@ export default function Proyectos() {
           <span style={{ fontSize: "22px" }}>🏗️</span>
           <div>
             <h1 style={styles.headerTitle}>MasterPlan</h1>
-            <p style={styles.headerSub}>{empresaData?.nombre || "Mi Empresa"}</p>
+            <p style={styles.headerSub}>{empresaData?.nombre || empleadoData?.empresaNombre || "Mi Empresa"}</p>
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <ThemeSelector />
-          <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>
-          <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>
+          {!esEmpleado && <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>}
+          {!esEmpleado && <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>}
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
       </header>
@@ -223,7 +223,7 @@ export default function Proyectos() {
         <div style={styles.modalOverlay} onClick={() => setShowAjustes(false)}>
           <div style={styles.ajustesModal} onClick={e => e.stopPropagation()}>
             <h2 style={styles.ajustesTitle}>⚙️ Ajustes de la empresa</h2>
-            <p style={styles.ajustesSub}>{empresaData?.nombre || "Mi Empresa"}</p>
+            <p style={styles.ajustesSub}>{empresaData?.nombre || empleadoData?.empresaNombre || "Mi Empresa"}</p>
 
             <div style={styles.codigoBox}>
               <div style={styles.codigoLabel}>🔑 Código de tu empresa</div>
