@@ -105,7 +105,7 @@ export default function AuthPage() {
   const esPersonal = vista === "personal";
 
   return (
-    <div style={styles.container}>
+    <div style={{ ...styles.container, background: esPersonal ? "linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%)" : "linear-gradient(135deg, #374151 0%, #6b7280 100%)" }}>
       {/* Acceso Empresas arriba a la derecha */}
       <button
         style={styles.empresaToggle}
