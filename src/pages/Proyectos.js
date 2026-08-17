@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
-import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
@@ -81,6 +81,19 @@ export default function Proyectos() {
     setGuardando(false);
   }
 
+  async function eliminarProyecto(e, p) {
+    e.stopPropagation();
+    if (!window.confirm(`¿Eliminar el proyecto "${p.nombre}"? Esta acción no se puede deshacer.`)) return;
+    // Doble confirmación por seguridad
+    if (!window.confirm(`Confirmá otra vez: se va a eliminar "${p.nombre}" definitivamente.`)) return;
+    try {
+      await deleteDoc(doc(db, "proyectos", p.id));
+      cargar();
+    } catch (err) {
+      alert("Error al eliminar el proyecto: " + err.message);
+    }
+  }
+
   function cerrarModal() {
     setShowModal(false);
     setNombre("");
@@ -139,6 +152,15 @@ export default function Proyectos() {
                 onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
               >
+                {!esEmpleado && (
+                  <button
+                    style={styles.eliminarProyBtn}
+                    title="Eliminar proyecto"
+                    onClick={e => eliminarProyecto(e, p)}
+                  >
+                    ✕
+                  </button>
+                )}
                 <div style={styles.tarjetaIcono}>
                   {p.logo
                     ? <img src={p.logo} alt={p.nombre} style={styles.logoImg} />
@@ -324,7 +346,14 @@ const styles = {
   tarjeta: {
     background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px",
     padding: "32px 20px 24px", textAlign: "center", cursor: "pointer",
-    transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
+    transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+    position: "relative"
+  },
+  eliminarProyBtn: {
+    position: "absolute", top: "8px", right: "8px", width: "26px", height: "26px",
+    borderRadius: "50%", border: "none", background: "var(--hov)", color: "var(--text2)",
+    cursor: "pointer", fontSize: "13px", fontWeight: "700", lineHeight: "1",
+    display: "flex", alignItems: "center", justifyContent: "center"
   },
   tarjetaIcono: { marginBottom: "16px", height: "64px", display: "flex", alignItems: "center", justifyContent: "center" },
   logoImg: { width: "64px", height: "64px", borderRadius: "12px", objectFit: "cover" },
