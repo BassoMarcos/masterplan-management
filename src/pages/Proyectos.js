@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc } from "firebase/firestore";
+import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
 
@@ -32,12 +33,17 @@ export default function Proyectos() {
     try {
       const q = query(collection(db, "proyectos"), where("empresaId", "==", empresaUid));
       const snap = await getDocs(q);
-      setProyectos(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+      let lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Si es empleado (sin acceso total), mostrar solo los proyectos que le asignaron
+      if (esEmpleado && !empleadoData?.accesoTotal) {
+        lista = lista.filter(p => empleadoPuedeVerProyecto(empleadoData, p.id));
+      }
+      setProyectos(lista);
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, [empresaUid]);
+  }, [empresaUid, esEmpleado, empleadoData]);
 
   useEffect(() => {
     cargarProyectos();
@@ -143,6 +149,7 @@ export default function Proyectos() {
                 <p style={styles.tarjetaSub}>Ver proyecto →</p>
               </div>
             ))}
+            {!esEmpleado && (
             <div
               style={styles.tarjetaAgregar}
               onClick={() => setShowModal(true)}
@@ -152,6 +159,7 @@ export default function Proyectos() {
               <span style={styles.masIcono}>+</span>
               <p style={styles.masTexto}>Nuevo proyecto</p>
             </div>
+            )}
           </div>
         )}
       </main>
