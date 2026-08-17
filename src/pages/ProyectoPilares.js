@@ -5,23 +5,25 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
-import { areasVisibles } from "../config/appConfig";
+import { areasVisibles, areasVisiblesEmpleado } from "../config/appConfig";
 
 
 export default function ProyectoPilares() {
   const { proyectoId } = useParams();
-  const { currentUser, empresaData, logout } = useAuth();
+  const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const PILARES = areasVisibles(empresaData);
+  const PILARES = esEmpleado
+    ? areasVisiblesEmpleado(empresaData, empleadoData, proyectoId)
+    : areasVisibles(empresaData);
 
   useEffect(() => {
     async function cargar() {
       try {
         const snap = await getDoc(doc(db, "proyectos", proyectoId));
-        if (snap.exists() && snap.data().empresaId === currentUser.uid) {
+        if (snap.exists() && snap.data().empresaId === empresaUid) {
           setProyecto({ id: snap.id, ...snap.data() });
         } else {
           navigate("/proyectos");
@@ -32,7 +34,7 @@ export default function ProyectoPilares() {
       setLoading(false);
     }
     cargar();
-  }, [proyectoId, currentUser.uid, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [proyectoId, empresaUid, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>Cargando...</div>;
 
