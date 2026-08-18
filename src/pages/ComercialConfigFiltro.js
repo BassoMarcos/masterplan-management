@@ -25,6 +25,7 @@ export default function ComercialConfigFiltro() {
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardadoOk, setGuardadoOk] = useState(false);
+  const [nuevaOpcion, setNuevaOpcion] = useState({});
 
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "config_filtro") : "editar";
   const puedeEditar = !esEmpleado || nivel === "editar";
@@ -77,10 +78,18 @@ export default function ComercialConfigFiltro() {
     setPreguntas(nueva);
   }
 
-  function setOpciones(idx, texto) {
-    // Las opciones se escriben separadas por coma
-    const arr = texto.split(",").map(s => s.trim()).filter(Boolean);
-    actualizar(idx, "opciones", arr);
+  function agregarOpcion(idx, texto) {
+    const t = (texto || "").trim();
+    if (!t) return;
+    const p = preguntas[idx];
+    const opciones = [...(p.opciones || []), t];
+    actualizar(idx, "opciones", opciones);
+  }
+
+  function quitarOpcion(idx, opIdx) {
+    const p = preguntas[idx];
+    const opciones = (p.opciones || []).filter((_, i) => i !== opIdx);
+    actualizar(idx, "opciones", opciones);
   }
 
   async function guardar() {
@@ -169,13 +178,40 @@ export default function ComercialConfigFiltro() {
             </div>
 
             {p.tipo === "opciones" && (
-              <input
-                style={styles.inputOpciones}
-                placeholder="Opciones separadas por coma (ej: Sí, No, Tal vez)"
-                defaultValue={(p.opciones || []).join(", ")}
-                onChange={e => setOpciones(idx, e.target.value)}
-                disabled={!puedeEditar}
-              />
+              <div style={styles.opcionesBox}>
+                <div style={styles.opcionesLabel}>Opciones para elegir:</div>
+                {(p.opciones || []).map((op, opIdx) => (
+                  <div key={opIdx} style={styles.opcionItem}>
+                    <span style={styles.opcionTexto}>• {op}</span>
+                    {puedeEditar && (
+                      <button style={styles.opcionQuitar} onClick={() => quitarOpcion(idx, opIdx)} title="Quitar">✕</button>
+                    )}
+                  </div>
+                ))}
+                {puedeEditar && (
+                  <div style={styles.opcionAgregarRow}>
+                    <input
+                      style={styles.opcionInput}
+                      placeholder="Escribí una opción y tocá Agregar (o Enter)"
+                      value={nuevaOpcion[p.id] || ""}
+                      onChange={e => setNuevaOpcion({ ...nuevaOpcion, [p.id]: e.target.value })}
+                      onKeyDown={e => {
+                        if (e.key === "Enter") {
+                          agregarOpcion(idx, nuevaOpcion[p.id]);
+                          setNuevaOpcion({ ...nuevaOpcion, [p.id]: "" });
+                        }
+                      }}
+                    />
+                    <button
+                      style={styles.opcionAddBtn}
+                      onClick={() => { agregarOpcion(idx, nuevaOpcion[p.id]); setNuevaOpcion({ ...nuevaOpcion, [p.id]: "" }); }}
+                    >
+                      Agregar
+                    </button>
+                  </div>
+                )}
+                {(p.opciones || []).length < 2 && <div style={styles.opcionAviso}>Cargá al menos 2 opciones.</div>}
+              </div>
             )}
 
             <label style={styles.obligLabel}>
@@ -220,7 +256,15 @@ const styles = {
   tipoRow: { display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "10px" },
   tipoBtn: { background: "var(--bg)", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" },
   tipoBtnActivo: { background: "var(--acc)", color: "#fff", borderColor: "var(--acc)" },
-  inputOpciones: { width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", boxSizing: "border-box", marginBottom: "10px" },
+  opcionesBox: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "8px", padding: "12px", marginBottom: "10px" },
+  opcionesLabel: { fontSize: "12px", fontWeight: "700", color: "var(--text2)", marginBottom: "8px" },
+  opcionItem: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 8px", background: "var(--bg)", borderRadius: "6px", marginBottom: "5px" },
+  opcionTexto: { fontSize: "13px", color: "var(--text)" },
+  opcionQuitar: { background: "transparent", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "12px" },
+  opcionAgregarRow: { display: "flex", gap: "6px", marginTop: "6px" },
+  opcionInput: { flex: 1, padding: "8px 10px", borderRadius: "6px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", boxSizing: "border-box" },
+  opcionAddBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
+  opcionAviso: { fontSize: "11px", color: "#d97706", marginTop: "6px" },
   obligLabel: { display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", color: "var(--text)", cursor: "pointer" },
   acciones: { display: "flex", justifyContent: "space-between", gap: "12px", marginTop: "20px", flexWrap: "wrap" },
   addBtn: { background: "transparent", border: "1.5px dashed var(--border2)", color: "var(--text)", padding: "12px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
