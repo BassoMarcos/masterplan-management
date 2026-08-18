@@ -11,6 +11,7 @@ import AreaSecciones from "./pages/AreaSecciones";
 import DesarrollosSecciones from "./pages/DesarrollosSecciones";
 import ComercialHub from "./pages/ComercialHub";
 import ComercialDatos from "./pages/ComercialDatos";
+import ComercialConfigFiltro from "./pages/ComercialConfigFiltro";
 import SuperAdmin from "./pages/SuperAdmin";
 
 function VerificarEmailPage() {
@@ -144,6 +145,7 @@ function AppRoutes() {
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial" element={<PrivateRoute><ComercialHub /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/datos" element={<PrivateRoute><ComercialDatos /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/comercial/config_filtro" element={<PrivateRoute><ComercialConfigFiltro /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/desarrollos/:seccionId" element={<PrivateRoute><DesarrollosSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId/:seccionId" element={<PrivateRoute><SeccionPlaceholder /></PrivateRoute>} />
@@ -164,4 +166,3 @@ export default function App() {
     </BrowserRouter>
   );
 }
-// redeploy 1787016048
