@@ -54,6 +54,7 @@ export default function ComercialHub() {
     if (panelId === "datos") navigate(`/proyecto/${proyectoId}/comercial/datos`);
     else if (panelId === "config_filtro") navigate(`/proyecto/${proyectoId}/comercial/config_filtro`);
     else if (panelId === "filtrado") navigate(`/proyecto/${proyectoId}/comercial/filtrado`);
+    else if (panelId === "ventas") navigate(`/proyecto/${proyectoId}/comercial/ventas`);
     else alert("Este panel se habilita en la próxima etapa.");
   }
 
