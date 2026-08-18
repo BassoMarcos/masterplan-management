@@ -295,49 +295,74 @@ export default function ComercialFiltrado() {
       </main>
 
       {editando && (
-        <div style={styles.modalOverlay} onClick={() => !guardando && setEditando(null)}>
-          <div style={styles.modal} onClick={e => e.stopPropagation()}>
-            <h2 style={styles.modalTitle}>📝 Filtrar: {editando.nombre}</h2>
-            <p style={styles.modalSub}>{editando.numero}</p>
-
-            {formulario.length === 0 ? (
-              <p style={styles.empty}>No hay formulario configurado.</p>
-            ) : (
-              formulario.map(p => (
-                <div key={p.id} style={styles.campoBox}>
-                  <label style={styles.campoLabel}>{p.texto} {p.obligatoria && <span style={{ color: "#dc2626" }}>*</span>}</label>
-                  {p.tipo === "texto" && (
-                    <input style={styles.campoInput} value={respuestas[p.id] || ""} onChange={e => setRespuestas({ ...respuestas, [p.id]: e.target.value })} />
-                  )}
-                  {p.tipo === "numero" && (
-                    <input style={styles.campoInput} type="number" value={respuestas[p.id] || ""} onChange={e => setRespuestas({ ...respuestas, [p.id]: e.target.value })} />
-                  )}
-                  {p.tipo === "sino" && (
-                    <div style={styles.sinoRow}>
-                      {["Sí", "No"].map(op => (
-                        <button key={op} onClick={() => setRespuestas({ ...respuestas, [p.id]: op })}
-                          style={{ ...styles.sinoBtn, ...(respuestas[p.id] === op ? styles.sinoBtnActivo : {}) }}>{op}</button>
-                      ))}
-                    </div>
-                  )}
-                  {p.tipo === "opciones" && (
-                    <div style={styles.opcionesRow}>
-                      {(p.opciones || []).map(op => (
-                        <button key={op} onClick={() => setRespuestas({ ...respuestas, [p.id]: op })}
-                          style={{ ...styles.opcionBtn, ...(respuestas[p.id] === op ? styles.opcionBtnActivo : {}) }}>{op}</button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-
-            <div style={styles.modalActions}>
-              <button style={styles.cancelBtn} onClick={() => setEditando(null)} disabled={guardando}>Cancelar</button>
-              <button style={styles.confirmBtn} onClick={guardarFiltro} disabled={guardando || formulario.length === 0}>
-                {guardando ? "Guardando..." : "✓ Marcar filtrado"}
-              </button>
+        <div style={styles.fsOverlay}>
+          {/* Barra superior fija */}
+          <div style={styles.fsHeader}>
+            <div>
+              <div style={styles.fsNombre}>{editando.nombre}</div>
+              <div style={styles.fsNumero}>📱 {editando.numero}</div>
             </div>
+            <div style={styles.fsContacto}>
+              <a style={styles.llamarBtn} href={`tel:${editando.numero}`}>📞 Llamar</a>
+              <a style={styles.waBtn} href={`https://wa.me/${String(editando.numero).replace(/[^0-9]/g, "")}`} target="_blank" rel="noreferrer">💬 WhatsApp</a>
+            </div>
+          </div>
+
+          {/* Progreso */}
+          {formulario.length > 0 && (() => {
+            const resp = formulario.filter(p => respuestas[p.id] !== undefined && respuestas[p.id] !== "" && respuestas[p.id] !== null).length;
+            const pct = Math.round(resp / formulario.length * 100);
+            return (
+              <div style={styles.fsProgreso}>
+                <div style={styles.fsProgTxt}>{resp} de {formulario.length} respondidas</div>
+                <div style={styles.fsProgBar}><div style={{ ...styles.fsProgFill, width: pct + "%" }} /></div>
+              </div>
+            );
+          })()}
+
+          {/* Preguntas */}
+          <div style={styles.fsBody}>
+            <div style={styles.fsInner}>
+              {formulario.length === 0 ? (
+                <p style={styles.empty}>No hay formulario configurado.</p>
+              ) : (
+                formulario.map((p, i) => (
+                  <div key={p.id} style={styles.fsCampo}>
+                    <label style={styles.fsLabel}><span style={styles.fsNum}>{i + 1}</span> {p.texto} {p.obligatoria && <span style={{ color: "#dc2626" }}>*</span>}</label>
+                    {p.tipo === "texto" && (
+                      <textarea style={styles.fsTextarea} rows={2} value={respuestas[p.id] || ""} onChange={e => setRespuestas({ ...respuestas, [p.id]: e.target.value })} placeholder="Escribí la respuesta…" />
+                    )}
+                    {p.tipo === "numero" && (
+                      <input style={styles.fsInput} type="number" value={respuestas[p.id] || ""} onChange={e => setRespuestas({ ...respuestas, [p.id]: e.target.value })} placeholder="Número…" />
+                    )}
+                    {p.tipo === "sino" && (
+                      <div style={styles.fsSinoRow}>
+                        {["Sí", "No"].map(op => (
+                          <button key={op} onClick={() => setRespuestas({ ...respuestas, [p.id]: op })}
+                            style={{ ...styles.fsSinoBtn, ...(respuestas[p.id] === op ? styles.fsBtnActivo : {}) }}>{op}</button>
+                        ))}
+                      </div>
+                    )}
+                    {p.tipo === "opciones" && (
+                      <div style={styles.fsOpcionesRow}>
+                        {(p.opciones || []).map(op => (
+                          <button key={op} onClick={() => setRespuestas({ ...respuestas, [p.id]: op })}
+                            style={{ ...styles.fsOpcionBtn, ...(respuestas[p.id] === op ? styles.fsBtnActivo : {}) }}>{op}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Barra inferior fija */}
+          <div style={styles.fsFooter}>
+            <button style={styles.fsCancelBtn} onClick={() => setEditando(null)} disabled={guardando}>Cancelar</button>
+            <button style={styles.fsGuardarBtn} onClick={guardarFiltro} disabled={guardando || formulario.length === 0}>
+              {guardando ? "Guardando..." : "✓ Marcar filtrado"}
+            </button>
           </div>
         </div>
       )}
@@ -352,6 +377,32 @@ function estadoLabel(e) {
 
 const styles = {
   loading: { padding: 40, fontFamily: "sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh" },
+  fsOverlay: { position: "fixed", inset: 0, background: "var(--bg)", zIndex: 2000, display: "flex", flexDirection: "column" },
+  fsHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 28px", borderBottom: "1.5px solid var(--border)", background: "var(--card)", flexWrap: "wrap", gap: "12px" },
+  fsNombre: { fontSize: "24px", fontWeight: "800", color: "var(--text)" },
+  fsNumero: { fontSize: "16px", color: "var(--text2)", marginTop: "2px" },
+  fsContacto: { display: "flex", gap: "10px" },
+  llamarBtn: { display: "inline-block", background: "#2563eb", color: "#fff", textDecoration: "none", padding: "12px 22px", borderRadius: "10px", fontSize: "15px", fontWeight: "700" },
+  waBtn: { display: "inline-block", background: "#25d366", color: "#fff", textDecoration: "none", padding: "12px 22px", borderRadius: "10px", fontSize: "15px", fontWeight: "700" },
+  fsProgreso: { padding: "12px 28px", background: "var(--card)", borderBottom: "1px solid var(--border)" },
+  fsProgTxt: { fontSize: "13px", color: "var(--text2)", marginBottom: "6px", fontWeight: "600" },
+  fsProgBar: { height: "8px", background: "var(--surface)", borderRadius: "99px", overflow: "hidden" },
+  fsProgFill: { height: "100%", background: "#16a34a", borderRadius: "99px", transition: "width 0.3s" },
+  fsBody: { flex: 1, overflowY: "auto", padding: "24px 28px" },
+  fsInner: { maxWidth: "640px", margin: "0 auto" },
+  fsCampo: { marginBottom: "24px" },
+  fsLabel: { display: "block", fontSize: "17px", fontWeight: "600", color: "var(--text)", marginBottom: "10px", lineHeight: "1.4" },
+  fsNum: { display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "24px", borderRadius: "50%", background: "var(--acc)", color: "#fff", fontSize: "13px", fontWeight: "700", marginRight: "6px" },
+  fsTextarea: { width: "100%", padding: "14px 16px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text)", fontSize: "16px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" },
+  fsInput: { width: "100%", padding: "14px 16px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text)", fontSize: "16px", boxSizing: "border-box" },
+  fsSinoRow: { display: "flex", gap: "12px" },
+  fsSinoBtn: { flex: 1, padding: "16px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text2)", cursor: "pointer", fontSize: "16px", fontWeight: "700" },
+  fsOpcionesRow: { display: "flex", gap: "10px", flexWrap: "wrap" },
+  fsOpcionBtn: { padding: "12px 20px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text2)", cursor: "pointer", fontSize: "15px", fontWeight: "600" },
+  fsBtnActivo: { background: "var(--acc)", color: "#fff", borderColor: "var(--acc)" },
+  fsFooter: { display: "flex", justifyContent: "flex-end", gap: "12px", padding: "16px 28px", borderTop: "1.5px solid var(--border)", background: "var(--card)" },
+  fsCancelBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "14px 28px", borderRadius: "10px", cursor: "pointer", fontSize: "15px", fontWeight: "600" },
+  fsGuardarBtn: { background: "#16a34a", color: "#fff", border: "none", padding: "14px 36px", borderRadius: "10px", cursor: "pointer", fontSize: "15px", fontWeight: "700" },
   container: { minHeight: "100vh", background: "var(--bg)", fontFamily: "'Segoe UI', sans-serif" },
   header: { background: "var(--nav)", color: "var(--text)", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { display: "flex", alignItems: "center", gap: "16px" },
@@ -380,20 +431,4 @@ const styles = {
   filtrarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
   miniBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   empty: { color: "var(--text2)", fontSize: "14px" },
-  modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" },
-  modal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "500px", width: "100%", maxHeight: "90vh", overflowY: "auto" },
-  modalTitle: { margin: "0 0 2px", fontSize: "18px", fontWeight: "700", color: "var(--text)" },
-  modalSub: { margin: "0 0 20px", fontSize: "14px", color: "var(--text2)" },
-  campoBox: { marginBottom: "16px" },
-  campoLabel: { display: "block", fontSize: "14px", fontWeight: "600", color: "var(--text)", marginBottom: "6px" },
-  campoInput: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
-  sinoRow: { display: "flex", gap: "8px" },
-  sinoBtn: { flex: 1, padding: "10px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text2)", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
-  sinoBtnActivo: { background: "var(--acc)", color: "#fff", borderColor: "var(--acc)" },
-  opcionesRow: { display: "flex", gap: "8px", flexWrap: "wrap" },
-  opcionBtn: { padding: "8px 14px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text2)", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
-  opcionBtnActivo: { background: "var(--acc)", color: "#fff", borderColor: "var(--acc)" },
-  modalActions: { display: "flex", justifyContent: "flex-end", gap: "12px", marginTop: "20px" },
-  cancelBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
-  confirmBtn: { background: "#16a34a", color: "#fff", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
 };
