@@ -37,6 +37,7 @@ export default function ComercialVentas() {
   const [estadoV, setEstadoV] = useState("");
   const [nota, setNota] = useState("");
   const [seguimiento, setSeguimiento] = useState("");
+  const [respFiltro, setRespFiltro] = useState({});
   const [guardando, setGuardando] = useState(false);
 
   const esAdmin = !esEmpleado || empleadoData?.accesoTotal;
@@ -75,10 +76,12 @@ export default function ComercialVentas() {
   // Solo se trabajan en Ventas los datos que ya están filtrados (o en venta / vendidos)
   const datosVenta = datos.filter(d => ["filtrado", "en_venta", "vendido", "descartado"].includes(d.estado));
 
-  // Datos del vendedor: asignados a él, o filtrados por él mismo sin vendedor asignado
-  const misDatos = datosVenta.filter(d =>
+  // Datos del vendedor: asignados a él, o filtrados/cargados por él sin vendedor asignado,
+  // o contactos PROPIOS que él cargó (aunque estén crudos, sin filtrar)
+  const misDatos = datos.filter(d =>
     (d.vendedorUid === currentUser.uid) ||
-    ((d.filtradorUid === currentUser.uid || d.cargadoPorUid === currentUser.uid) && !d.vendedorUid)
+    ((d.filtradorUid === currentUser.uid || d.cargadoPorUid === currentUser.uid) && !d.vendedorUid &&
+      ["filtrado", "en_venta", "vendido", "descartado", "crudo"].includes(d.estado))
   );
 
   // Para asignar: filtrados sin vendedor
@@ -142,6 +145,7 @@ export default function ComercialVentas() {
     setEstadoV(d.ventaEstado || "");
     setNota(d.ventaNota || "");
     setSeguimiento(d.ventaSeguimiento || "");
+    setRespFiltro(d.respuestasFiltro || {});
   }
 
   async function guardarReporte() {
@@ -149,14 +153,28 @@ export default function ComercialVentas() {
     setGuardando(true);
     try {
       const nuevoEstado = estadoV === "vendido" ? "vendido" : (estadoV === "descartado" ? "descartado" : "en_venta");
-      await updateDoc(doc(db, "comercial_datos", editando.id), {
+      const update = {
         ventaEstado: estadoV,
         ventaNota: nota,
         ventaSeguimiento: seguimiento,
         estado: nuevoEstado,
         ventaReportadoEn: new Date().toISOString(),
-      });
-      setEditando(null); setEstadoV(""); setNota(""); setSeguimiento("");
+      };
+      // Si el vendedor completó el formulario (contacto propio sin filtrar), lo guardamos
+      const sinFiltrar = !editando.respuestasFiltro || Object.keys(editando.respuestasFiltro).length === 0;
+      if (sinFiltrar && Object.keys(respFiltro).length > 0) {
+        update.respuestasFiltro = respFiltro;
+        update.filtradoPorVendedor = true;
+      }
+      // Si era un contacto propio (sin vendedor asignado), lo tomamos como suyo
+      if (!editando.vendedorUid) {
+        update.vendedorUid = currentUser.uid;
+        update.vendedorNombre = esEmpleado
+          ? `${empleadoData?.nombre || ""} ${empleadoData?.apellido || ""}`.trim()
+          : "Admin";
+      }
+      await updateDoc(doc(db, "comercial_datos", editando.id), update);
+      setEditando(null); setEstadoV(""); setNota(""); setSeguimiento(""); setRespFiltro({});
       cargar();
     } catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
@@ -319,25 +337,64 @@ export default function ComercialVentas() {
 
           <div style={styles.fsBody}>
             <div style={styles.fsInner}>
-              {/* Info del filtrado */}
-              <div style={styles.infoFiltro}>
-                <div style={styles.infoTitulo}>📋 Info del filtrado</div>
-                {formulario.length === 0 || !editando.respuestasFiltro ? (
-                  <p style={styles.empty}>Sin datos de filtrado.</p>
-                ) : (
-                  formulario.map(p => {
-                    const r = editando.respuestasFiltro?.[p.id];
-                    if (r === undefined || r === "" || r === null) return null;
-                    return (
-                      <div key={p.id} style={styles.infoItem}>
-                        <div style={styles.infoPreg}>{p.texto}</div>
-                        <div style={styles.infoResp}>{String(r)}</div>
+              {/* Filtro: si ya está filtrado, se muestra como info; si no, el vendedor puede completarlo */}
+              {(() => {
+                const yaFiltrado = editando.respuestasFiltro && Object.keys(editando.respuestasFiltro).length > 0;
+                if (formulario.length === 0) return null;
+                if (yaFiltrado) {
+                  // Solo lectura: info que cargó el filtrador
+                  return (
+                    <div style={styles.infoFiltro}>
+                      <div style={styles.infoTitulo}>📋 Info del filtrado</div>
+                      {formulario.map(p => {
+                        const r = editando.respuestasFiltro?.[p.id];
+                        if (r === undefined || r === "" || r === null) return null;
+                        return (
+                          <div key={p.id} style={styles.infoItem}>
+                            <div style={styles.infoPreg}>{p.texto}</div>
+                            <div style={styles.infoResp}>{String(r)}</div>
+                          </div>
+                        );
+                      })}
+                      {editando.filtradorNombre && <div style={styles.infoFiltrador}>Filtrado por: {editando.filtradorNombre}</div>}
+                    </div>
+                  );
+                }
+                // Editable: contacto propio sin filtrar, el vendedor puede completar mientras habla
+                return (
+                  <div style={styles.infoFiltro}>
+                    <div style={styles.infoTitulo}>📝 Preguntas para el cliente (opcional)</div>
+                    <div style={styles.infoHint}>Este contacto no fue filtrado. Podés hacer estas preguntas mientras hablás y quedan guardadas.</div>
+                    {formulario.map(p => (
+                      <div key={p.id} style={styles.campoFiltro}>
+                        <label style={styles.campoFiltroLabel}>{p.texto}</label>
+                        {p.tipo === "texto" && (
+                          <textarea style={styles.campoFiltroInput} rows={2} value={respFiltro[p.id] || ""} onChange={e => setRespFiltro({ ...respFiltro, [p.id]: e.target.value })} />
+                        )}
+                        {p.tipo === "numero" && (
+                          <input style={styles.campoFiltroInput} type="number" value={respFiltro[p.id] || ""} onChange={e => setRespFiltro({ ...respFiltro, [p.id]: e.target.value })} />
+                        )}
+                        {p.tipo === "sino" && (
+                          <div style={styles.miniSinoRow}>
+                            {["Sí", "No"].map(op => (
+                              <button key={op} onClick={() => setRespFiltro({ ...respFiltro, [p.id]: op })}
+                                style={{ ...styles.miniOpBtn, ...(respFiltro[p.id] === op ? styles.miniOpActivo : {}) }}>{op}</button>
+                            ))}
+                          </div>
+                        )}
+                        {p.tipo === "opciones" && (
+                          <div style={styles.miniSinoRow}>
+                            {(p.opciones || []).map(op => (
+                              <button key={op} onClick={() => setRespFiltro({ ...respFiltro, [p.id]: op })}
+                                style={{ ...styles.miniOpBtn, ...(respFiltro[p.id] === op ? styles.miniOpActivo : {}) }}>{op}</button>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    );
-                  })
-                )}
-                {editando.filtradorNombre && <div style={styles.infoFiltrador}>Filtrado por: {editando.filtradorNombre}</div>}
-              </div>
+                    ))}
+                  </div>
+                );
+              })()}
 
               {/* Reporte del vendedor */}
               <div style={styles.reporteTitulo}>Tu reporte</div>
@@ -426,6 +483,13 @@ const styles = {
   fsBody: { flex: 1, overflowY: "auto", padding: "24px 28px" },
   fsInner: { maxWidth: "640px", margin: "0 auto" },
   infoFiltro: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "24px" },
+  infoHint: { fontSize: "12px", color: "var(--text2)", marginBottom: "14px", lineHeight: "1.4" },
+  campoFiltro: { marginBottom: "14px" },
+  campoFiltroLabel: { display: "block", fontSize: "13px", fontWeight: "600", color: "var(--text)", marginBottom: "6px" },
+  campoFiltroInput: { width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" },
+  miniSinoRow: { display: "flex", gap: "6px", flexWrap: "wrap" },
+  miniOpBtn: { padding: "7px 14px", borderRadius: "7px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text2)", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
+  miniOpActivo: { background: "var(--acc)", color: "#fff", borderColor: "var(--acc)" },
   infoTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "12px" },
   infoItem: { marginBottom: "10px" },
   infoPreg: { fontSize: "12px", color: "var(--text2)", marginBottom: "2px" },
