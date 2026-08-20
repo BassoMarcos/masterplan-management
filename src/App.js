@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -159,49 +159,11 @@ function AppRoutes() {
   );
 }
 
-// Detecta si se publicó una versión nueva y recarga sola (sin interrumpir si estás escribiendo)
-function AutoActualizador() {
-  const versionInicial = useRef(null);
-  useEffect(() => {
-    const url = "/asset-manifest.json";
-    async function leerVersion() {
-      try {
-        const r = await fetch(url + "?t=" + Date.now(), { cache: "no-store" });
-        if (!r.ok) return null;
-        const txt = await r.text();
-        return txt; // el contenido cambia con cada deploy
-      } catch {
-        return null;
-      }
-    }
-    let activo = true;
-    (async () => {
-      versionInicial.current = await leerVersion();
-    })();
-    const intervalo = setInterval(async () => {
-      if (!activo) return;
-      const actual = await leerVersion();
-      if (!actual || versionInicial.current == null) return;
-      if (actual !== versionInicial.current) {
-        // No recargar si el usuario está escribiendo en un campo (para no perder lo que carga)
-        const el = document.activeElement;
-        const escribiendo = el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT");
-        if (!escribiendo) {
-          window.location.reload();
-        }
-      }
-    }, 60000); // chequea cada 60 segundos
-    return () => { activo = false; clearInterval(intervalo); };
-  }, []);
-  return null;
-}
-
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <ThemeProvider>
-          <AutoActualizador />
           <AppRoutes />
         </ThemeProvider>
       </AuthProvider>
