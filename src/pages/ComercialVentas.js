@@ -190,8 +190,8 @@ export default function ComercialVentas() {
         update.respuestasFiltro = respFiltro;
         update.filtradoPorVendedor = true;
       }
-      // Si era un contacto propio (sin vendedor asignado), lo tomamos como suyo
-      if (!editando.vendedorUid) {
+      // Si era un contacto propio (sin vendedor asignado) y NO es admin, lo tomamos como suyo
+      if (!editando.vendedorUid && !esAdmin) {
         update.vendedorUid = currentUser.uid;
         update.vendedorNombre = esEmpleado
           ? `${empleadoData?.nombre || ""} ${empleadoData?.apellido || ""}`.trim()
@@ -341,7 +341,7 @@ export default function ComercialVentas() {
                   <div style={{ ...styles.th, flex: 1.3 }}>Número</div>
                   <div style={{ ...styles.th, flex: 1.2 }}>Estado</div>
                   <div style={{ ...styles.th, flex: 1.5 }}>Vendedor</div>
-                  <div style={{ ...styles.th, flex: 0.6 }}></div>
+                  <div style={{ ...styles.th, flex: 1.2 }}></div>
                 </div>
                 {datosVenta.map(d => (
                   <div key={d.id} style={styles.trow}>
@@ -358,7 +358,8 @@ export default function ComercialVentas() {
                       <span style={styles.estadoTag}>{d.ventaEstado ? estadoVentaLabel(d.ventaEstado) : estadoLabel(d.estado)}</span>
                     </div>
                     <div style={{ flex: 1.5, fontSize: "12px", color: "var(--text2)" }}>{d.vendedorNombre || "—"}</div>
-                    <div style={{ flex: 0.6, textAlign: "right" }}>
+                    <div style={{ flex: 1.2, textAlign: "right", display: "flex", gap: "6px", justifyContent: "flex-end" }}>
+                      <button style={styles.abrirBtn} onClick={() => abrirReporte(d)} title="Ver recorrido">Abrir</button>
                       {d.vendedorUid && d.estado !== "vendido" && (
                         <button style={styles.miniBtn} onClick={() => desasignar(d)} title="Quitar asignación">↩</button>
                       )}
@@ -602,6 +603,7 @@ const styles = {
   estadoTag: { fontSize: "11px", background: "var(--surface)", color: "var(--text2)", padding: "2px 10px", borderRadius: "20px", border: "1px solid var(--border)" },
   trabajarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
   miniBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
+  abrirBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
   empty: { color: "var(--text2)", fontSize: "14px" },
   fsOverlay: { position: "fixed", inset: 0, background: "var(--bg)", zIndex: 2000, display: "flex", flexDirection: "column" },
   fsHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", padding: "20px 28px", borderBottom: "1.5px solid var(--border)", background: "var(--card)", flexWrap: "wrap", gap: "12px" },
