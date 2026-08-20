@@ -29,12 +29,11 @@ export const AREAS_DEFAULT = [
     ],
   },
   {
-    id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Datos, filtrado y ventas",
+    id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Estrategia de ventas y más",
     paneles: [
       { id: "datos", nombre: "Datos" },
       { id: "filtrado", nombre: "Filtrado" },
       { id: "ventas", nombre: "Ventas" },
-      { id: "config_filtro", nombre: "Configurar formulario de filtro" },
     ],
   },
   {
