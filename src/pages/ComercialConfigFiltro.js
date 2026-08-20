@@ -27,7 +27,7 @@ export default function ComercialConfigFiltro() {
   const [guardadoOk, setGuardadoOk] = useState(false);
   const [nuevaOpcion, setNuevaOpcion] = useState({});
 
-  const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "config_filtro") : "editar";
+  const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "filtrado") : "editar";
   const puedeEditar = !esEmpleado || nivel === "editar";
 
   const cargar = useCallback(async () => {
