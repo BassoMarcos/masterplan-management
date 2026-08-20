@@ -173,6 +173,9 @@ export default function ComercialFiltrado() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {puedeEditar && (
+            <button style={styles.configBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/config_filtro`)} title="Configurar formulario de filtro">⚙️ Formulario</button>
+          )}
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
@@ -181,7 +184,7 @@ export default function ComercialFiltrado() {
       <main style={styles.main}>
         {formulario.length === 0 && (
           <div style={styles.avisoBox}>
-            ⚠️ Todavía no hay un formulario de filtro configurado. {esAdmin && "Andá a “Configurar formulario de filtro” para armarlo."}
+            ⚠️ Todavía no hay un formulario de filtro configurado. {puedeEditar && "Tocá “⚙️ Formulario” arriba para armarlo."}
           </div>
         )}
 
@@ -409,6 +412,7 @@ const styles = {
   backBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   headerTitle: { margin: 0, fontSize: "20px", fontWeight: "700" },
   headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
+  configBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "900px", margin: "0 auto", padding: "32px 24px" },
   avisoBox: { background: "#fef3c7", color: "#92400e", padding: "12px 16px", borderRadius: "10px", fontSize: "13px", marginBottom: "20px" },
