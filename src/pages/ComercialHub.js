@@ -6,12 +6,10 @@ import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import { panelesVisiblesEmpleado, empleadoNivelPanel } from "../config/appConfig";
 
-// Íconos y descripciones de cada panel de Comercial
 const PANEL_INFO = {
   datos: { icono: "📇", desc: "Cargar y ver contactos crudos" },
   filtrado: { icono: "🔍", desc: "Primer llamado y formulario de filtro" },
   ventas: { icono: "💰", desc: "Trabajar datos filtrados y reportar" },
-  config_filtro: { icono: "⚙️", desc: "Armar las preguntas del formulario de filtro" },
 };
 
 export default function ComercialHub() {
@@ -40,22 +38,18 @@ export default function ComercialHub() {
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
-  // Paneles visibles según permisos del empleado (o todos si es dueño/admin)
   const paneles = esEmpleado
     ? panelesVisiblesEmpleado(empleadoData, proyectoId, "comercial")
     : [
         { id: "datos", nombre: "Datos" },
         { id: "filtrado", nombre: "Filtrado" },
         { id: "ventas", nombre: "Ventas" },
-        { id: "config_filtro", nombre: "Configurar formulario de filtro" },
       ];
 
-  function irAlPanel(panelId) {
-    if (panelId === "datos") navigate(`/proyecto/${proyectoId}/comercial/datos`);
-    else if (panelId === "config_filtro") navigate(`/proyecto/${proyectoId}/comercial/config_filtro`);
-    else if (panelId === "filtrado") navigate(`/proyecto/${proyectoId}/comercial/filtrado`);
-    else if (panelId === "ventas") navigate(`/proyecto/${proyectoId}/comercial/ventas`);
-    else alert("Este panel se habilita en la próxima etapa.");
+  const tieneEstrategia = paneles.length > 0;
+
+  function irAPanel(panelId) {
+    navigate(`/proyecto/${proyectoId}/comercial/${panelId}`);
   }
 
   return (
@@ -75,23 +69,30 @@ export default function ComercialHub() {
       </header>
 
       <main style={styles.main}>
-        <div style={styles.grid}>
-          {paneles.map(p => {
-            const info = PANEL_INFO[p.id] || { icono: "📋", desc: "" };
-            const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", p.id) : "editar";
-            return (
-              <div key={p.id} style={styles.card} onClick={() => irAlPanel(p.id)}
-                onMouseEnter={e => e.currentTarget.style.transform = "translateY(-3px)"}
-                onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
-                <div style={styles.cardIcon}>{info.icono}</div>
-                <div style={styles.cardNombre}>{p.nombre}</div>
-                <div style={styles.cardDesc}>{info.desc}</div>
-                {esEmpleado && nivel === "ver" && <div style={styles.soloVer}>👁️ Solo lectura</div>}
-              </div>
-            );
-          })}
-        </div>
-        {paneles.length === 0 && <p style={styles.empty}>No tenés paneles habilitados en Comercial.</p>}
+        {!tieneEstrategia ? (
+          <p style={styles.empty}>No tenés secciones habilitadas en Comercial.</p>
+        ) : (
+          <>
+            <div style={styles.grupoTitulo}>📈 Estrategia de Ventas</div>
+            <div style={styles.grupoDesc}>Pipeline de captación: datos, filtrado y ventas.</div>
+            <div style={styles.grid}>
+              {paneles.map(p => {
+                const info = PANEL_INFO[p.id] || { icono: "📋", desc: "" };
+                const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", p.id) : "editar";
+                return (
+                  <div key={p.id} style={styles.card} onClick={() => irAPanel(p.id)}
+                    onMouseEnter={e => e.currentTarget.style.transform = "translateY(-3px)"}
+                    onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
+                    <div style={styles.cardIcon}>{info.icono}</div>
+                    <div style={styles.cardNombre}>{p.nombre}</div>
+                    <div style={styles.cardDesc}>{info.desc}</div>
+                    {esEmpleado && nivel === "ver" && <div style={styles.soloVer}>👁️ Solo lectura</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </main>
     </div>
   );
@@ -107,6 +108,8 @@ const styles = {
   headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "900px", margin: "0 auto", padding: "32px 24px" },
+  grupoTitulo: { fontSize: "18px", fontWeight: "800", color: "var(--text)", marginBottom: "4px" },
+  grupoDesc: { fontSize: "13px", color: "var(--text2)", marginBottom: "18px" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" },
   card: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "24px 20px", cursor: "pointer", transition: "transform 0.2s", textAlign: "center" },
   cardIcon: { fontSize: "40px", marginBottom: "10px" },
