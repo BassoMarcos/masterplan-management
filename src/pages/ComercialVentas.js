@@ -14,6 +14,28 @@ const ESTADOS_VENTA = [
   { id: "descartado", label: "Descartado", color: "#dc2626" },
 ];
 
+// Recorrido del contacto: de conseguirlo hasta la firma.
+// Los 3 primeros son automáticos (se derivan del pipeline). Del 4º en adelante los marca el vendedor.
+const RECORRIDO = [
+  { id: "contacto", label: "Contacto", icono: "📇", auto: true },
+  { id: "filtro", label: "Filtro", icono: "🔍", auto: true },
+  { id: "llamado", label: "Llamado", icono: "📞", auto: true },
+  { id: "visita", label: "Visita programada", icono: "📅", auto: false },
+  { id: "compra", label: "Compra confirmada", icono: "🤝", auto: false },
+  { id: "reserva", label: "Reserva", icono: "📝", auto: false },
+  { id: "firma_prog", label: "Firma programada", icono: "🗓️", auto: false },
+  { id: "firma", label: "Firma / Venta", icono: "✅", auto: false },
+];
+
+// Calcula hasta qué paso automático llegó un dato según su estado del pipeline
+function pasosAutomaticos(d) {
+  const hechos = { contacto: true }; // si existe el dato, ya hay contacto
+  const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || d.estado === "filtrado" || d.estado === "en_venta" || d.estado === "vendido";
+  if (filtrado) hechos.filtro = true;
+  if (d.ventaEstado || d.vendedorUid) hechos.llamado = true;
+  return hechos;
+}
+
 // Panel de VENTAS (Comercial).
 // - Admin: reparte datos FILTRADOS a vendedores y ve el progreso.
 // - Vendedor: ve sus datos con toda la info del filtro, contacta y reporta el resultado.
@@ -38,6 +60,8 @@ export default function ComercialVentas() {
   const [nota, setNota] = useState("");
   const [seguimiento, setSeguimiento] = useState("");
   const [respFiltro, setRespFiltro] = useState({});
+  const [marcandoPaso, setMarcandoPaso] = useState(null); // {datoId, pasoId}
+  const [notaPaso, setNotaPaso] = useState("");
   const [guardando, setGuardando] = useState(false);
 
   const esAdmin = !esEmpleado || empleadoData?.accesoTotal;
@@ -178,6 +202,58 @@ export default function ComercialVentas() {
       cargar();
     } catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
+  }
+
+  // Marca un paso manual del recorrido con fecha automática + nota
+  async function confirmarPaso() {
+    if (!marcandoPaso) return;
+    setGuardando(true);
+    try {
+      const dato = datos.find(d => d.id === marcandoPaso.datoId);
+      const recorrido = { ...(dato?.recorrido || {}) };
+      recorrido[marcandoPaso.pasoId] = {
+        fecha: new Date().toISOString(),
+        nota: notaPaso.trim(),
+      };
+      const update = { recorrido };
+      // Si llegó al paso final (firma), lo marcamos como vendido
+      if (marcandoPaso.pasoId === "firma") {
+        update.estado = "vendido";
+        update.ventaEstado = "vendido";
+      }
+      await updateDoc(doc(db, "comercial_datos", marcandoPaso.datoId), update);
+      setMarcandoPaso(null); setNotaPaso("");
+      // Actualizar el dato que se está editando en pantalla
+      if (editando && editando.id === marcandoPaso.datoId) {
+        setEditando({ ...editando, recorrido });
+      }
+      cargar();
+    } catch (e) { alert("Error: " + e.message); }
+    setGuardando(false);
+  }
+
+  async function desmarcarPaso(dato, pasoId) {
+    if (!window.confirm("¿Deshacer este paso?")) return;
+    setGuardando(true);
+    try {
+      const recorrido = { ...(dato?.recorrido || {}) };
+      delete recorrido[pasoId];
+      await updateDoc(doc(db, "comercial_datos", dato.id), { recorrido });
+      if (editando && editando.id === dato.id) setEditando({ ...editando, recorrido });
+      cargar();
+    } catch (e) { alert("Error: " + e.message); }
+    setGuardando(false);
+  }
+
+  // Índice del último paso alcanzado por un dato (para saber cuál es "el siguiente")
+  function ultimoPasoIdx(d) {
+    const auto = pasosAutomaticos(d);
+    const rec = d.recorrido || {};
+    let idx = -1;
+    RECORRIDO.forEach((p, i) => {
+      if (p.auto ? auto[p.id] : rec[p.id]) idx = i;
+    });
+    return idx;
   }
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
@@ -396,6 +472,43 @@ export default function ComercialVentas() {
                 );
               })()}
 
+              {/* Recorrido del contacto */}
+              <div style={styles.recorridoBox}>
+                <div style={styles.recorridoTitulo}>🛤️ Recorrido del contacto</div>
+                {(() => {
+                  const auto = pasosAutomaticos(editando);
+                  const rec = editando.recorrido || {};
+                  const ultIdx = ultimoPasoIdx(editando);
+                  return RECORRIDO.map((paso, i) => {
+                    const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
+                    const info = rec[paso.id];
+                    const esSiguiente = !hecho && i === ultIdx + 1 && !paso.auto;
+                    return (
+                      <div key={paso.id} style={styles.pasoRow}>
+                        <div style={{ ...styles.pasoIcono, ...(hecho ? styles.pasoIconoHecho : {}) }}>
+                          {hecho ? "✓" : paso.icono}
+                        </div>
+                        <div style={styles.pasoInfo}>
+                          <div style={{ ...styles.pasoLabel, ...(hecho ? { color: "var(--text)", fontWeight: 700 } : {}) }}>{paso.label}</div>
+                          {info && (
+                            <div style={styles.pasoDetalle}>
+                              {new Date(info.fecha).toLocaleDateString()} {info.nota && `· ${info.nota}`}
+                            </div>
+                          )}
+                        </div>
+                        {puedeEditar && !paso.auto && (
+                          hecho ? (
+                            <button style={styles.pasoDeshacer} onClick={() => desmarcarPaso(editando, paso.id)} title="Deshacer">↩</button>
+                          ) : esSiguiente ? (
+                            <button style={styles.pasoMarcar} onClick={() => { setMarcandoPaso({ datoId: editando.id, pasoId: paso.id }); setNotaPaso(""); }}>Marcar</button>
+                          ) : null
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+
               {/* Reporte del vendedor */}
               <div style={styles.reporteTitulo}>Tu reporte</div>
 
@@ -428,6 +541,23 @@ export default function ComercialVentas() {
             <button style={styles.fsGuardarBtn} onClick={guardarReporte} disabled={guardando}>
               {guardando ? "Guardando..." : "✓ Guardar reporte"}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mini-modal: nota al marcar un paso del recorrido */}
+      {marcandoPaso && (
+        <div style={styles.pasoOverlay} onClick={() => !guardando && setMarcandoPaso(null)}>
+          <div style={styles.pasoModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.pasoModalTitle}>
+              {RECORRIDO.find(p => p.id === marcandoPaso.pasoId)?.icono} {RECORRIDO.find(p => p.id === marcandoPaso.pasoId)?.label}
+            </div>
+            <div style={styles.pasoModalFecha}>📅 {new Date().toLocaleDateString()} (fecha de hoy)</div>
+            <textarea style={styles.pasoModalInput} rows={4} value={notaPaso} onChange={e => setNotaPaso(e.target.value)} placeholder="¿Qué pasó? (ej: coordinamos visita para el sábado 10hs)" autoFocus />
+            <div style={styles.pasoModalActions}>
+              <button style={styles.fsCancelBtn} onClick={() => setMarcandoPaso(null)} disabled={guardando}>Cancelar</button>
+              <button style={styles.fsGuardarBtn} onClick={confirmarPaso} disabled={guardando}>{guardando ? "..." : "✓ Confirmar"}</button>
+            </div>
           </div>
         </div>
       )}
@@ -496,6 +626,22 @@ const styles = {
   infoResp: { fontSize: "15px", color: "var(--text)", fontWeight: "600" },
   infoFiltrador: { marginTop: "10px", fontSize: "11px", color: "var(--text2)", fontStyle: "italic" },
   reporteTitulo: { fontSize: "16px", fontWeight: "700", color: "var(--text)", marginBottom: "16px" },
+  recorridoBox: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "24px" },
+  recorridoTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "14px" },
+  pasoRow: { display: "flex", alignItems: "center", gap: "12px", padding: "8px 0", borderBottom: "1px solid var(--border)" },
+  pasoIcono: { width: "34px", height: "34px", borderRadius: "50%", background: "var(--bg)", border: "1.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", flexShrink: 0 },
+  pasoIconoHecho: { background: "#16a34a", borderColor: "#16a34a", color: "#fff", fontWeight: 700 },
+  pasoInfo: { flex: 1 },
+  pasoLabel: { fontSize: "14px", color: "var(--text2)" },
+  pasoDetalle: { fontSize: "12px", color: "var(--text2)", marginTop: "2px" },
+  pasoMarcar: { background: "var(--acc)", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  pasoDeshacer: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
+  pasoOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: "20px" },
+  pasoModal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "24px", maxWidth: "420px", width: "100%" },
+  pasoModalTitle: { fontSize: "18px", fontWeight: "700", color: "var(--text)", marginBottom: "6px" },
+  pasoModalFecha: { fontSize: "13px", color: "var(--text2)", marginBottom: "14px" },
+  pasoModalInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "15px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" },
+  pasoModalActions: { display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" },
   fsCampo: { marginBottom: "24px" },
   fsLabel: { display: "block", fontSize: "15px", fontWeight: "600", color: "var(--text)", marginBottom: "10px" },
   estadosRow: { display: "flex", gap: "8px", flexWrap: "wrap" },
