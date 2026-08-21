@@ -57,6 +57,8 @@ export default function ComercialDatos() {
   const [fEtapa, setFEtapa] = useState("");    // id de etapa o ""
   const [fFiltrado, setFFiltrado] = useState(""); // "si" / "no" / ""
   const [orden, setOrden] = useState("fecha_desc"); // fecha_desc / fecha_asc
+  const [expandido, setExpandido] = useState(null); // id del dato expandido
+  const [etapaAbierta, setEtapaAbierta] = useState(null); // id de etapa con informe abierto
 
   // Permiso: si es empleado, ¿puede editar (cargar) o solo ver?
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "datos") : "editar";
@@ -249,19 +251,82 @@ export default function ComercialDatos() {
               {esAdmin && <div style={{ ...styles.th, flex: 1.5 }}>Cargado por</div>}
               <div style={{ ...styles.th, flex: 0.6, textAlign: "right" }}></div>
             </div>
-            {datosFiltrados.map(d => (
-              <div key={d.id} style={styles.trow}>
-                <div style={{ ...styles.td, flex: 2, fontWeight: 600 }}>{d.nombre}</div>
-                <div style={{ ...styles.td, flex: 1.5 }}>{d.numero}</div>
-                <div style={{ ...styles.td, flex: 1 }}><span style={styles.estadoTag}>{d.estado}</span></div>
-                {esAdmin && <div style={{ ...styles.td, flex: 1.5, color: "var(--text2)", fontSize: "12px" }}>{d.cargadoPorNombre}</div>}
-                <div style={{ ...styles.td, flex: 0.6, justifyContent: "flex-end" }}>
-                  {(esAdmin || (puedeEditar && d.cargadoPorUid === currentUser.uid)) && d.estado === "crudo" && (
-                    <button style={styles.delBtn} onClick={() => eliminar(d)} title="Eliminar">✕</button>
-                  )}
+            {datosFiltrados.map(d => {
+              const abierto = expandido === d.id;
+              const auto = pasosAutomaticos(d);
+              const rec = d.recorrido || {};
+              const idxActual = etapaActualIdx(d);
+              return (
+              <div key={d.id}>
+                <div style={{ ...styles.trow, cursor: "pointer", ...(abierto ? { background: "var(--surface)" } : {}) }}
+                  onClick={() => { setExpandido(abierto ? null : d.id); setEtapaAbierta(null); }}>
+                  <div style={{ ...styles.td, flex: 2, fontWeight: 600 }}>
+                    <span style={{ marginRight: "8px", color: "var(--text2)" }}>{abierto ? "▾" : "▸"}</span>{d.nombre}
+                  </div>
+                  <div style={{ ...styles.td, flex: 1.5 }}>{d.numero}</div>
+                  <div style={{ ...styles.td, flex: 1 }}><span style={styles.estadoTag}>{RECORRIDO[idxActual]?.label || d.estado}</span></div>
+                  {esAdmin && <div style={{ ...styles.td, flex: 1.5, color: "var(--text2)", fontSize: "12px" }}>{d.cargadoPorNombre}</div>}
+                  <div style={{ ...styles.td, flex: 0.6, justifyContent: "flex-end" }}>
+                    {(esAdmin || (puedeEditar && d.cargadoPorUid === currentUser.uid)) && d.estado === "crudo" && (
+                      <button style={styles.delBtn} onClick={(e) => { e.stopPropagation(); eliminar(d); }} title="Eliminar">✕</button>
+                    )}
+                  </div>
                 </div>
+
+                {/* Barra de progreso desplegable */}
+                {abierto && (
+                  <div style={styles.progWrap}>
+                    <div style={styles.progBarra}>
+                      {RECORRIDO.map((paso, i) => {
+                        const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
+                        const info = rec[paso.id];
+                        const activa = etapaAbierta === paso.id;
+                        return (
+                          <div key={paso.id} style={styles.progPasoWrap}>
+                            {i > 0 && <div style={{ ...styles.progLinea, ...(i <= idxActual ? styles.progLineaHecha : {}) }} />}
+                            <button
+                              style={{ ...styles.progPunto, ...(hecho ? styles.progPuntoHecho : {}), ...(activa ? styles.progPuntoActivo : {}) }}
+                              onClick={() => setEtapaAbierta(activa ? null : paso.id)}
+                              title={paso.label}
+                            >
+                              {hecho ? "✓" : i + 1}
+                            </button>
+                            <div style={styles.progLabel}>{paso.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Informe de la etapa abierta */}
+                    {etapaAbierta && (() => {
+                      const paso = RECORRIDO.find(p => p.id === etapaAbierta);
+                      const info = rec[etapaAbierta];
+                      const hecho = paso.auto ? !!auto[etapaAbierta] : !!info;
+                      return (
+                        <div style={styles.progInforme}>
+                          <div style={styles.progInformeTitulo}>{paso.label}</div>
+                          {!hecho ? (
+                            <div style={styles.progInformeVacio}>Todavía no se llegó a esta etapa.</div>
+                          ) : paso.auto ? (
+                            <div style={styles.progInformeVacio}>
+                              {etapaAbierta === "contacto" && `Contacto cargado por ${d.cargadoPorNombre || "—"}.`}
+                              {etapaAbierta === "filtro" && (d.filtradorNombre ? `Filtrado por ${d.filtradorNombre}.` : "Filtrado.")}
+                              {etapaAbierta === "llamado" && (d.vendedorNombre ? `En venta con ${d.vendedorNombre}.` : "Llamado por el vendedor.")}
+                            </div>
+                          ) : (
+                            <div>
+                              <div style={styles.progInformeFecha}>📅 {info.fecha ? new Date(info.fecha).toLocaleDateString() : "—"}</div>
+                              {info.nota ? <div style={styles.progInformeNota}>{info.nota}</div> : <div style={styles.progInformeVacio}>Sin nota.</div>}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
@@ -295,6 +360,20 @@ const styles = {
   theadRow: { display: "flex", padding: "12px 18px", background: "var(--nav)", borderBottom: "1.5px solid var(--border)" },
   th: { fontSize: "11px", fontWeight: "700", color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.5px" },
   trow: { display: "flex", padding: "12px 18px", borderBottom: "1px solid var(--border)", alignItems: "center" },
+  progWrap: { padding: "18px 24px 24px", background: "var(--surface)", borderBottom: "1px solid var(--border)" },
+  progBarra: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", overflowX: "auto", paddingBottom: "8px" },
+  progPasoWrap: { display: "flex", flexDirection: "column", alignItems: "center", position: "relative", flex: 1, minWidth: "70px" },
+  progLinea: { position: "absolute", top: "16px", right: "50%", width: "100%", height: "3px", background: "var(--border)", zIndex: 0 },
+  progLineaHecha: { background: "#16a34a" },
+  progPunto: { width: "34px", height: "34px", borderRadius: "50%", border: "2px solid var(--border)", background: "var(--bg)", color: "var(--text2)", cursor: "pointer", fontSize: "13px", fontWeight: "700", zIndex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" },
+  progPuntoHecho: { background: "#16a34a", borderColor: "#16a34a", color: "#fff" },
+  progPuntoActivo: { boxShadow: "0 0 0 3px rgba(37,99,235,0.4)", borderColor: "#2563eb" },
+  progLabel: { fontSize: "10.5px", color: "var(--text2)", textAlign: "center", marginTop: "6px", lineHeight: "1.2", maxWidth: "72px" },
+  progInforme: { marginTop: "16px", background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "10px", padding: "14px" },
+  progInformeTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "8px" },
+  progInformeFecha: { fontSize: "12px", color: "var(--text2)", marginBottom: "6px" },
+  progInformeNota: { fontSize: "14px", color: "var(--text)", lineHeight: "1.5" },
+  progInformeVacio: { fontSize: "13px", color: "var(--text2)", fontStyle: "italic" },
   td: { display: "flex", alignItems: "center", fontSize: "14px", color: "var(--text)" },
   estadoTag: { fontSize: "11px", background: "var(--surface)", color: "var(--text2)", padding: "2px 10px", borderRadius: "20px", border: "1px solid var(--border)", textTransform: "capitalize" },
   delBtn: { background: "transparent", border: "1px solid #fca5a5", color: "#dc2626", width: "26px", height: "26px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
