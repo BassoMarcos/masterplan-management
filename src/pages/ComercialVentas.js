@@ -48,6 +48,7 @@ export default function ComercialVentas() {
   const [datos, setDatos] = useState([]);
   const [empleados, setEmpleados] = useState([]);
   const [formulario, setFormulario] = useState([]);
+  const [plantillaWhats, setPlantillaWhats] = useState("Hola {nombre}, te confirmo la firma para el {fecha} a las {hora} hs. ¡Cualquier cosa avisame!");
   const [loading, setLoading] = useState(true);
 
   const [selMode, setSelMode] = useState(false);
@@ -62,6 +63,9 @@ export default function ComercialVentas() {
   const [respFiltro, setRespFiltro] = useState({});
   const [marcandoPaso, setMarcandoPaso] = useState(null); // {datoId, pasoId}
   const [notaPaso, setNotaPaso] = useState("");
+  const [fechaPaso, setFechaPaso] = useState("");
+  const [horaPaso, setHoraPaso] = useState("");
+  const [resultadoCompra, setResultadoCompra] = useState(""); // "gusto" / "rechazo"
   const [guardando, setGuardando] = useState(false);
 
   const esAdmin = !esEmpleado || empleadoData?.accesoTotal;
@@ -77,6 +81,7 @@ export default function ComercialVentas() {
 
       const snapCfg = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
       setFormulario(snapCfg.exists() && Array.isArray(snapCfg.data().preguntasFiltro) ? snapCfg.data().preguntasFiltro : []);
+      if (snapCfg.exists() && snapCfg.data().plantillaWhatsFirma) setPlantillaWhats(snapCfg.data().plantillaWhatsFirma);
 
       const q = query(collection(db, "comercial_datos"), where("empresaId", "==", empresaUid), where("proyectoId", "==", proyectoId));
       const snap = await getDocs(q);
@@ -204,29 +209,37 @@ export default function ComercialVentas() {
     setGuardando(false);
   }
 
-  // Marca un paso manual del recorrido con fecha automática + nota
+  // Marca un paso manual del recorrido
   async function confirmarPaso() {
     if (!marcandoPaso) return;
+    const pasoId = marcandoPaso.pasoId;
+    // Validaciones por etapa
+    if ((pasoId === "visita" || pasoId === "firma_prog") && !fechaPaso) {
+      alert("Poné la fecha."); return;
+    }
+    if (pasoId === "compra" && !resultadoCompra) {
+      alert("Marcá si le gustó o no."); return;
+    }
     setGuardando(true);
     try {
       const dato = datos.find(d => d.id === marcandoPaso.datoId);
       const recorrido = { ...(dato?.recorrido || {}) };
-      recorrido[marcandoPaso.pasoId] = {
+      const registro = {
         fecha: new Date().toISOString(),
         nota: notaPaso.trim(),
       };
+      if (fechaPaso) registro.fechaEvento = fechaPaso;
+      if (horaPaso) registro.horaEvento = horaPaso;
+      if (pasoId === "compra") registro.resultado = resultadoCompra; // gusto / rechazo
+      recorrido[pasoId] = registro;
       const update = { recorrido };
-      // Si llegó al paso final (firma), lo marcamos como vendido
-      if (marcandoPaso.pasoId === "firma") {
-        update.estado = "vendido";
-        update.ventaEstado = "vendido";
-      }
+      // Firma final → vendido
+      if (pasoId === "firma") { update.estado = "vendido"; update.ventaEstado = "vendido"; }
+      // Compra rechazada → descartado
+      if (pasoId === "compra" && resultadoCompra === "rechazo") { update.estado = "descartado"; update.ventaEstado = "no_interesado"; }
       await updateDoc(doc(db, "comercial_datos", marcandoPaso.datoId), update);
-      setMarcandoPaso(null); setNotaPaso("");
-      // Actualizar el dato que se está editando en pantalla
-      if (editando && editando.id === marcandoPaso.datoId) {
-        setEditando({ ...editando, recorrido });
-      }
+      setMarcandoPaso(null); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra("");
+      if (editando && editando.id === marcandoPaso.datoId) setEditando({ ...editando, recorrido, ...update });
       cargar();
     } catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
@@ -484,16 +497,18 @@ export default function ComercialVentas() {
                     const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
                     const info = rec[paso.id];
                     const esSiguiente = !hecho && i === ultIdx + 1 && !paso.auto;
+                    const rechazado = paso.id === "compra" && info?.resultado === "rechazo";
                     return (
                       <div key={paso.id} style={styles.pasoRow}>
-                        <div style={{ ...styles.pasoIcono, ...(hecho ? styles.pasoIconoHecho : {}) }}>
-                          {hecho ? "✓" : paso.icono}
+                        <div style={{ ...styles.pasoIcono, ...(hecho ? styles.pasoIconoHecho : {}), ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}) }}>
+                          {rechazado ? "✕" : hecho ? "✓" : paso.icono}
                         </div>
                         <div style={styles.pasoInfo}>
-                          <div style={{ ...styles.pasoLabel, ...(hecho ? { color: "var(--text)", fontWeight: 700 } : {}) }}>{paso.label}</div>
+                          <div style={{ ...styles.pasoLabel, ...(hecho ? { color: "var(--text)", fontWeight: 700 } : {}) }}>{paso.label}{rechazado && " (rechazó)"}</div>
                           {info && (
                             <div style={styles.pasoDetalle}>
-                              {new Date(info.fecha).toLocaleDateString()} {info.nota && `· ${info.nota}`}
+                              {info.fechaEvento ? `📅 ${new Date(info.fechaEvento + "T00:00").toLocaleDateString()}${info.horaEvento ? " " + info.horaEvento + "hs" : ""}` : new Date(info.fecha).toLocaleDateString()}
+                              {info.nota && ` · ${info.nota}`}
                             </div>
                           )}
                         </div>
@@ -501,7 +516,7 @@ export default function ComercialVentas() {
                           hecho ? (
                             <button style={styles.pasoDeshacer} onClick={() => desmarcarPaso(editando, paso.id)} title="Deshacer">↩</button>
                           ) : esSiguiente ? (
-                            <button style={styles.pasoMarcar} onClick={() => { setMarcandoPaso({ datoId: editando.id, pasoId: paso.id }); setNotaPaso(""); }}>Marcar</button>
+                            <button style={styles.pasoMarcar} onClick={() => { setMarcandoPaso({ datoId: editando.id, pasoId: paso.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); }}>Marcar</button>
                           ) : null
                         )}
                       </div>
@@ -547,21 +562,68 @@ export default function ComercialVentas() {
       )}
 
       {/* Mini-modal: nota al marcar un paso del recorrido */}
-      {marcandoPaso && (
+      {marcandoPaso && (() => {
+        const pasoId = marcandoPaso.pasoId;
+        const paso = RECORRIDO.find(p => p.id === pasoId);
+        const pideFechaHora = pasoId === "visita" || pasoId === "firma_prog";
+        const esCompra = pasoId === "compra";
+        // Para el WhatsApp de firma programada
+        const dato = datos.find(d => d.id === marcandoPaso.datoId);
+        const msgWhats = plantillaWhats
+          .replace(/\{fecha\}/g, fechaPaso ? new Date(fechaPaso + "T00:00").toLocaleDateString() : "____")
+          .replace(/\{hora\}/g, horaPaso || "____")
+          .replace(/\{nombre\}/g, dato?.nombre || "");
+        return (
         <div style={styles.pasoOverlay} onClick={() => !guardando && setMarcandoPaso(null)}>
           <div style={styles.pasoModal} onClick={e => e.stopPropagation()}>
-            <div style={styles.pasoModalTitle}>
-              {RECORRIDO.find(p => p.id === marcandoPaso.pasoId)?.icono} {RECORRIDO.find(p => p.id === marcandoPaso.pasoId)?.label}
-            </div>
-            <div style={styles.pasoModalFecha}>📅 {new Date().toLocaleDateString()} (fecha de hoy)</div>
-            <textarea style={styles.pasoModalInput} rows={4} value={notaPaso} onChange={e => setNotaPaso(e.target.value)} placeholder="¿Qué pasó? (ej: coordinamos visita para el sábado 10hs)" autoFocus />
+            <div style={styles.pasoModalTitle}>{paso?.icono} {paso?.label}</div>
+
+            {esCompra && (
+              <div style={styles.compraRow}>
+                <button style={{ ...styles.compraBtn, ...(resultadoCompra === "gusto" ? styles.compraGusto : {}) }} onClick={() => setResultadoCompra("gusto")}>👍 Le gustó</button>
+                <button style={{ ...styles.compraBtn, ...(resultadoCompra === "rechazo" ? styles.compraRechazo : {}) }} onClick={() => setResultadoCompra("rechazo")}>👎 No le gustó</button>
+              </div>
+            )}
+
+            {(pideFechaHora || (esCompra && resultadoCompra === "gusto")) && (
+              <div style={styles.fechaHoraRow}>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.miniCampoLabel}>{esCompra ? "Fecha de reserva" : "Fecha"}</label>
+                  <input style={styles.miniCampoInput} type="date" value={fechaPaso} onChange={e => setFechaPaso(e.target.value)} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={styles.miniCampoLabel}>Horario</label>
+                  <input style={styles.miniCampoInput} type="time" value={horaPaso} onChange={e => setHoraPaso(e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            <label style={styles.miniCampoLabel}>Nota</label>
+            <textarea style={styles.pasoModalInput} rows={3} value={notaPaso} onChange={e => setNotaPaso(e.target.value)} placeholder={esCompra ? "¿Qué dijo el cliente?" : "¿Qué pasó?"} />
+
+            {pasoId === "firma_prog" && (
+              <a
+                style={{ ...styles.waEnviarBtn, ...((!fechaPaso) ? { opacity: 0.5, pointerEvents: "none" } : {}) }}
+                href={`https://wa.me/${String(dato?.numero || "").replace(/[^0-9]/g, "")}?text=${encodeURIComponent(msgWhats)}`}
+                target="_blank" rel="noreferrer"
+              >💬 Enviar aviso por WhatsApp</a>
+            )}
+
+            {pasoId === "reserva" && (
+              <div style={styles.reservaAviso}>📄 El formulario del boleto se habilita en el próximo paso del desarrollo.</div>
+            )}
+            {pasoId === "firma" && (
+              <div style={styles.reservaAviso}>📎 La subida del boleto firmado se habilita más adelante.</div>
+            )}
+
             <div style={styles.pasoModalActions}>
               <button style={styles.fsCancelBtn} onClick={() => setMarcandoPaso(null)} disabled={guardando}>Cancelar</button>
               <button style={styles.fsGuardarBtn} onClick={confirmarPaso} disabled={guardando}>{guardando ? "..." : "✓ Confirmar"}</button>
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -642,6 +704,15 @@ const styles = {
   pasoModal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "24px", maxWidth: "420px", width: "100%" },
   pasoModalTitle: { fontSize: "18px", fontWeight: "700", color: "var(--text)", marginBottom: "6px" },
   pasoModalFecha: { fontSize: "13px", color: "var(--text2)", marginBottom: "14px" },
+  compraRow: { display: "flex", gap: "10px", marginBottom: "16px" },
+  compraBtn: { flex: 1, padding: "14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text2)", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
+  compraGusto: { background: "#16a34a", color: "#fff", borderColor: "#16a34a" },
+  compraRechazo: { background: "#dc2626", color: "#fff", borderColor: "#dc2626" },
+  fechaHoraRow: { display: "flex", gap: "10px", marginBottom: "14px" },
+  miniCampoLabel: { display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text2)", marginBottom: "5px" },
+  miniCampoInput: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
+  waEnviarBtn: { display: "block", textAlign: "center", background: "#25d366", color: "#fff", textDecoration: "none", padding: "12px", borderRadius: "10px", fontSize: "14px", fontWeight: "700", marginTop: "12px" },
+  reservaAviso: { fontSize: "12px", color: "var(--text2)", fontStyle: "italic", marginTop: "12px", padding: "10px", background: "var(--surface)", borderRadius: "8px" },
   pasoModalInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "15px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" },
   pasoModalActions: { display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" },
   fsCampo: { marginBottom: "24px" },
