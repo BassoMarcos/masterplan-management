@@ -492,7 +492,7 @@ export default function ComercialVentas() {
                         const rechazado = paso.id === "compra" && rec[paso.id]?.resultado === "rechazo";
                         const esSiguiente = !hecho && i === ultIdx + 1 && !paso.auto;
                         const activa = etapaVerId === paso.id;
-                        const clickeable = puedeEditar && !paso.auto && (esSiguiente || hecho) || hecho;
+                        const clickeable = (puedeEditar && !paso.auto && (esSiguiente || hecho)) || hecho;
                         return (
                           <div key={paso.id} style={styles.progPasoWrap}>
                             {i > 0 && <div style={{ ...styles.progLinea, ...(i <= ultIdx ? styles.progLineaHecha : {}) }} />}
