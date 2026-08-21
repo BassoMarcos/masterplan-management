@@ -159,3 +159,29 @@ export function panelesVisiblesEmpleado(empleadoData, proyectoId, areaId) {
 export function uidEmpresaEfectivo(currentUser, empleadoData) {
   return empleadoData?.empresaId || currentUser?.uid || null;
 }
+
+// ───────────────────────────────────────────────────────────────
+// RECORRIDO DEL CONTACTO (Comercial → Ventas)
+// Las 8 etapas base. Las 3 primeras son automáticas y NO se tocan.
+// El admin puede agregar etapas nuevas (título + fecha/hora + nota), que se
+// guardan en comercial_config y se suman al final. Las base no se borran.
+// ───────────────────────────────────────────────────────────────
+export const RECORRIDO_BASE = [
+  { id: "contacto", label: "Contacto", icono: "📇", auto: true, base: true },
+  { id: "filtro", label: "Filtro", icono: "🔍", auto: true, base: true },
+  { id: "llamado", label: "Llamado", icono: "📞", auto: true, base: true },
+  { id: "visita", label: "Visita programada", icono: "📅", auto: false, base: true },
+  { id: "compra", label: "Compra confirmada", icono: "🤝", auto: false, base: true },
+  { id: "reserva", label: "Reserva", icono: "📝", auto: false, base: true },
+  { id: "firma_prog", label: "Firma programada", icono: "🗓️", auto: false, base: true },
+  { id: "firma", label: "Firma / Venta", icono: "✅", auto: false, base: true },
+];
+
+// Combina las etapas base con las personalizadas guardadas en la config.
+// etapasExtra: array de { id, label } guardado en comercial_config.recorridoExtra
+export function construirRecorrido(etapasExtra) {
+  const extra = Array.isArray(etapasExtra) ? etapasExtra.map(e => ({
+    id: e.id, label: e.label, icono: e.icono || "📌", auto: false, base: false,
+  })) : [];
+  return [...RECORRIDO_BASE, ...extra];
+}
