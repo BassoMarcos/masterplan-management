@@ -279,7 +279,6 @@ export default function ComercialDatos() {
                     <div style={styles.progBarra}>
                       {RECORRIDO.map((paso, i) => {
                         const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
-                        const info = rec[paso.id];
                         const activa = etapaAbierta === paso.id;
                         return (
                           <div key={paso.id} style={styles.progPasoWrap}>
