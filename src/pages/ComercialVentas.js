@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
-import { empleadoNivelPanel } from "../config/appConfig";
+import { empleadoNivelPanel, construirRecorrido } from "../config/appConfig";
 
 const ESTADOS_VENTA = [
   { id: "interesado", label: "Interesado", color: "#2563eb" },
@@ -16,17 +16,6 @@ const ESTADOS_VENTA = [
 
 // Recorrido del contacto: de conseguirlo hasta la firma.
 // Los 3 primeros son automáticos (se derivan del pipeline). Del 4º en adelante los marca el vendedor.
-const RECORRIDO = [
-  { id: "contacto", label: "Contacto", icono: "📇", auto: true },
-  { id: "filtro", label: "Filtro", icono: "🔍", auto: true },
-  { id: "llamado", label: "Llamado", icono: "📞", auto: true },
-  { id: "visita", label: "Visita programada", icono: "📅", auto: false },
-  { id: "compra", label: "Compra confirmada", icono: "🤝", auto: false },
-  { id: "reserva", label: "Reserva", icono: "📝", auto: false },
-  { id: "firma_prog", label: "Firma programada", icono: "🗓️", auto: false },
-  { id: "firma", label: "Firma / Venta", icono: "✅", auto: false },
-];
-
 // Calcula hasta qué paso automático llegó un dato según su estado del pipeline
 function pasosAutomaticos(d) {
   const hechos = { contacto: true }; // si existe el dato, ya hay contacto
@@ -49,6 +38,7 @@ export default function ComercialVentas() {
   const [empleados, setEmpleados] = useState([]);
   const [formulario, setFormulario] = useState([]);
   const [plantillaWhats, setPlantillaWhats] = useState("Hola {nombre}, te confirmo la firma para el {fecha} a las {hora} hs. ¡Cualquier cosa avisame!");
+  const [RECORRIDO, setRECORRIDO] = useState(construirRecorrido([]));
   const [loading, setLoading] = useState(true);
 
   const [selMode, setSelMode] = useState(false);
@@ -82,6 +72,7 @@ export default function ComercialVentas() {
       const snapCfg = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
       setFormulario(snapCfg.exists() && Array.isArray(snapCfg.data().preguntasFiltro) ? snapCfg.data().preguntasFiltro : []);
       if (snapCfg.exists() && snapCfg.data().plantillaWhatsFirma) setPlantillaWhats(snapCfg.data().plantillaWhatsFirma);
+      setRECORRIDO(construirRecorrido(snapCfg.exists() ? snapCfg.data().recorridoExtra : []));
 
       const q = query(collection(db, "comercial_datos"), where("empresaId", "==", empresaUid), where("proyectoId", "==", proyectoId));
       const snap = await getDocs(q);
