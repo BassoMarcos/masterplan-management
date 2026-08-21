@@ -6,6 +6,37 @@ import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc, serv
 import ThemeSelector from "../components/ThemeSelector";
 import { empleadoNivelPanel } from "../config/appConfig";
 
+// Etapas del recorrido del contacto (mismo orden que en Ventas)
+const RECORRIDO = [
+  { id: "contacto", label: "Contacto", auto: true },
+  { id: "filtro", label: "Filtro", auto: true },
+  { id: "llamado", label: "Llamado", auto: true },
+  { id: "visita", label: "Visita programada", auto: false },
+  { id: "compra", label: "Compra confirmada", auto: false },
+  { id: "reserva", label: "Reserva", auto: false },
+  { id: "firma_prog", label: "Firma programada", auto: false },
+  { id: "firma", label: "Firma / Venta", auto: false },
+];
+
+function pasosAutomaticos(d) {
+  const hechos = { contacto: true };
+  const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || ["filtrado", "en_venta", "vendido"].includes(d.estado);
+  if (filtrado) hechos.filtro = true;
+  if (d.ventaEstado || d.vendedorUid) hechos.llamado = true;
+  return hechos;
+}
+
+// Índice de la etapa actual (última alcanzada) de un dato
+function etapaActualIdx(d) {
+  const auto = pasosAutomaticos(d);
+  const rec = d.recorrido || {};
+  let idx = 0;
+  RECORRIDO.forEach((p, i) => {
+    if (p.auto ? auto[p.id] : rec[p.id]) idx = i;
+  });
+  return idx;
+}
+
 // Panel de DATOS (Comercial): los dateros cargan contactos crudos (nombre + número).
 // Cada dato guarda quién lo cargó. Estado inicial: "crudo".
 export default function ComercialDatos() {
@@ -19,6 +50,13 @@ export default function ComercialDatos() {
   const [nombre, setNombre] = useState("");
   const [numero, setNumero] = useState("");
   const [guardando, setGuardando] = useState(false);
+  // Filtros (admin)
+  const [fMes, setFMes] = useState("");        // "2026-08" o ""
+  const [fDatero, setFDatero] = useState("");  // uid o ""
+  const [fVendedor, setFVendedor] = useState(""); // uid o ""
+  const [fEtapa, setFEtapa] = useState("");    // id de etapa o ""
+  const [fFiltrado, setFFiltrado] = useState(""); // "si" / "no" / ""
+  const [orden, setOrden] = useState("fecha_desc"); // fecha_desc / fecha_asc
 
   // Permiso: si es empleado, ¿puede editar (cargar) o solo ver?
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "datos") : "editar";
@@ -95,6 +133,43 @@ export default function ComercialDatos() {
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
+  // ── Listas para los selects (a partir de los datos) ──
+  const dateros = [];
+  const vendedores = [];
+  const meses = [];
+  datos.forEach(d => {
+    if (d.cargadoPorUid && !dateros.find(x => x.uid === d.cargadoPorUid)) dateros.push({ uid: d.cargadoPorUid, nombre: d.cargadoPorNombre || "—" });
+    if (d.vendedorUid && !vendedores.find(x => x.uid === d.vendedorUid)) vendedores.push({ uid: d.vendedorUid, nombre: d.vendedorNombre || "—" });
+    if (d.creadoMs) {
+      const dt = new Date(d.creadoMs);
+      const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+      if (!meses.find(m => m.key === key)) meses.push({ key, label: dt.toLocaleDateString("es-AR", { month: "long", year: "numeric" }) });
+    }
+  });
+  meses.sort((a, b) => b.key.localeCompare(a.key));
+
+  // ── Aplicar filtros ──
+  let datosFiltrados = esAdmin ? [...datos] : datos.filter(d => d.cargadoPorUid === currentUser.uid);
+  if (fMes) datosFiltrados = datosFiltrados.filter(d => {
+    if (!d.creadoMs) return false;
+    const dt = new Date(d.creadoMs);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}` === fMes;
+  });
+  if (fDatero) datosFiltrados = datosFiltrados.filter(d => d.cargadoPorUid === fDatero);
+  if (fVendedor) datosFiltrados = datosFiltrados.filter(d => d.vendedorUid === fVendedor);
+  if (fFiltrado === "si") datosFiltrados = datosFiltrados.filter(d => pasosAutomaticos(d).filtro);
+  if (fFiltrado === "no") datosFiltrados = datosFiltrados.filter(d => !pasosAutomaticos(d).filtro);
+  if (fEtapa) datosFiltrados = datosFiltrados.filter(d => {
+    const idxActual = etapaActualIdx(d);
+    const idxEtapa = RECORRIDO.findIndex(p => p.id === fEtapa);
+    return idxActual === idxEtapa;
+  });
+  // Orden
+  datosFiltrados.sort((a, b) => orden === "fecha_asc" ? (a.creadoMs || 0) - (b.creadoMs || 0) : (b.creadoMs || 0) - (a.creadoMs || 0));
+
+  const hayFiltro = fMes || fDatero || fVendedor || fEtapa || fFiltrado;
+  function limpiarFiltros() { setFMes(""); setFDatero(""); setFVendedor(""); setFEtapa(""); setFFiltrado(""); }
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -123,12 +198,48 @@ export default function ComercialDatos() {
           </div>
         )}
 
+        {/* Filtros (admin) */}
+        {esAdmin && (
+          <div style={styles.filtrosBox}>
+            <div style={styles.filtrosRow}>
+              <select style={styles.filtroSelect} value={fMes} onChange={e => setFMes(e.target.value)}>
+                <option value="">Todos los meses</option>
+                {meses.map(m => <option key={m.key} value={m.key}>{m.label}</option>)}
+              </select>
+              <select style={styles.filtroSelect} value={fDatero} onChange={e => setFDatero(e.target.value)}>
+                <option value="">Todos los dateros</option>
+                {dateros.map(d => <option key={d.uid} value={d.uid}>{d.nombre}</option>)}
+              </select>
+              <select style={styles.filtroSelect} value={fVendedor} onChange={e => setFVendedor(e.target.value)}>
+                <option value="">Todos los vendedores</option>
+                {vendedores.map(v => <option key={v.uid} value={v.uid}>{v.nombre}</option>)}
+              </select>
+              <select style={styles.filtroSelect} value={fFiltrado} onChange={e => setFFiltrado(e.target.value)}>
+                <option value="">Filtrado: todos</option>
+                <option value="si">Solo filtrados</option>
+                <option value="no">Sin filtrar</option>
+              </select>
+              <select style={styles.filtroSelect} value={fEtapa} onChange={e => setFEtapa(e.target.value)}>
+                <option value="">Todas las etapas</option>
+                {RECORRIDO.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+              </select>
+              <select style={styles.filtroSelect} value={orden} onChange={e => setOrden(e.target.value)}>
+                <option value="fecha_desc">Más nuevos primero</option>
+                <option value="fecha_asc">Más viejos primero</option>
+              </select>
+              {hayFiltro && <button style={styles.limpiarBtn} onClick={limpiarFiltros}>✕ Limpiar</button>}
+            </div>
+          </div>
+        )}
+
         <div style={styles.listaHeader}>
-          <span style={styles.listaTitulo}>Datos cargados ({datos.length})</span>
+          <span style={styles.listaTitulo}>
+            {hayFiltro ? "Resultado" : "Datos cargados"} ({datosFiltrados.length}{hayFiltro ? ` de ${esAdmin ? datos.length : datos.filter(d => d.cargadoPorUid === currentUser.uid).length}` : ""})
+          </span>
         </div>
 
-        {datos.length === 0 ? (
-          <p style={styles.empty}>Todavía no hay datos cargados.</p>
+        {datosFiltrados.length === 0 ? (
+          <p style={styles.empty}>{hayFiltro ? "No hay datos que coincidan con el filtro." : "Todavía no hay datos cargados."}</p>
         ) : (
           <div style={styles.tabla}>
             <div style={styles.theadRow}>
@@ -138,7 +249,7 @@ export default function ComercialDatos() {
               {esAdmin && <div style={{ ...styles.th, flex: 1.5 }}>Cargado por</div>}
               <div style={{ ...styles.th, flex: 0.6, textAlign: "right" }}></div>
             </div>
-            {datos.map(d => (
+            {datosFiltrados.map(d => (
               <div key={d.id} style={styles.trow}>
                 <div style={{ ...styles.td, flex: 2, fontWeight: 600 }}>{d.nombre}</div>
                 <div style={{ ...styles.td, flex: 1.5 }}>{d.numero}</div>
@@ -174,6 +285,10 @@ const styles = {
   input: { flex: 1, minWidth: "140px", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
   addBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
   listaHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" },
+  filtrosBox: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "14px", marginBottom: "16px" },
+  filtrosRow: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" },
+  filtroSelect: { padding: "8px 10px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", cursor: "pointer" },
+  limpiarBtn: { background: "transparent", border: "1.5px solid var(--border2)", color: "var(--text2)", padding: "8px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   listaTitulo: { fontSize: "15px", fontWeight: "700", color: "var(--text)" },
   empty: { color: "var(--text2)", fontSize: "14px" },
   tabla: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", overflow: "hidden" },
