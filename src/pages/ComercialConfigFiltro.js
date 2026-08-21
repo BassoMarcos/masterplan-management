@@ -22,9 +22,6 @@ export default function ComercialConfigFiltro() {
 
   const [proyecto, setProyecto] = useState(null);
   const [preguntas, setPreguntas] = useState([]);
-  const [etapasExtra, setEtapasExtra] = useState([]);
-  const [nuevaEtapa, setNuevaEtapa] = useState("");
-  const [plantillaWhats, setPlantillaWhats] = useState("Hola {nombre}, te confirmo la firma para el {fecha} a las {hora} hs. ¡Cualquier cosa avisame!");
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [guardadoOk, setGuardadoOk] = useState(false);
@@ -47,8 +44,6 @@ export default function ComercialConfigFiltro() {
       } else {
         setPreguntas([]);
       }
-      if (snap.exists() && Array.isArray(snap.data().recorridoExtra)) setEtapasExtra(snap.data().recorridoExtra);
-      if (snap.exists() && snap.data().plantillaWhatsFirma) setPlantillaWhats(snap.data().plantillaWhatsFirma);
     } catch (e) {
       console.error(e);
     }
@@ -56,16 +51,6 @@ export default function ComercialConfigFiltro() {
   }, [proyectoId, empresaUid, navigate]);
 
   useEffect(() => { cargar(); }, [cargar]);
-
-  function agregarEtapa() {
-    const t = nuevaEtapa.trim();
-    if (!t) return;
-    setEtapasExtra([...etapasExtra, { id: "et_" + Date.now(), label: t, icono: "📌" }]);
-    setNuevaEtapa("");
-  }
-  function quitarEtapa(id) {
-    setEtapasExtra(etapasExtra.filter(e => e.id !== id));
-  }
 
   function nuevaPregunta() {
     setPreguntas([...preguntas, {
@@ -122,8 +107,6 @@ export default function ComercialConfigFiltro() {
         empresaId: empresaUid,
         proyectoId,
         preguntasFiltro: preguntas,
-        recorridoExtra: etapasExtra,
-        plantillaWhatsFirma: plantillaWhats,
         actualizadoEn: new Date().toISOString(),
       }, { merge: true });
       setGuardadoOk(true);
@@ -237,45 +220,6 @@ export default function ComercialConfigFiltro() {
             </label>
           </div>
         ))}
-
-        {/* Etapas del recorrido */}
-        <div style={styles.bloqueExtra}>
-          <div style={styles.bloqueTitulo}>🛤️ Etapas del recorrido</div>
-          <div style={styles.bloqueHint}>Las 8 etapas base vienen fijas. Podés agregar etapas propias al final (piden fecha/hora y nota al marcarlas).</div>
-          <div style={styles.etapasBase}>
-            <span style={styles.etapaBaseTag}>📇 Contacto</span>
-            <span style={styles.etapaBaseTag}>🔍 Filtro</span>
-            <span style={styles.etapaBaseTag}>📞 Llamado</span>
-            <span style={styles.etapaBaseTag}>📅 Visita programada</span>
-            <span style={styles.etapaBaseTag}>🤝 Compra confirmada</span>
-            <span style={styles.etapaBaseTag}>📝 Reserva</span>
-            <span style={styles.etapaBaseTag}>🗓️ Firma programada</span>
-            <span style={styles.etapaBaseTag}>✅ Firma / Venta</span>
-          </div>
-          {etapasExtra.length > 0 && (
-            <div style={styles.etapasExtraLista}>
-              {etapasExtra.map(e => (
-                <div key={e.id} style={styles.etapaExtraItem}>
-                  <span>📌 {e.label}</span>
-                  {puedeEditar && <button style={styles.etapaQuitar} onClick={() => quitarEtapa(e.id)}>✕</button>}
-                </div>
-              ))}
-            </div>
-          )}
-          {puedeEditar && (
-            <div style={styles.etapaAgregarRow}>
-              <input style={styles.etapaInput} placeholder="Nueva etapa (ej: Seguimiento post-venta)" value={nuevaEtapa} onChange={e => setNuevaEtapa(e.target.value)} onKeyDown={e => e.key === "Enter" && agregarEtapa()} />
-              <button style={styles.etapaAddBtn} onClick={agregarEtapa}>Agregar etapa</button>
-            </div>
-          )}
-        </div>
-
-        {/* Plantilla de WhatsApp para firma programada */}
-        <div style={styles.bloqueExtra}>
-          <div style={styles.bloqueTitulo}>💬 Mensaje de WhatsApp (firma programada)</div>
-          <div style={styles.bloqueHint}>Este mensaje se envía al confirmar la firma. Usá {"{nombre}"}, {"{fecha}"} y {"{hora}"} — se reemplazan solos.</div>
-          <textarea style={styles.whatsInput} rows={3} value={plantillaWhats} onChange={e => setPlantillaWhats(e.target.value)} disabled={!puedeEditar} />
-        </div>
 
         {puedeEditar && (
           <div style={styles.acciones}>
