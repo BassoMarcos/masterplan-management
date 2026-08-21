@@ -73,8 +73,15 @@ export default function ComercialHub() {
           <p style={styles.empty}>No tenés secciones habilitadas en Comercial.</p>
         ) : (
           <>
-            <div style={styles.grupoTitulo}>📈 Estrategia de Ventas</div>
-            <div style={styles.grupoDesc}>Pipeline de captación: datos, filtrado y ventas.</div>
+            <div style={styles.grupoHeader}>
+              <div>
+                <div style={styles.grupoTitulo}>📈 Estrategia de Ventas</div>
+                <div style={styles.grupoDesc}>Pipeline de captación: datos, filtrado y ventas.</div>
+              </div>
+              {!esEmpleado && (
+                <button style={styles.configEstBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/config_estrategia`)}>⚙️ Configuración</button>
+              )}
+            </div>
             <div style={styles.grid}>
               {paneles.map(p => {
                 const info = PANEL_INFO[p.id] || { icono: "📋", desc: "" };
@@ -108,8 +115,10 @@ const styles = {
   headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "900px", margin: "0 auto", padding: "32px 24px" },
+  grupoHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap", marginBottom: "18px" },
   grupoTitulo: { fontSize: "18px", fontWeight: "800", color: "var(--text)", marginBottom: "4px" },
-  grupoDesc: { fontSize: "13px", color: "var(--text2)", marginBottom: "18px" },
+  grupoDesc: { fontSize: "13px", color: "var(--text2)" },
+  configEstBtn: { background: "transparent", border: "1.5px solid var(--border2)", color: "var(--text)", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" },
   card: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "24px 20px", cursor: "pointer", transition: "transform 0.2s", textAlign: "center" },
   cardIcon: { fontSize: "40px", marginBottom: "10px" },
