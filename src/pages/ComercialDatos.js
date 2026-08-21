@@ -4,20 +4,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
-import { empleadoNivelPanel } from "../config/appConfig";
+import { empleadoNivelPanel, construirRecorrido } from "../config/appConfig";
 
 // Etapas del recorrido del contacto (mismo orden que en Ventas)
-const RECORRIDO = [
-  { id: "contacto", label: "Contacto", auto: true },
-  { id: "filtro", label: "Filtro", auto: true },
-  { id: "llamado", label: "Llamado", auto: true },
-  { id: "visita", label: "Visita programada", auto: false },
-  { id: "compra", label: "Compra confirmada", auto: false },
-  { id: "reserva", label: "Reserva", auto: false },
-  { id: "firma_prog", label: "Firma programada", auto: false },
-  { id: "firma", label: "Firma / Venta", auto: false },
-];
-
 function pasosAutomaticos(d) {
   const hechos = { contacto: true };
   const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || ["filtrado", "en_venta", "vendido"].includes(d.estado);
@@ -26,12 +15,12 @@ function pasosAutomaticos(d) {
   return hechos;
 }
 
-// Índice de la etapa actual (última alcanzada) de un dato
-function etapaActualIdx(d) {
+// Índice de la etapa actual (última alcanzada) de un dato, según el recorrido dado
+function etapaActualIdx(d, recorrido) {
   const auto = pasosAutomaticos(d);
   const rec = d.recorrido || {};
   let idx = 0;
-  RECORRIDO.forEach((p, i) => {
+  recorrido.forEach((p, i) => {
     if (p.auto ? auto[p.id] : rec[p.id]) idx = i;
   });
   return idx;
@@ -58,6 +47,7 @@ export default function ComercialDatos() {
   const [fFiltrado, setFFiltrado] = useState(""); // "si" / "no" / ""
   const [orden, setOrden] = useState("fecha_desc"); // fecha_desc / fecha_asc
   const [expandido, setExpandido] = useState(null); // id del dato expandido
+  const [RECORRIDO, setRECORRIDO] = useState(construirRecorrido([]));
   const [etapaAbierta, setEtapaAbierta] = useState(null); // id de etapa con informe abierto
 
   // Permiso: si es empleado, ¿puede editar (cargar) o solo ver?
@@ -89,6 +79,9 @@ export default function ComercialDatos() {
         lista = lista.filter(d => d.cargadoPorUid === currentUser.uid);
       }
       setDatos(lista);
+      // Recorrido personalizado desde la config del proyecto
+      const snapCfg = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
+      setRECORRIDO(construirRecorrido(snapCfg.exists() ? snapCfg.data().recorridoExtra : []));
     } catch (e) {
       console.error(e);
     }
@@ -162,7 +155,7 @@ export default function ComercialDatos() {
   if (fFiltrado === "si") datosFiltrados = datosFiltrados.filter(d => pasosAutomaticos(d).filtro);
   if (fFiltrado === "no") datosFiltrados = datosFiltrados.filter(d => !pasosAutomaticos(d).filtro);
   if (fEtapa) datosFiltrados = datosFiltrados.filter(d => {
-    const idxActual = etapaActualIdx(d);
+    const idxActual = etapaActualIdx(d, RECORRIDO);
     const idxEtapa = RECORRIDO.findIndex(p => p.id === fEtapa);
     return idxActual === idxEtapa;
   });
@@ -255,7 +248,7 @@ export default function ComercialDatos() {
               const abierto = expandido === d.id;
               const auto = pasosAutomaticos(d);
               const rec = d.recorrido || {};
-              const idxActual = etapaActualIdx(d);
+              const idxActual = etapaActualIdx(d, RECORRIDO);
               return (
               <div key={d.id}>
                 <div style={{ ...styles.trow, cursor: "pointer", ...(abierto ? { background: "var(--surface)" } : {}) }}
