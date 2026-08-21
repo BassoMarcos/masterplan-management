@@ -56,6 +56,7 @@ export default function ComercialVentas() {
   const [fechaPaso, setFechaPaso] = useState("");
   const [horaPaso, setHoraPaso] = useState("");
   const [resultadoCompra, setResultadoCompra] = useState(""); // "gusto" / "rechazo"
+  const [etapaVerId, setEtapaVerId] = useState(null); // etapa cuyo informe se muestra
   const [guardando, setGuardando] = useState(false);
 
   const esAdmin = !esEmpleado || empleadoData?.accesoTotal;
@@ -477,42 +478,73 @@ export default function ComercialVentas() {
                 );
               })()}
 
-              {/* Recorrido del contacto */}
+              {/* Recorrido del contacto (horizontal, interactivo) */}
               <div style={styles.recorridoBox}>
                 <div style={styles.recorridoTitulo}>🛤️ Recorrido del contacto</div>
                 {(() => {
                   const auto = pasosAutomaticos(editando);
                   const rec = editando.recorrido || {};
                   const ultIdx = ultimoPasoIdx(editando);
-                  return RECORRIDO.map((paso, i) => {
-                    const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
-                    const info = rec[paso.id];
-                    const esSiguiente = !hecho && i === ultIdx + 1 && !paso.auto;
-                    const rechazado = paso.id === "compra" && info?.resultado === "rechazo";
-                    return (
-                      <div key={paso.id} style={styles.pasoRow}>
-                        <div style={{ ...styles.pasoIcono, ...(hecho ? styles.pasoIconoHecho : {}), ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}) }}>
-                          {rechazado ? "✕" : hecho ? "✓" : paso.icono}
-                        </div>
-                        <div style={styles.pasoInfo}>
-                          <div style={{ ...styles.pasoLabel, ...(hecho ? { color: "var(--text)", fontWeight: 700 } : {}) }}>{paso.label}{rechazado && " (rechazó)"}</div>
-                          {info && (
-                            <div style={styles.pasoDetalle}>
-                              {info.fechaEvento ? `📅 ${new Date(info.fechaEvento + "T00:00").toLocaleDateString()}${info.horaEvento ? " " + info.horaEvento + "hs" : ""}` : new Date(info.fecha).toLocaleDateString()}
-                              {info.nota && ` · ${info.nota}`}
-                            </div>
-                          )}
-                        </div>
+                  return (
+                    <div style={styles.progBarra}>
+                      {RECORRIDO.map((paso, i) => {
+                        const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
+                        const rechazado = paso.id === "compra" && rec[paso.id]?.resultado === "rechazo";
+                        const esSiguiente = !hecho && i === ultIdx + 1 && !paso.auto;
+                        const activa = etapaVerId === paso.id;
+                        const clickeable = puedeEditar && !paso.auto && (esSiguiente || hecho) || hecho;
+                        return (
+                          <div key={paso.id} style={styles.progPasoWrap}>
+                            {i > 0 && <div style={{ ...styles.progLinea, ...(i <= ultIdx ? styles.progLineaHecha : {}) }} />}
+                            <button
+                              style={{
+                                ...styles.progPunto,
+                                ...(hecho ? styles.progPuntoHecho : {}),
+                                ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}),
+                                ...(activa ? styles.progPuntoActivo : {}),
+                                ...(esSiguiente ? styles.progPuntoSiguiente : {}),
+                                ...(clickeable ? { cursor: "pointer" } : { cursor: "default" }),
+                              }}
+                              onClick={() => {
+                                if (esSiguiente && puedeEditar) {
+                                  setMarcandoPaso({ datoId: editando.id, pasoId: paso.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra("");
+                                } else if (hecho) {
+                                  setEtapaVerId(activa ? null : paso.id);
+                                }
+                              }}
+                              title={paso.label}
+                            >
+                              {rechazado ? "✕" : hecho ? "✓" : i + 1}
+                            </button>
+                            <div style={styles.progLabel}>{paso.label}</div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Informe / acción de la etapa tocada */}
+                {etapaVerId && (() => {
+                  const paso = RECORRIDO.find(p => p.id === etapaVerId);
+                  const info = (editando.recorrido || {})[etapaVerId];
+                  if (!info) return null;
+                  return (
+                    <div style={styles.etapaInforme}>
+                      <div style={styles.etapaInformeTop}>
+                        <div style={styles.etapaInformeTitulo}>{paso?.icono} {paso?.label}</div>
                         {puedeEditar && !paso.auto && (
-                          hecho ? (
-                            <button style={styles.pasoDeshacer} onClick={() => desmarcarPaso(editando, paso.id)} title="Deshacer">↩</button>
-                          ) : esSiguiente ? (
-                            <button style={styles.pasoMarcar} onClick={() => { setMarcandoPaso({ datoId: editando.id, pasoId: paso.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); }}>Marcar</button>
-                          ) : null
+                          <button style={styles.pasoDeshacer} onClick={() => { desmarcarPaso(editando, etapaVerId); setEtapaVerId(null); }} title="Deshacer">↩ Deshacer</button>
                         )}
                       </div>
-                    );
-                  });
+                      <div style={styles.etapaInformeFecha}>
+                        {info.fechaEvento ? `📅 ${new Date(info.fechaEvento + "T00:00").toLocaleDateString()}${info.horaEvento ? " · " + info.horaEvento + "hs" : ""}` : `📅 ${new Date(info.fecha).toLocaleDateString()}`}
+                        {info.resultado === "rechazo" && " · ❌ No le gustó"}
+                        {info.resultado === "gusto" && " · 👍 Le gustó"}
+                      </div>
+                      {info.nota && <div style={styles.etapaInformeNota}>{info.nota}</div>}
+                    </div>
+                  );
                 })()}
               </div>
 
@@ -683,6 +715,20 @@ const styles = {
   reporteTitulo: { fontSize: "16px", fontWeight: "700", color: "var(--text)", marginBottom: "16px" },
   recorridoBox: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "24px" },
   recorridoTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "14px" },
+  progBarra: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", overflowX: "auto", paddingBottom: "8px" },
+  progPasoWrap: { display: "flex", flexDirection: "column", alignItems: "center", position: "relative", flex: 1, minWidth: "72px" },
+  progLinea: { position: "absolute", top: "18px", right: "50%", width: "100%", height: "3px", background: "var(--border)", zIndex: 0 },
+  progLineaHecha: { background: "#16a34a" },
+  progPunto: { width: "38px", height: "38px", borderRadius: "50%", border: "2px solid var(--border)", background: "var(--bg)", color: "var(--text2)", fontSize: "14px", fontWeight: "700", zIndex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" },
+  progPuntoHecho: { background: "#16a34a", borderColor: "#16a34a", color: "#fff" },
+  progPuntoActivo: { boxShadow: "0 0 0 3px rgba(37,99,235,0.4)", borderColor: "#2563eb" },
+  progPuntoSiguiente: { borderColor: "#2563eb", borderStyle: "dashed", color: "#2563eb", boxShadow: "0 0 0 3px rgba(37,99,235,0.15)" },
+  progLabel: { fontSize: "10.5px", color: "var(--text2)", textAlign: "center", marginTop: "6px", lineHeight: "1.2", maxWidth: "74px" },
+  etapaInforme: { marginTop: "16px", background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "10px", padding: "14px" },
+  etapaInformeTop: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" },
+  etapaInformeTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)" },
+  etapaInformeFecha: { fontSize: "12.5px", color: "var(--text2)", marginBottom: "6px" },
+  etapaInformeNota: { fontSize: "14px", color: "var(--text)", lineHeight: "1.5" },
   pasoRow: { display: "flex", alignItems: "center", gap: "12px", padding: "8px 0", borderBottom: "1px solid var(--border)" },
   pasoIcono: { width: "34px", height: "34px", borderRadius: "50%", background: "var(--bg)", border: "1.5px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "15px", flexShrink: 0 },
   pasoIconoHecho: { background: "#16a34a", borderColor: "#16a34a", color: "#fff", fontWeight: 700 },
