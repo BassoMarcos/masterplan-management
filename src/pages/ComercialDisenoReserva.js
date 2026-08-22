@@ -73,6 +73,14 @@ export default function ComercialDisenoReserva() {
     setCampos([...campos, { id, label: "Nuevo campo", tipo, x: 20, y: snap(maxY), w: 340, opciones: [] }]);
     setSeleccionado(id);
   }
+  function agregarBloqueTitular() {
+    // Evitar más de un bloque de titular (se repite en el llenado, no en el diseño)
+    if (campos.some(c => c.tipo === "titular")) { alert("Ya hay un bloque de titular. Al llenar el formulario se puede repetir con el botón 'Agregar titular'."); return; }
+    const id = "tit_" + Date.now();
+    const maxY = campos.reduce((m, c) => Math.max(m, c.y + 60), 20);
+    setCampos([...campos, { id, label: "Datos del titular", tipo: "titular", x: 20, y: snap(maxY), w: 480, opciones: [] }]);
+    setSeleccionado(id);
+  }
   function actualizarCampo(id, patch) {
     setCampos(campos.map(c => c.id === id ? { ...c, ...patch } : c));
   }
@@ -164,19 +172,24 @@ export default function ComercialDisenoReserva() {
                 <button key={t.id} style={styles.tipoBtn} onClick={() => agregarCampo(t.id)}>{t.icono} {t.label}</button>
               ))}
             </div>
+            <button style={styles.titularBtn} onClick={agregarBloqueTitular}>👤 Bloque de titular (repetible)</button>
 
             <div style={styles.sep} />
 
             {campoSel ? (
               <>
-                <div style={styles.panelTit}>Editar campo</div>
-                <label style={styles.lbl}>Etiqueta</label>
-                <input style={styles.inp} value={campoSel.label} onChange={e => actualizarCampo(campoSel.id, { label: e.target.value })} />
+                <div style={styles.panelTit}>Editar {campoSel.tipo === "titular" ? "bloque titular" : "campo"}</div>
+                {campoSel.tipo !== "titular" && (
+                  <>
+                    <label style={styles.lbl}>Etiqueta</label>
+                    <input style={styles.inp} value={campoSel.label} onChange={e => actualizarCampo(campoSel.id, { label: e.target.value })} />
 
-                <label style={styles.lbl}>Tipo</label>
-                <select style={styles.inp} value={campoSel.tipo} onChange={e => actualizarCampo(campoSel.id, { tipo: e.target.value })}>
-                  {TIPOS_CAMPO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                </select>
+                    <label style={styles.lbl}>Tipo</label>
+                    <select style={styles.inp} value={campoSel.tipo} onChange={e => actualizarCampo(campoSel.id, { tipo: e.target.value })}>
+                      {TIPOS_CAMPO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+                    </select>
+                  </>
+                )}
 
                 <label style={styles.lbl}>Ancho</label>
                 <div style={styles.anchoRow}>
@@ -207,12 +220,28 @@ export default function ComercialDisenoReserva() {
             {campos.map(c => (
               <div
                 key={c.id}
-                style={{ ...styles.campo, left: c.x, top: c.y, width: c.w, ...(seleccionado === c.id ? styles.campoSel : {}) }}
+                style={{ ...styles.campo, left: c.x, top: c.y, width: c.w, ...(c.tipo === "titular" ? styles.campoTitular : {}), ...(seleccionado === c.id ? styles.campoSel : {}) }}
                 onMouseDown={e => onDragStart(e, c)}
                 onTouchStart={e => onDragStart(e, c)}
               >
-                <span style={styles.campoLabel}>{c.label}:</span>
-                <span style={styles.campoLinea}>{tipoPlaceholder(c.tipo)}</span>
+                {c.tipo === "titular" ? (
+                  <div style={{ width: "100%" }}>
+                    <div style={styles.titularHead}>👤 Titular <span style={styles.titularHint}>(se repite al llenar)</span></div>
+                    <div style={styles.titularGrid}>
+                      {tituladoresLabels.map((lb, i) => (
+                        <div key={i} style={styles.titularCampo}>
+                          <span style={styles.campoLabel}>{lb}:</span>
+                          <span style={styles.campoLineaMini} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <span style={styles.campoLabel}>{c.label}:</span>
+                    <span style={styles.campoLinea}>{tipoPlaceholder(c.tipo)}</span>
+                  </>
+                )}
               </div>
             ))}
             {campos.length === 0 && <div style={styles.hojaVacia}>Agregá campos desde el panel de la izquierda y acomodalos acá.</div>}
@@ -260,5 +289,12 @@ const styles = {
   campoSel: { outline: "2px solid #2563eb", background: "rgba(37,99,235,0.06)" },
   campoLabel: { fontWeight: "700", color: "#111", whiteSpace: "nowrap" },
   campoLinea: { flex: 1, color: "#999", borderBottom: "1px solid #333", minWidth: "60px", minHeight: "18px", paddingLeft: "4px", fontSize: "12px" },
+  titularBtn: { width: "100%", marginTop: "8px", background: "var(--surface)", border: "1.5px solid var(--acc)", color: "var(--text)", padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "12.5px", fontWeight: "700" },
+  campoTitular: { border: "1.5px dashed #888", borderRadius: "6px", padding: "10px", background: "rgba(0,0,0,0.02)" },
+  titularHead: { fontSize: "13px", fontWeight: "800", color: "#111", marginBottom: "8px" },
+  titularHint: { fontSize: "10px", fontWeight: "400", color: "#999" },
+  titularGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px" },
+  titularCampo: { display: "flex", alignItems: "baseline", gap: "4px", fontSize: "12px" },
+  campoLineaMini: { flex: 1, borderBottom: "1px solid #333", minWidth: "30px", minHeight: "14px" },
   hojaVacia: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", color: "#aaa", fontSize: "14px", textAlign: "center", width: "80%" },
 };
