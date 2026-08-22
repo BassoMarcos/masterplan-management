@@ -224,11 +224,10 @@ export default function ComercialDisenoReserva() {
 }
 
 function tipoPlaceholder(tipo) {
-  if (tipo === "monto") return "$ __________";
+  if (tipo === "monto") return "$";
   if (tipo === "fecha") return "__/__/____";
   if (tipo === "sino") return "Sí / No";
-  if (tipo === "numero") return "________";
-  return "________________";
+  return "";
 }
 
 const styles = {
@@ -257,9 +256,9 @@ const styles = {
   hojaWrap: { flex: 1, minWidth: "320px", overflowX: "auto", display: "flex", justifyContent: "center" },
   hoja: { position: "relative", background: "#ffffff", color: "#111", borderRadius: "4px", boxShadow: "0 4px 24px rgba(0,0,0,0.25)", backgroundImage: "radial-gradient(circle, #e5e5e5 1px, transparent 1px)", backgroundSize: `${GRID}px ${GRID}px`, flexShrink: 0 },
   tituloInput: { position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", textAlign: "center", fontSize: "20px", fontWeight: "800", border: "none", borderBottom: "1px dashed transparent", background: "transparent", color: "#111", width: "70%", outline: "none" },
-  campo: { position: "absolute", display: "flex", alignItems: "baseline", gap: "6px", cursor: "grab", padding: "4px 6px", borderRadius: "4px", userSelect: "none", fontSize: "13px", marginTop: "50px" },
+  campo: { position: "absolute", display: "flex", alignItems: "baseline", gap: "6px", cursor: "grab", padding: "6px 8px", borderRadius: "4px", userSelect: "none", fontSize: "13px", marginTop: "50px" },
   campoSel: { outline: "2px solid #2563eb", background: "rgba(37,99,235,0.06)" },
   campoLabel: { fontWeight: "700", color: "#111", whiteSpace: "nowrap" },
-  campoLinea: { flex: 1, color: "#888", borderBottom: "1px solid #333", minWidth: "60px" },
+  campoLinea: { flex: 1, color: "#999", borderBottom: "1px solid #333", minWidth: "60px", minHeight: "18px", paddingLeft: "4px", fontSize: "12px" },
   hojaVacia: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", color: "#aaa", fontSize: "14px", textAlign: "center", width: "80%" },
 };
