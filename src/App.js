@@ -13,6 +13,7 @@ import ComercialHub from "./pages/ComercialHub";
 import ComercialDatos from "./pages/ComercialDatos";
 import ComercialConfigFiltro from "./pages/ComercialConfigFiltro";
 import ComercialConfigEstrategia from "./pages/ComercialConfigEstrategia";
+import ComercialDisenoReserva from "./pages/ComercialDisenoReserva";
 import ComercialFiltrado from "./pages/ComercialFiltrado";
 import ComercialVentas from "./pages/ComercialVentas";
 import SuperAdmin from "./pages/SuperAdmin";
@@ -150,6 +151,7 @@ function AppRoutes() {
       <Route path="/proyecto/:proyectoId/comercial/datos" element={<PrivateRoute><ComercialDatos /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/config_filtro" element={<PrivateRoute><ComercialConfigFiltro /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/config_estrategia" element={<PrivateRoute><ComercialConfigEstrategia /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/comercial/diseno_reserva" element={<PrivateRoute><ComercialDisenoReserva /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/filtrado" element={<PrivateRoute><ComercialFiltrado /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/ventas" element={<PrivateRoute><ComercialVentas /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
