@@ -57,7 +57,7 @@ export default function ComercialVentas() {
   const [horaPaso, setHoraPaso] = useState("");
   const [resultadoCompra, setResultadoCompra] = useState(""); // "gusto" / "rechazo"
   const [expandido, setExpandido] = useState(null); // contacto con recorrido desplegado
-  const [etapaAbierta, setEtapaAbierta] = useState(null); // etapa con informe abierto en la lista
+  const [etapaAbierta, setEtapaAbierta] = useState(null); // {datoId, pasoId} de la etapa abierta en modal
   const [guardando, setGuardando] = useState(false);
 
   const esAdmin = !esEmpleado || empleadoData?.accesoTotal;
@@ -307,13 +307,13 @@ export default function ComercialVentas() {
               {RECORRIDO.map((paso, i) => {
                 const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
                 const rechazado = paso.id === "compra" && rec[paso.id]?.resultado === "rechazo";
-                const activa = etapaAbierta === paso.id;
+                const activa = etapaAbierta && etapaAbierta.datoId === d.id && etapaAbierta.pasoId === paso.id;
                 return (
                   <div key={paso.id} style={styles.progPasoWrap}>
                     {i > 0 && <div style={{ ...styles.progLinea, ...(i <= ultIdx ? styles.progLineaHecha : {}) }} />}
                     <button
                       style={{ ...styles.progPunto, ...(hecho ? styles.progPuntoHecho : {}), ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}), ...(activa ? styles.progPuntoActivo : {}) }}
-                      onClick={() => setEtapaAbierta(activa ? null : paso.id)}
+                      onClick={() => setEtapaAbierta({ datoId: d.id, pasoId: paso.id })}
                       title={paso.label}
                     >
                       {rechazado ? "✕" : hecho ? "✓" : i + 1}
@@ -324,55 +324,6 @@ export default function ComercialVentas() {
               })}
             </div>
 
-            {etapaAbierta && (() => {
-              const paso = RECORRIDO.find(p => p.id === etapaAbierta);
-              const info = rec[etapaAbierta];
-              const hecho = paso.auto ? !!auto[etapaAbierta] : !!info;
-              const ultIdxLocal = ultimoPasoIdx(d);
-              const idxEtapa = RECORRIDO.findIndex(p => p.id === etapaAbierta);
-              const esSiguiente = !hecho && !paso.auto && idxEtapa === ultIdxLocal + 1;
-
-              if (etapaAbierta === "llamado") {
-                return (
-                  <div style={styles.progInforme}>
-                    <div style={styles.progInformeTitulo}>📞 Llamado de venta</div>
-                    <div style={styles.progInformeVacio}>Acá se hace el llamado, se ve el filtro y se carga el reporte.</div>
-                    {puedeEditar && <button style={styles.trabajarBtn} onClick={() => abrirReporte(d)}>{d.ventaEstado ? "✏️ Abrir trabajo" : "📋 Trabajar contacto"}</button>}
-                  </div>
-                );
-              }
-
-              return (
-                <div style={styles.progInforme}>
-                  <div style={styles.progInformeTitulo}>{paso?.icono} {paso?.label}</div>
-                  {hecho ? (
-                    paso.auto ? (
-                      <div style={styles.progInformeVacio}>
-                        {etapaAbierta === "contacto" && `Contacto cargado por ${d.cargadoPorNombre || "—"}.`}
-                        {etapaAbierta === "filtro" && (d.filtradorNombre ? `Filtrado por ${d.filtradorNombre}.` : "Filtrado.")}
-                      </div>
-                    ) : (
-                      <div>
-                        <div style={styles.progInformeFecha}>
-                          {info.fechaEvento ? `📅 ${new Date(info.fechaEvento + "T00:00").toLocaleDateString()}${info.horaEvento ? " · " + info.horaEvento + "hs" : ""}` : `📅 ${new Date(info.fecha).toLocaleDateString()}`}
-                          {info.resultado === "rechazo" && " · ❌ No le gustó"}
-                          {info.resultado === "gusto" && " · 👍 Le gustó"}
-                        </div>
-                        {info.nota ? <div style={styles.progInformeNota}>{info.nota}</div> : <div style={styles.progInformeVacio}>Sin nota.</div>}
-                        {puedeEditar && <button style={styles.pasoDeshacer} onClick={() => { desmarcarPaso(d, etapaAbierta); setEtapaAbierta(null); }} title="Deshacer">↩ Deshacer</button>}
-                      </div>
-                    )
-                  ) : esSiguiente && puedeEditar ? (
-                    <div>
-                      <div style={styles.progInformeVacio}>Cargá esta etapa:</div>
-                      <button style={styles.pasoMarcar} onClick={() => { setMarcandoPaso({ datoId: d.id, pasoId: etapaAbierta }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); }}>✏️ Completar {paso.label}</button>
-                    </div>
-                  ) : (
-                    <div style={styles.progInformeVacio}>{paso.auto ? "Se marca solo cuando corresponde." : "Primero completá las etapas anteriores."}</div>
-                  )}
-                </div>
-              );
-            })()}
           </div>
         )}
       </div>
@@ -589,6 +540,86 @@ export default function ComercialVentas() {
         </div>
       )}
 
+      {/* Modal profesional: ver/cargar una etapa del recorrido */}
+      {etapaAbierta && (() => {
+        const d = datos.find(x => x.id === etapaAbierta.datoId);
+        if (!d) return null;
+        const paso = RECORRIDO.find(p => p.id === etapaAbierta.pasoId);
+        if (!paso) return null;
+        const rec = d.recorrido || {};
+        const auto = pasosAutomaticos(d);
+        const info = rec[paso.id];
+        const hecho = paso.auto ? !!auto[paso.id] : !!info;
+        const ultIdxLocal = ultimoPasoIdx(d);
+        const idxEtapa = RECORRIDO.findIndex(p => p.id === paso.id);
+        const esSiguiente = !hecho && !paso.auto && idxEtapa === ultIdxLocal + 1;
+        const cerrar = () => setEtapaAbierta(null);
+
+        return (
+          <div style={styles.etModalOverlay} onClick={cerrar}>
+            <div style={styles.etModal} onClick={e => e.stopPropagation()}>
+              <button style={styles.etModalX} onClick={cerrar}>✕</button>
+              <div style={{ ...styles.etModalIcono, ...(hecho ? { background: "#16a34a22", borderColor: "#16a34a" } : esSiguiente ? { background: "#2563eb18", borderColor: "#2563eb" } : {}) }}>
+                {paso.id === "compra" && info?.resultado === "rechazo" ? "❌" : hecho ? "✓" : paso.icono}
+              </div>
+              <div style={styles.etModalTitulo}>{paso.label}</div>
+              <div style={styles.etModalContacto}>{d.nombre} · {d.numero}</div>
+
+              {/* Llamado → abre el trabajo */}
+              {paso.id === "llamado" ? (
+                <div style={styles.etModalBody}>
+                  <p style={styles.etModalTexto}>Acá hacés el llamado de venta: ves la info del filtro y cargás el reporte.</p>
+                  {puedeEditar
+                    ? <button style={styles.etModalBtnPrimary} onClick={() => { cerrar(); abrirReporte(d); }}>{d.ventaEstado ? "✏️ Abrir trabajo" : "📋 Trabajar contacto"}</button>
+                    : <div style={styles.etModalNota}>{d.ventaEstado ? "Reporte cargado." : "Sin trabajar aún."}</div>}
+                </div>
+              ) : hecho ? (
+                /* Etapa ya hecha → informe */
+                <div style={styles.etModalBody}>
+                  {paso.auto ? (
+                    <div style={styles.etModalNota}>
+                      {paso.id === "contacto" && `Contacto cargado por ${d.cargadoPorNombre || "—"}.`}
+                      {paso.id === "filtro" && (d.filtradorNombre ? `Filtrado por ${d.filtradorNombre}.` : "Contacto filtrado.")}
+                    </div>
+                  ) : (
+                    <>
+                      <div style={styles.etModalDato}>
+                        <span style={styles.etModalDatoLabel}>📅 Fecha</span>
+                        <span style={styles.etModalDatoValor}>
+                          {info.fechaEvento ? `${new Date(info.fechaEvento + "T00:00").toLocaleDateString()}${info.horaEvento ? " · " + info.horaEvento + "hs" : ""}` : new Date(info.fecha).toLocaleDateString()}
+                        </span>
+                      </div>
+                      {info.resultado && (
+                        <div style={styles.etModalDato}>
+                          <span style={styles.etModalDatoLabel}>Resultado</span>
+                          <span style={styles.etModalDatoValor}>{info.resultado === "gusto" ? "👍 Le gustó" : "❌ No le gustó"}</span>
+                        </div>
+                      )}
+                      <div style={styles.etModalDato}>
+                        <span style={styles.etModalDatoLabel}>📝 Nota</span>
+                        <span style={styles.etModalDatoValor}>{info.nota || "Sin nota."}</span>
+                      </div>
+                      {puedeEditar && <button style={styles.etModalBtnGhost} onClick={() => { desmarcarPaso(d, paso.id); cerrar(); }}>↩ Deshacer esta etapa</button>}
+                    </>
+                  )}
+                </div>
+              ) : esSiguiente && puedeEditar ? (
+                /* Etapa a cargar */
+                <div style={styles.etModalBody}>
+                  <p style={styles.etModalTexto}>Esta es la etapa que sigue. Cargá lo que pasó.</p>
+                  <button style={styles.etModalBtnPrimary} onClick={() => { cerrar(); setMarcandoPaso({ datoId: d.id, pasoId: paso.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); }}>✏️ Completar {paso.label}</button>
+                </div>
+              ) : (
+                /* Bloqueada */
+                <div style={styles.etModalBody}>
+                  <div style={styles.etModalNota}>{paso.auto ? "Esta etapa se marca sola cuando corresponde." : "Primero completá las etapas anteriores del recorrido."}</div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Mini-modal: nota al marcar un paso del recorrido */}
       {marcandoPaso && (() => {
         const pasoId = marcandoPaso.pasoId;
@@ -715,6 +746,20 @@ const styles = {
   infoFiltrador: { marginTop: "10px", fontSize: "11px", color: "var(--text2)", fontStyle: "italic" },
   reporteTitulo: { fontSize: "16px", fontWeight: "700", color: "var(--text)", marginBottom: "16px" },
   recorridoBox: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "24px" },
+  etModalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: "20px" },
+  etModal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "18px", padding: "28px", maxWidth: "440px", width: "100%", position: "relative", textAlign: "center", boxShadow: "0 20px 60px rgba(0,0,0,0.4)" },
+  etModalX: { position: "absolute", top: "16px", right: "16px", background: "transparent", border: "none", color: "var(--text2)", fontSize: "18px", cursor: "pointer", lineHeight: 1 },
+  etModalIcono: { width: "72px", height: "72px", borderRadius: "50%", background: "var(--surface)", border: "2px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "34px", margin: "0 auto 16px" },
+  etModalTitulo: { fontSize: "20px", fontWeight: "800", color: "var(--text)", marginBottom: "4px" },
+  etModalContacto: { fontSize: "13px", color: "var(--text2)", marginBottom: "20px" },
+  etModalBody: { textAlign: "left" },
+  etModalTexto: { fontSize: "14px", color: "var(--text2)", textAlign: "center", marginBottom: "18px", lineHeight: "1.5" },
+  etModalNota: { fontSize: "14px", color: "var(--text2)", textAlign: "center", background: "var(--surface)", padding: "14px", borderRadius: "10px", lineHeight: "1.5" },
+  etModalDato: { display: "flex", flexDirection: "column", gap: "3px", padding: "12px 0", borderBottom: "1px solid var(--border)" },
+  etModalDatoLabel: { fontSize: "12px", fontWeight: "700", color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.3px" },
+  etModalDatoValor: { fontSize: "15px", color: "var(--text)", lineHeight: "1.4" },
+  etModalBtnPrimary: { display: "block", width: "100%", background: "var(--acc)", color: "#fff", border: "none", padding: "14px", borderRadius: "10px", cursor: "pointer", fontSize: "15px", fontWeight: "700", marginTop: "8px" },
+  etModalBtnGhost: { display: "block", width: "100%", background: "transparent", color: "var(--text2)", border: "1.5px solid var(--border2)", padding: "11px", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: "600", marginTop: "18px" },
   recorridoTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "14px" },
   progBarra: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", overflowX: "auto", paddingBottom: "8px" },
   progPasoWrap: { display: "flex", flexDirection: "column", alignItems: "center", position: "relative", flex: 1, minWidth: "72px" },
