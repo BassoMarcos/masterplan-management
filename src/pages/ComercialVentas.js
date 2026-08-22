@@ -37,6 +37,8 @@ export default function ComercialVentas() {
   const [datos, setDatos] = useState([]);
   const [empleados, setEmpleados] = useState([]);
   const [formulario, setFormulario] = useState([]);
+  const [boletoCampos, setBoletoCampos] = useState([]);
+  const [respBoleto, setRespBoleto] = useState({});
   const [plantillaWhats, setPlantillaWhats] = useState("Hola {nombre}, te confirmo la firma para el {fecha} a las {hora} hs. ¡Cualquier cosa avisame!");
   const [RECORRIDO, setRECORRIDO] = useState(construirRecorrido([]));
   const [loading, setLoading] = useState(true);
@@ -74,6 +76,7 @@ export default function ComercialVentas() {
       const snapCfg = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
       setFormulario(snapCfg.exists() && Array.isArray(snapCfg.data().preguntasFiltro) ? snapCfg.data().preguntasFiltro : []);
       if (snapCfg.exists() && snapCfg.data().plantillaWhatsFirma) setPlantillaWhats(snapCfg.data().plantillaWhatsFirma);
+      setBoletoCampos(snapCfg.exists() && Array.isArray(snapCfg.data().boletoCampos) ? snapCfg.data().boletoCampos : []);
       setRECORRIDO(construirRecorrido(snapCfg.exists() ? snapCfg.data().recorridoExtra : []));
 
       const q = query(collection(db, "comercial_datos"), where("empresaId", "==", empresaUid), where("proyectoId", "==", proyectoId));
@@ -213,6 +216,10 @@ export default function ComercialVentas() {
     if (pasoId === "compra" && !resultadoCompra) {
       alert("Marcá si le gustó o no."); return;
     }
+    if (pasoId === "reserva") {
+      const faltan = boletoCampos.filter(c => c.obligatoria && !String(respBoleto[c.id] || "").trim());
+      if (faltan.length > 0) { alert("Completá los campos obligatorios: " + faltan.map(c => c.texto).join(", ")); return; }
+    }
     setGuardando(true);
     try {
       const dato = datos.find(d => d.id === marcandoPaso.datoId);
@@ -224,6 +231,7 @@ export default function ComercialVentas() {
       if (fechaPaso) registro.fechaEvento = fechaPaso;
       if (horaPaso) registro.horaEvento = horaPaso;
       if (pasoId === "compra") registro.resultado = resultadoCompra; // gusto / rechazo
+      if (pasoId === "reserva") registro.boleto = { ...respBoleto }; // datos del boleto
       recorrido[pasoId] = registro;
       const update = { recorrido };
       // Firma final → vendido
@@ -231,7 +239,7 @@ export default function ComercialVentas() {
       // Compra rechazada → descartado
       if (pasoId === "compra" && resultadoCompra === "rechazo") { update.estado = "descartado"; update.ventaEstado = "no_interesado"; }
       await updateDoc(doc(db, "comercial_datos", marcandoPaso.datoId), update);
-      setMarcandoPaso(null); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra("");
+      setMarcandoPaso(null); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); setRespBoleto({});
       if (editando && editando.id === marcandoPaso.datoId) setEditando({ ...editando, recorrido, ...update });
       cargar();
     } catch (e) { alert("Error: " + e.message); }
@@ -607,7 +615,7 @@ export default function ComercialVentas() {
                 /* Etapa a cargar */
                 <div style={styles.etModalBody}>
                   <p style={styles.etModalTexto}>Esta es la etapa que sigue. Cargá lo que pasó.</p>
-                  <button style={styles.etModalBtnPrimary} onClick={() => { cerrar(); setMarcandoPaso({ datoId: d.id, pasoId: paso.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); }}>✏️ Completar {paso.label}</button>
+                  <button style={styles.etModalBtnPrimary} onClick={() => { cerrar(); setMarcandoPaso({ datoId: d.id, pasoId: paso.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); setRespBoleto((d.recorrido?.reserva?.boleto) || {}); }}>✏️ Completar {paso.label}</button>
                 </div>
               ) : (
                 /* Bloqueada */
@@ -669,7 +677,37 @@ export default function ComercialVentas() {
             )}
 
             {pasoId === "reserva" && (
-              <div style={styles.reservaAviso}>📄 El formulario del boleto se habilita en el próximo paso del desarrollo.</div>
+              boletoCampos.length === 0 ? (
+                <div style={styles.reservaAviso}>📄 No hay formulario del boleto configurado. El admin puede armarlo en ⚙️ Configuración.</div>
+              ) : (
+                <div style={styles.boletoForm}>
+                  <div style={styles.boletoFormTit}>📝 Datos del boleto</div>
+                  {boletoCampos.map(c => (
+                    <div key={c.id} style={styles.boletoCampo}>
+                      <label style={styles.miniCampoLabel}>{c.texto}{c.obligatoria && " *"}</label>
+                      {c.tipo === "texto" && (
+                        <input style={styles.miniCampoInput} value={respBoleto[c.id] || ""} onChange={e => setRespBoleto({ ...respBoleto, [c.id]: e.target.value })} />
+                      )}
+                      {c.tipo === "numero" && (
+                        <input type="number" style={styles.miniCampoInput} value={respBoleto[c.id] || ""} onChange={e => setRespBoleto({ ...respBoleto, [c.id]: e.target.value })} />
+                      )}
+                      {c.tipo === "sino" && (
+                        <div style={styles.boletoSino}>
+                          {["Sí", "No"].map(op => (
+                            <button key={op} type="button" style={{ ...styles.boletoSinoBtn, ...(respBoleto[c.id] === op ? styles.boletoSinoActivo : {}) }} onClick={() => setRespBoleto({ ...respBoleto, [c.id]: op })}>{op}</button>
+                          ))}
+                        </div>
+                      )}
+                      {c.tipo === "opciones" && (
+                        <select style={styles.miniCampoInput} value={respBoleto[c.id] || ""} onChange={e => setRespBoleto({ ...respBoleto, [c.id]: e.target.value })}>
+                          <option value="">Elegir...</option>
+                          {(c.opciones || []).map(op => <option key={op} value={op}>{op}</option>)}
+                        </select>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )
             )}
             {pasoId === "firma" && (
               <div style={styles.reservaAviso}>📎 La subida del boleto firmado se habilita más adelante.</div>
@@ -796,6 +834,12 @@ const styles = {
   miniCampoInput: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
   waEnviarBtn: { display: "block", textAlign: "center", background: "#25d366", color: "#fff", textDecoration: "none", padding: "12px", borderRadius: "10px", fontSize: "14px", fontWeight: "700", marginTop: "12px" },
   reservaAviso: { fontSize: "12px", color: "var(--text2)", fontStyle: "italic", marginTop: "12px", padding: "10px", background: "var(--surface)", borderRadius: "8px" },
+  boletoForm: { marginTop: "12px", maxHeight: "300px", overflowY: "auto" },
+  boletoFormTit: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "10px" },
+  boletoCampo: { marginBottom: "12px" },
+  boletoSino: { display: "flex", gap: "8px" },
+  boletoSinoBtn: { flex: 1, padding: "9px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text2)", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
+  boletoSinoActivo: { background: "var(--acc)", borderColor: "var(--acc)", color: "#fff" },
   pasoModalInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "15px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" },
   pasoModalActions: { display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" },
   fsCampo: { marginBottom: "24px" },
