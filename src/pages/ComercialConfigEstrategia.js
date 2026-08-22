@@ -6,13 +6,6 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import { empleadoNivelPanel, RECORRIDO_BASE } from "../config/appConfig";
 
-const TIPOS = [
-  { id: "texto", label: "Texto libre", icono: "✏️" },
-  { id: "opciones", label: "Opciones (elegir una)", icono: "🔘" },
-  { id: "sino", label: "Sí / No", icono: "✅" },
-  { id: "numero", label: "Número", icono: "🔢" },
-];
-
 // Configuración de la Estrategia de Ventas: etapas del recorrido + mensaje de WhatsApp.
 export default function ComercialConfigEstrategia() {
   const { proyectoId } = useParams();
@@ -28,7 +21,6 @@ export default function ComercialConfigEstrategia() {
   const [nuevaEtapa, setNuevaEtapa] = useState("");
   const [plantillaWhats, setPlantillaWhats] = useState("Hola {nombre}, te confirmo la firma para el {fecha} a las {hora} hs. ¡Cualquier cosa avisame!");
   const [boletoCampos, setBoletoCampos] = useState([]);
-  const [nuevaOpcion, setNuevaOpcion] = useState({});
 
   // La config de estrategia la puede editar quien tenga edición en ventas (o admin)
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "ventas") : "editar";
@@ -62,33 +54,6 @@ export default function ComercialConfigEstrategia() {
     setEtapasExtra(etapasExtra.filter(e => e.id !== id));
   }
 
-  // ── Campos del boleto ──
-  function nuevoCampo() {
-    setBoletoCampos([...boletoCampos, { id: "bc_" + Date.now(), texto: "", tipo: "texto", opciones: [], obligatoria: false }]);
-  }
-  function actualizarCampo(idx, campo, valor) {
-    setBoletoCampos(boletoCampos.map((c, i) => i === idx ? { ...c, [campo]: valor } : c));
-  }
-  function eliminarCampo(idx) {
-    setBoletoCampos(boletoCampos.filter((_, i) => i !== idx));
-  }
-  function moverCampo(idx, dir) {
-    const nueva = [...boletoCampos];
-    const destino = idx + dir;
-    if (destino < 0 || destino >= nueva.length) return;
-    [nueva[idx], nueva[destino]] = [nueva[destino], nueva[idx]];
-    setBoletoCampos(nueva);
-  }
-  function agregarOpcionBoleto(idx, texto) {
-    const t = (texto || "").trim();
-    if (!t) return;
-    const opciones = [...(boletoCampos[idx].opciones || []), t];
-    actualizarCampo(idx, "opciones", opciones);
-  }
-  function quitarOpcionBoleto(idx, opIdx) {
-    const opciones = (boletoCampos[idx].opciones || []).filter((_, i) => i !== opIdx);
-    actualizarCampo(idx, "opciones", opciones);
-  }
 
   async function guardar() {
     // Validar campos del boleto de tipo opciones
@@ -165,64 +130,11 @@ export default function ComercialConfigEstrategia() {
           <textarea style={styles.whatsInput} rows={3} value={plantillaWhats} onChange={e => setPlantillaWhats(e.target.value)} disabled={!puedeEditar} />
         </div>
 
-        {/* Formulario del boleto (etapa Reserva) */}
+        {/* Formulario de reserva (editor visual) */}
         <div style={styles.bloque}>
-          <div style={styles.bloqueTitulo}>📝 Formulario del boleto (Reserva)</div>
-          <div style={styles.bloqueHint}>Estos son los campos que el vendedor completa al marcar la etapa Reserva. Después se usan para armar el boleto.</div>
-
-          {boletoCampos.length === 0 && <div style={styles.boletoVacio}>Todavía no hay campos. Agregá el primero abajo.</div>}
-
-          {boletoCampos.map((c, idx) => (
-            <div key={c.id} style={styles.campoBox}>
-              <div style={styles.campoHead}>
-                <span style={styles.campoNum}>#{idx + 1}</span>
-                {puedeEditar && (
-                  <div style={styles.campoControls}>
-                    <button style={styles.iconBtn} onClick={() => moverCampo(idx, -1)} disabled={idx === 0} title="Subir">↑</button>
-                    <button style={styles.iconBtn} onClick={() => moverCampo(idx, 1)} disabled={idx === boletoCampos.length - 1} title="Bajar">↓</button>
-                    <button style={styles.iconBtnRed} onClick={() => eliminarCampo(idx)} title="Eliminar">✕</button>
-                  </div>
-                )}
-              </div>
-
-              <input style={styles.inputCampo} placeholder="Nombre del campo (ej: Nombre del comprador, Lote, Monto)" value={c.texto} onChange={e => actualizarCampo(idx, "texto", e.target.value)} disabled={!puedeEditar} />
-
-              <div style={styles.tipoRow}>
-                {TIPOS.map(t => (
-                  <button key={t.id} onClick={() => puedeEditar && actualizarCampo(idx, "tipo", t.id)} style={{ ...styles.tipoBtn, ...(c.tipo === t.id ? styles.tipoBtnActivo : {}) }} disabled={!puedeEditar}>
-                    {t.icono} {t.label}
-                  </button>
-                ))}
-              </div>
-
-              {c.tipo === "opciones" && (
-                <div style={styles.opcionesBox}>
-                  <div style={styles.opcionesLabel}>Opciones para elegir:</div>
-                  {(c.opciones || []).map((op, opIdx) => (
-                    <div key={opIdx} style={styles.opcionItem}>
-                      <span style={styles.opcionTexto}>• {op}</span>
-                      {puedeEditar && <button style={styles.opcionQuitar} onClick={() => quitarOpcionBoleto(idx, opIdx)} title="Quitar">✕</button>}
-                    </div>
-                  ))}
-                  {puedeEditar && (
-                    <div style={styles.opcionAgregarRow}>
-                      <input style={styles.opcionInput} placeholder="Escribí una opción y tocá Agregar (o Enter)" value={nuevaOpcion[c.id] || ""} onChange={e => setNuevaOpcion({ ...nuevaOpcion, [c.id]: e.target.value })}
-                        onKeyDown={e => { if (e.key === "Enter") { agregarOpcionBoleto(idx, nuevaOpcion[c.id]); setNuevaOpcion({ ...nuevaOpcion, [c.id]: "" }); } }} />
-                      <button style={styles.opcionAddBtn} onClick={() => { agregarOpcionBoleto(idx, nuevaOpcion[c.id]); setNuevaOpcion({ ...nuevaOpcion, [c.id]: "" }); }}>Agregar</button>
-                    </div>
-                  )}
-                  {(c.opciones || []).length < 2 && <div style={styles.opcionAviso}>Cargá al menos 2 opciones.</div>}
-                </div>
-              )}
-
-              <label style={styles.obligLabel}>
-                <input type="checkbox" checked={!!c.obligatoria} onChange={e => actualizarCampo(idx, "obligatoria", e.target.checked)} disabled={!puedeEditar} />
-                Obligatorio
-              </label>
-            </div>
-          ))}
-
-          {puedeEditar && <button style={styles.addCampoBtn} onClick={nuevoCampo}>➕ Agregar campo al boleto</button>}
+          <div style={styles.bloqueTitulo}>📝 Formulario de reserva</div>
+          <div style={styles.bloqueHint}>Diseñá el formulario que el vendedor completa al marcar la etapa Reserva. Acomodás los campos sobre la hoja como en el papel.</div>
+          {puedeEditar && <button style={styles.disenarBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/diseno_reserva`)}>🎨 Diseñar formulario de reserva</button>}
         </div>
 
         {puedeEditar && (
@@ -282,5 +194,6 @@ const styles = {
   opcionAviso: { fontSize: "11px", color: "#d97706", marginTop: "6px" },
   obligLabel: { display: "flex", alignItems: "center", gap: "6px", fontSize: "13px", color: "var(--text2)", cursor: "pointer" },
   addCampoBtn: { background: "transparent", border: "1.5px dashed var(--border2)", color: "var(--text)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600", width: "100%" },
+  disenarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "12px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
   guardarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "12px 28px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
 };
