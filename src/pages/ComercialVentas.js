@@ -56,7 +56,8 @@ export default function ComercialVentas() {
   const [fechaPaso, setFechaPaso] = useState("");
   const [horaPaso, setHoraPaso] = useState("");
   const [resultadoCompra, setResultadoCompra] = useState(""); // "gusto" / "rechazo"
-  const [etapaVerId, setEtapaVerId] = useState(null); // etapa cuyo informe se muestra
+  const [expandido, setExpandido] = useState(null); // contacto con recorrido desplegado
+  const [etapaAbierta, setEtapaAbierta] = useState(null); // etapa con informe abierto en la lista
   const [guardando, setGuardando] = useState(false);
 
   const esAdmin = !esEmpleado || empleadoData?.accesoTotal;
@@ -273,6 +274,111 @@ export default function ComercialVentas() {
     }
   });
 
+  // Fila de contacto con recorrido horizontal interactivo (misma estética que Datos)
+  function filaContacto(d, opts = {}) {
+    const abierto = expandido === d.id;
+    const auto = pasosAutomaticos(d);
+    const rec = d.recorrido || {};
+    const ultIdx = ultimoPasoIdx(d);
+    const idxActual = Math.max(0, ultIdx);
+    return (
+      <div key={d.id}>
+        <div style={{ ...styles.trow, cursor: "pointer", ...(abierto ? { background: "var(--surface)" } : {}) }}
+          onClick={() => { setExpandido(abierto ? null : d.id); setEtapaAbierta(null); }}>
+          {opts.selMode && (
+            <div style={{ flex: 0.4 }} onClick={e => e.stopPropagation()}>
+              {(d.estado === "filtrado" && !d.vendedorUid) && (
+                <input type="checkbox" checked={!!seleccionados[d.id]} onChange={() => toggleSel(d.id)} />
+              )}
+            </div>
+          )}
+          <div style={{ flex: 2, fontWeight: 600 }}>
+            <span style={{ marginRight: "8px", color: "var(--text2)" }}>{abierto ? "▾" : "▸"}</span>{d.nombre}
+          </div>
+          <div style={{ flex: 1.3 }}>{d.numero}</div>
+          <div style={{ flex: 1.2 }}><span style={styles.estadoTag}>{RECORRIDO[idxActual]?.label || estadoLabel(d.estado)}</span></div>
+          {opts.mostrarVendedor && <div style={{ flex: 1.5, fontSize: "12px", color: "var(--text2)" }}>{d.vendedorNombre || "—"}</div>}
+          {opts.accion && <div style={{ flex: 1.2, textAlign: "right", display: "flex", gap: "6px", justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>{opts.accion(d)}</div>}
+        </div>
+
+        {abierto && (
+          <div style={styles.progWrap}>
+            <div style={styles.progBarra}>
+              {RECORRIDO.map((paso, i) => {
+                const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
+                const rechazado = paso.id === "compra" && rec[paso.id]?.resultado === "rechazo";
+                const activa = etapaAbierta === paso.id;
+                return (
+                  <div key={paso.id} style={styles.progPasoWrap}>
+                    {i > 0 && <div style={{ ...styles.progLinea, ...(i <= ultIdx ? styles.progLineaHecha : {}) }} />}
+                    <button
+                      style={{ ...styles.progPunto, ...(hecho ? styles.progPuntoHecho : {}), ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}), ...(activa ? styles.progPuntoActivo : {}) }}
+                      onClick={() => setEtapaAbierta(activa ? null : paso.id)}
+                      title={paso.label}
+                    >
+                      {rechazado ? "✕" : hecho ? "✓" : i + 1}
+                    </button>
+                    <div style={styles.progLabel}>{paso.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {etapaAbierta && (() => {
+              const paso = RECORRIDO.find(p => p.id === etapaAbierta);
+              const info = rec[etapaAbierta];
+              const hecho = paso.auto ? !!auto[etapaAbierta] : !!info;
+              const ultIdxLocal = ultimoPasoIdx(d);
+              const idxEtapa = RECORRIDO.findIndex(p => p.id === etapaAbierta);
+              const esSiguiente = !hecho && !paso.auto && idxEtapa === ultIdxLocal + 1;
+
+              if (etapaAbierta === "llamado") {
+                return (
+                  <div style={styles.progInforme}>
+                    <div style={styles.progInformeTitulo}>📞 Llamado de venta</div>
+                    <div style={styles.progInformeVacio}>Acá se hace el llamado, se ve el filtro y se carga el reporte.</div>
+                    {puedeEditar && <button style={styles.trabajarBtn} onClick={() => abrirReporte(d)}>{d.ventaEstado ? "✏️ Abrir trabajo" : "📋 Trabajar contacto"}</button>}
+                  </div>
+                );
+              }
+
+              return (
+                <div style={styles.progInforme}>
+                  <div style={styles.progInformeTitulo}>{paso?.icono} {paso?.label}</div>
+                  {hecho ? (
+                    paso.auto ? (
+                      <div style={styles.progInformeVacio}>
+                        {etapaAbierta === "contacto" && `Contacto cargado por ${d.cargadoPorNombre || "—"}.`}
+                        {etapaAbierta === "filtro" && (d.filtradorNombre ? `Filtrado por ${d.filtradorNombre}.` : "Filtrado.")}
+                      </div>
+                    ) : (
+                      <div>
+                        <div style={styles.progInformeFecha}>
+                          {info.fechaEvento ? `📅 ${new Date(info.fechaEvento + "T00:00").toLocaleDateString()}${info.horaEvento ? " · " + info.horaEvento + "hs" : ""}` : `📅 ${new Date(info.fecha).toLocaleDateString()}`}
+                          {info.resultado === "rechazo" && " · ❌ No le gustó"}
+                          {info.resultado === "gusto" && " · 👍 Le gustó"}
+                        </div>
+                        {info.nota ? <div style={styles.progInformeNota}>{info.nota}</div> : <div style={styles.progInformeVacio}>Sin nota.</div>}
+                        {puedeEditar && <button style={styles.pasoDeshacer} onClick={() => { desmarcarPaso(d, etapaAbierta); setEtapaAbierta(null); }} title="Deshacer">↩ Deshacer</button>}
+                      </div>
+                    )
+                  ) : esSiguiente && puedeEditar ? (
+                    <div>
+                      <div style={styles.progInformeVacio}>Cargá esta etapa:</div>
+                      <button style={styles.pasoMarcar} onClick={() => { setMarcandoPaso({ datoId: d.id, pasoId: etapaAbierta }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); }}>✏️ Completar {paso.label}</button>
+                    </div>
+                  ) : (
+                    <div style={styles.progInformeVacio}>{paso.auto ? "Se marca solo cuando corresponde." : "Primero completá las etapas anteriores."}</div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -348,29 +454,11 @@ export default function ComercialVentas() {
                   <div style={{ ...styles.th, flex: 1.5 }}>Vendedor</div>
                   <div style={{ ...styles.th, flex: 1.2 }}></div>
                 </div>
-                {datosVenta.map(d => (
-                  <div key={d.id} style={styles.trow}>
-                    {selMode && (
-                      <div style={{ flex: 0.4 }}>
-                        {(d.estado === "filtrado" && !d.vendedorUid) && (
-                          <input type="checkbox" checked={!!seleccionados[d.id]} onChange={() => toggleSel(d.id)} />
-                        )}
-                      </div>
-                    )}
-                    <div style={{ flex: 2, fontWeight: 600 }}>{d.nombre}</div>
-                    <div style={{ flex: 1.3 }}>{d.numero}</div>
-                    <div style={{ flex: 1.2 }}>
-                      <span style={styles.estadoTag}>{d.ventaEstado ? estadoVentaLabel(d.ventaEstado) : estadoLabel(d.estado)}</span>
-                    </div>
-                    <div style={{ flex: 1.5, fontSize: "12px", color: "var(--text2)" }}>{d.vendedorNombre || "—"}</div>
-                    <div style={{ flex: 1.2, textAlign: "right", display: "flex", gap: "6px", justifyContent: "flex-end" }}>
-                      <button style={styles.abrirBtn} onClick={() => abrirReporte(d)} title="Ver recorrido">Abrir</button>
-                      {d.vendedorUid && d.estado !== "vendido" && (
-                        <button style={styles.miniBtn} onClick={() => desasignar(d)} title="Quitar asignación">↩</button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {datosVenta.map(d => filaContacto(d, {
+                  selMode,
+                  mostrarVendedor: true,
+                  accion: (dd) => (dd.vendedorUid && dd.estado !== "vendido") ? <button style={styles.miniBtn} onClick={() => desasignar(dd)} title="Quitar asignación">↩</button> : null,
+                }))}
               </div>
             </section>
           </>
@@ -383,20 +471,7 @@ export default function ComercialVentas() {
               <p style={styles.empty}>No tenés datos asignados para vender.</p>
             ) : (
               <div style={styles.tabla}>
-                {misDatos.map(d => (
-                  <div key={d.id} style={styles.trow}>
-                    <div style={{ flex: 2, fontWeight: 600 }}>{d.nombre}</div>
-                    <div style={{ flex: 1.3 }}>{d.numero}</div>
-                    <div style={{ flex: 1.2 }}><span style={styles.estadoTag}>{d.ventaEstado ? estadoVentaLabel(d.ventaEstado) : "Sin trabajar"}</span></div>
-                    <div style={{ flex: 1, textAlign: "right" }}>
-                      {puedeEditar && (
-                        <button style={styles.trabajarBtn} onClick={() => abrirReporte(d)}>
-                          {d.ventaEstado ? "✏️ Editar" : "📋 Trabajar"}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {misDatos.map(d => filaContacto(d, {}))}
               </div>
             )}
           </section>
@@ -477,76 +552,6 @@ export default function ComercialVentas() {
                   </div>
                 );
               })()}
-
-              {/* Recorrido del contacto (horizontal, interactivo) */}
-              <div style={styles.recorridoBox}>
-                <div style={styles.recorridoTitulo}>🛤️ Recorrido del contacto</div>
-                {(() => {
-                  const auto = pasosAutomaticos(editando);
-                  const rec = editando.recorrido || {};
-                  const ultIdx = ultimoPasoIdx(editando);
-                  return (
-                    <div style={styles.progBarra}>
-                      {RECORRIDO.map((paso, i) => {
-                        const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
-                        const rechazado = paso.id === "compra" && rec[paso.id]?.resultado === "rechazo";
-                        const esSiguiente = !hecho && i === ultIdx + 1 && !paso.auto;
-                        const activa = etapaVerId === paso.id;
-                        const clickeable = (puedeEditar && !paso.auto && (esSiguiente || hecho)) || hecho;
-                        return (
-                          <div key={paso.id} style={styles.progPasoWrap}>
-                            {i > 0 && <div style={{ ...styles.progLinea, ...(i <= ultIdx ? styles.progLineaHecha : {}) }} />}
-                            <button
-                              style={{
-                                ...styles.progPunto,
-                                ...(hecho ? styles.progPuntoHecho : {}),
-                                ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}),
-                                ...(activa ? styles.progPuntoActivo : {}),
-                                ...(esSiguiente ? styles.progPuntoSiguiente : {}),
-                                ...(clickeable ? { cursor: "pointer" } : { cursor: "default" }),
-                              }}
-                              onClick={() => {
-                                if (esSiguiente && puedeEditar) {
-                                  setMarcandoPaso({ datoId: editando.id, pasoId: paso.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra("");
-                                } else if (hecho) {
-                                  setEtapaVerId(activa ? null : paso.id);
-                                }
-                              }}
-                              title={paso.label}
-                            >
-                              {rechazado ? "✕" : hecho ? "✓" : i + 1}
-                            </button>
-                            <div style={styles.progLabel}>{paso.label}</div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  );
-                })()}
-
-                {/* Informe / acción de la etapa tocada */}
-                {etapaVerId && (() => {
-                  const paso = RECORRIDO.find(p => p.id === etapaVerId);
-                  const info = (editando.recorrido || {})[etapaVerId];
-                  if (!info) return null;
-                  return (
-                    <div style={styles.etapaInforme}>
-                      <div style={styles.etapaInformeTop}>
-                        <div style={styles.etapaInformeTitulo}>{paso?.icono} {paso?.label}</div>
-                        {puedeEditar && !paso.auto && (
-                          <button style={styles.pasoDeshacer} onClick={() => { desmarcarPaso(editando, etapaVerId); setEtapaVerId(null); }} title="Deshacer">↩ Deshacer</button>
-                        )}
-                      </div>
-                      <div style={styles.etapaInformeFecha}>
-                        {info.fechaEvento ? `📅 ${new Date(info.fechaEvento + "T00:00").toLocaleDateString()}${info.horaEvento ? " · " + info.horaEvento + "hs" : ""}` : `📅 ${new Date(info.fecha).toLocaleDateString()}`}
-                        {info.resultado === "rechazo" && " · ❌ No le gustó"}
-                        {info.resultado === "gusto" && " · 👍 Le gustó"}
-                      </div>
-                      {info.nota && <div style={styles.etapaInformeNota}>{info.nota}</div>}
-                    </div>
-                  );
-                })()}
-              </div>
 
               {/* Reporte del vendedor */}
               <div style={styles.reporteTitulo}>Tu reporte</div>
@@ -653,10 +658,6 @@ export default function ComercialVentas() {
 
 function estadoLabel(e) {
   const m = { crudo: "Crudo", en_filtro: "En filtro", filtrado: "Filtrado", en_venta: "En venta", vendido: "Vendido", descartado: "Descartado" };
-  return m[e] || e;
-}
-function estadoVentaLabel(e) {
-  const m = { interesado: "Interesado", a_seguir: "A seguir", no_interesado: "No interesado", vendido: "Vendido", descartado: "Descartado" };
   return m[e] || e;
 }
 
