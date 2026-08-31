@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
-import { empleadoNivelPanel } from "../config/appConfig";
+import { empleadoNivelPanel, etiquetaEtapa } from "../config/appConfig";
 
 // Panel de FILTRADO (Comercial).
 // - Admin: reparte datos crudos a filtradores (a mano o por cantidad) y ve el progreso.
@@ -18,6 +18,7 @@ export default function ComercialFiltrado() {
   const [datos, setDatos] = useState([]);
   const [empleados, setEmpleados] = useState([]);
   const [formulario, setFormulario] = useState([]);
+  const [recorridoExtra, setRecorridoExtra] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const [selMode, setSelMode] = useState(false);
@@ -42,6 +43,7 @@ export default function ComercialFiltrado() {
 
       const snapCfg = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
       setFormulario(snapCfg.exists() && Array.isArray(snapCfg.data().preguntasFiltro) ? snapCfg.data().preguntasFiltro : []);
+      setRecorridoExtra(snapCfg.exists() && Array.isArray(snapCfg.data().recorridoExtra) ? snapCfg.data().recorridoExtra : []);
 
       const q = query(collection(db, "comercial_datos"), where("empresaId", "==", empresaUid), where("proyectoId", "==", proyectoId));
       const snap = await getDocs(q);
@@ -265,7 +267,7 @@ export default function ComercialFiltrado() {
                     )}
                     <div style={{ flex: 2, fontWeight: 600 }}>{d.nombre}</div>
                     <div style={{ flex: 1.3 }}>{d.numero}</div>
-                    <div style={{ flex: 1 }}><span style={styles.estadoTag}>{estadoLabel(d.estado)}</span></div>
+                    <div style={{ flex: 1 }}><span style={styles.estadoTag}>{etiquetaEtapa(d, recorridoExtra)}</span></div>
                     <div style={{ flex: 1.5, fontSize: "12px", color: "var(--text2)" }}>{d.filtradorNombre || "—"}</div>
                     <div style={{ flex: 0.6, textAlign: "right" }}>
                       {d.filtradorUid && d.estado !== "filtrado" && d.estado !== "en_venta" && d.estado !== "vendido" && (
@@ -290,7 +292,7 @@ export default function ComercialFiltrado() {
                   <div key={d.id} style={styles.trow}>
                     <div style={{ flex: 2, fontWeight: 600 }}>{d.nombre}</div>
                     <div style={{ flex: 1.3 }}>{d.numero}</div>
-                    <div style={{ flex: 1 }}><span style={styles.estadoTag}>{estadoLabel(d.estado)}</span></div>
+                    <div style={{ flex: 1 }}><span style={styles.estadoTag}>{etiquetaEtapa(d, recorridoExtra)}</span></div>
                     <div style={{ flex: 1, textAlign: "right" }}>
                       {puedeEditar && (
                         <button style={styles.filtrarBtn} onClick={() => abrirFiltro(d)}>
@@ -380,11 +382,6 @@ export default function ComercialFiltrado() {
       )}
     </div>
   );
-}
-
-function estadoLabel(e) {
-  const m = { crudo: "Crudo", en_filtro: "En filtro", filtrado: "Filtrado", en_venta: "En venta", vendido: "Vendido", descartado: "Descartado" };
-  return m[e] || e;
 }
 
 const styles = {
