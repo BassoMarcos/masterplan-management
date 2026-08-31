@@ -52,7 +52,10 @@ export default function ComercialFiltrado() {
       if (esAdmin) {
         const qe = query(collection(db, "empleados"), where("empresaId", "==", empresaUid), where("estado", "==", "aprobado"));
         const snapE = await getDocs(qe);
-        setEmpleados(snapE.docs.map(d => ({ id: d.id, ...d.data() })));
+        const todos = snapE.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Solo empleados con acceso a VENTA (para enviarles los filtrados)
+        const conVenta = todos.filter(e => empleadoNivelPanel(e, proyectoId, "comercial", "ventas") === "editar");
+        setEmpleados(conVenta);
       }
     } catch (e) {
       console.error(e);
@@ -67,7 +70,7 @@ export default function ComercialFiltrado() {
     (d.cargadoPorUid === currentUser.uid && !d.filtradorUid)
   );
 
-  const crudosSinAsignar = datos.filter(d => d.estado === "crudo" && !d.filtradorUid);
+  const filtradosSinVendedor = datos.filter(d => (d.estado === "filtrado" || d.filtradoEn || (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0)) && !d.vendedorUid && d.estado !== "vendido" && d.estado !== "descartado");
 
   function toggleSel(id) {
     setSeleccionados(s => ({ ...s, [id]: !s[id] }));
@@ -76,15 +79,15 @@ export default function ComercialFiltrado() {
   async function asignarAMano() {
     const ids = Object.keys(seleccionados).filter(k => seleccionados[k]);
     if (!ids.length) { alert("Seleccioná al menos un dato."); return; }
-    if (!asignarA) { alert("Elegí a quién asignar."); return; }
+    if (!asignarA) { alert("Elegí a qué vendedor asignar."); return; }
     const emp = empleados.find(e => e.id === asignarA);
     setGuardando(true);
     try {
       for (const id of ids) {
         await updateDoc(doc(db, "comercial_datos", id), {
-          filtradorUid: asignarA,
-          filtradorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
-          estado: "en_filtro",
+          vendedorUid: asignarA,
+          vendedorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
+          estado: "en_venta",
         });
       }
       setSeleccionados({}); setSelMode(false); setAsignarA("");
@@ -96,30 +99,30 @@ export default function ComercialFiltrado() {
   async function asignarPorCantidad() {
     const n = parseInt(cantidad, 10);
     if (!n || n < 1) { alert("Poné una cantidad válida."); return; }
-    if (!asignarA) { alert("Elegí a quién asignar."); return; }
+    if (!asignarA) { alert("Elegí a qué vendedor asignar."); return; }
     const emp = empleados.find(e => e.id === asignarA);
-    const aAsignar = crudosSinAsignar.slice(0, n);
-    if (!aAsignar.length) { alert("No hay datos crudos sin asignar."); return; }
+    const aAsignar = filtradosSinVendedor.slice(0, n);
+    if (!aAsignar.length) { alert("No hay datos filtrados sin asignar."); return; }
     setGuardando(true);
     try {
       for (const d of aAsignar) {
         await updateDoc(doc(db, "comercial_datos", d.id), {
-          filtradorUid: asignarA,
-          filtradorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
-          estado: "en_filtro",
+          vendedorUid: asignarA,
+          vendedorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
+          estado: "en_venta",
         });
       }
       setCantidad(""); setAsignarA("");
       cargar();
-      alert(`${aAsignar.length} dato(s) asignados a ${emp?.nombre}.`);
+      alert(`${aAsignar.length} dato(s) enviados a ${emp?.nombre} para vender.`);
     } catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
   }
 
   async function desasignar(d) {
-    if (!window.confirm(`¿Quitar la asignación de ${d.nombre}?`)) return;
+    if (!window.confirm(`¿Quitar la asignación de venta de ${d.nombre}?`)) return;
     try {
-      await updateDoc(doc(db, "comercial_datos", d.id), { filtradorUid: null, filtradorNombre: null, estado: "crudo" });
+      await updateDoc(doc(db, "comercial_datos", d.id), { vendedorUid: null, vendedorNombre: null, estado: "filtrado" });
       cargar();
     } catch (e) { alert("Error: " + e.message); }
   }
@@ -191,10 +194,14 @@ export default function ComercialFiltrado() {
         {esAdmin && (
           <>
             <section style={styles.section}>
-              <h2 style={styles.sectionTitle}>📤 Repartir datos a filtradores</h2>
+              <h2 style={styles.sectionTitle}>📤 Enviar filtrados a vendedores</h2>
               <div style={styles.asignarBox}>
+                {empleados.length === 0 ? (
+                  <div style={styles.hintTxt}>No hay empleados con acceso a Ventas. Dales permiso de Ventas en Empleados para poder enviarles los filtrados.</div>
+                ) : (
+                <>
                 <div style={styles.asignarRow}>
-                  <label style={styles.miniLabel}>Filtrador:</label>
+                  <label style={styles.miniLabel}>Vendedor:</label>
                   <select style={styles.select} value={asignarA} onChange={e => setAsignarA(e.target.value)}>
                     <option value="">Elegir…</option>
                     {empleados.map(e => <option key={e.id} value={e.id}>{e.nombre} {e.apellido}</option>)}
@@ -203,9 +210,9 @@ export default function ComercialFiltrado() {
                 <div style={styles.asignarRow}>
                   <label style={styles.miniLabel}>Por cantidad:</label>
                   <input style={styles.inputMini} type="number" placeholder="Ej: 20" value={cantidad} onChange={e => setCantidad(e.target.value)} />
-                  <button style={styles.asignarBtn} onClick={asignarPorCantidad} disabled={guardando}>Asignar {cantidad || "N"} sin asignar</button>
+                  <button style={styles.asignarBtn} onClick={asignarPorCantidad} disabled={guardando}>Enviar {cantidad || "N"} a vender</button>
                 </div>
-                <div style={styles.hintTxt}>Hay {crudosSinAsignar.length} dato(s) crudos sin asignar.</div>
+                <div style={styles.hintTxt}>Hay {filtradosSinVendedor.length} dato(s) filtrados sin asignar a un vendedor.</div>
                 <div style={styles.separador} />
                 <div style={styles.asignarRow}>
                   <button style={styles.selBtn} onClick={() => { setSelMode(!selMode); setSeleccionados({}); }}>
@@ -213,10 +220,12 @@ export default function ComercialFiltrado() {
                   </button>
                   {selMode && (
                     <button style={styles.asignarBtn} onClick={asignarAMano} disabled={guardando}>
-                      Asignar seleccionados a este filtrador
+                      Enviar seleccionados a este vendedor
                     </button>
                   )}
                 </div>
+                </>
+                )}
               </div>
             </section>
 
@@ -249,7 +258,7 @@ export default function ComercialFiltrado() {
                   <div key={d.id} style={styles.trow}>
                     {selMode && (
                       <div style={{ flex: 0.4 }}>
-                        {(d.estado === "crudo" && !d.filtradorUid) && (
+                        {((d.estado === "filtrado" || d.filtradoEn) && !d.vendedorUid && d.estado !== "vendido" && d.estado !== "descartado") && (
                           <input type="checkbox" checked={!!seleccionados[d.id]} onChange={() => toggleSel(d.id)} />
                         )}
                       </div>
