@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
-import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import { empleadoNivelPanel, construirRecorrido } from "../config/appConfig";
 
@@ -49,6 +49,12 @@ export default function ComercialDatos() {
   const [expandido, setExpandido] = useState(null); // id del dato expandido
   const [RECORRIDO, setRECORRIDO] = useState(construirRecorrido([]));
   const [etapaAbierta, setEtapaAbierta] = useState(null); // id de etapa con informe abierto
+  // Reparto de crudos a filtradores (admin)
+  const [empleados, setEmpleados] = useState([]);
+  const [asignarA, setAsignarA] = useState("");
+  const [cantAsignar, setCantAsignar] = useState("");
+  const [selMode, setSelMode] = useState(false);
+  const [seleccionados, setSeleccionados] = useState({});
 
   // Permiso: si es empleado, ¿puede editar (cargar) o solo ver?
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "datos") : "editar";
@@ -82,11 +88,19 @@ export default function ComercialDatos() {
       // Recorrido personalizado desde la config del proyecto
       const snapCfg = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
       setRECORRIDO(construirRecorrido(snapCfg.exists() ? snapCfg.data().recorridoExtra : []));
+      // Empleados con acceso a FILTRADO (para repartir crudos)
+      if (esAdmin) {
+        const qe = query(collection(db, "empleados"), where("empresaId", "==", empresaUid), where("estado", "==", "aprobado"));
+        const snapE = await getDocs(qe);
+        const todos = snapE.docs.map(d => ({ id: d.id, ...d.data() }));
+        const conFiltrado = todos.filter(e => empleadoNivelPanel(e, proyectoId, "comercial", "filtrado") === "editar");
+        setEmpleados(conFiltrado);
+      }
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, [proyectoId, empresaUid, esEmpleado, empleadoData, currentUser, navigate]);
+  }, [proyectoId, empresaUid, esEmpleado, empleadoData, currentUser, navigate, esAdmin]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -117,13 +131,63 @@ export default function ComercialDatos() {
   }
 
   async function eliminar(d) {
-    if (!window.confirm(`¿Eliminar el dato de ${d.nombre}?`)) return;
+    const avanzado = d.estado !== "crudo" || d.vendedorUid || d.filtradorUid;
+    const msg1 = avanzado
+      ? `⚠️ "${d.nombre}" ya está en proceso (filtrado/venta). Si lo eliminás, desaparece para todos (dateros, filtradores y vendedores) y no se puede recuperar.\n\n¿Eliminar igual?`
+      : `¿Eliminar el contacto de ${d.nombre}?`;
+    if (!window.confirm(msg1)) return;
+    if (avanzado && !window.confirm(`Confirmá de nuevo: eliminar "${d.nombre}" definitivamente.`)) return;
     try {
       await deleteDoc(doc(db, "comercial_datos", d.id));
       cargar();
     } catch (e) {
       alert("Error: " + e.message);
     }
+  }
+
+  // ── Repartir crudos a filtradores ──
+  const crudosSinAsignar = datos.filter(d => d.estado === "crudo" && !d.filtradorUid);
+
+  function toggleSel(id) { setSeleccionados(s => ({ ...s, [id]: !s[id] })); }
+
+  async function asignarPorCantidad() {
+    if (!asignarA) { alert("Elegí a quién asignar."); return; }
+    const n = parseInt(cantAsignar, 10);
+    if (!n || n < 1) { alert("Poné una cantidad válida."); return; }
+    const emp = empleados.find(e => e.id === asignarA);
+    const aAsignar = crudosSinAsignar.slice(0, n);
+    if (!aAsignar.length) { alert("No hay datos crudos sin asignar."); return; }
+    setGuardando(true);
+    try {
+      for (const d of aAsignar) {
+        await updateDoc(doc(db, "comercial_datos", d.id), {
+          filtradorUid: asignarA,
+          filtradorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
+          estado: "en_filtro",
+        });
+      }
+      setCantAsignar(""); cargar();
+    } catch (e) { alert("Error: " + e.message); }
+    setGuardando(false);
+  }
+
+  async function asignarAMano() {
+    if (!asignarA) { alert("Elegí a quién asignar."); return; }
+    const emp = empleados.find(e => e.id === asignarA);
+    const ids = Object.keys(seleccionados).filter(k => seleccionados[k]);
+    if (!ids.length) { alert("Elegí al menos un dato."); return; }
+    setGuardando(true);
+    try {
+      for (const id of ids) {
+        await updateDoc(doc(db, "comercial_datos", id), {
+          filtradorUid: asignarA,
+          filtradorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
+          estado: "en_filtro",
+        });
+      }
+      setSeleccionados({}); setSelMode(false); cargar();
+    } catch (e) { alert("Error: " + e.message); }
+    setGuardando(false);
   }
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
@@ -193,6 +257,36 @@ export default function ComercialDatos() {
           </div>
         )}
 
+        {/* Repartir crudos a filtradores (admin) */}
+        {esAdmin && (
+          <div style={styles.repartoBox}>
+            <div style={styles.repartoTit}>📤 Repartir datos a filtradores</div>
+            {empleados.length === 0 ? (
+              <div style={styles.repartoHint}>No hay empleados con acceso a Filtrado. Dales permiso de Filtrado en Empleados para poder asignarles.</div>
+            ) : (
+              <>
+                <div style={styles.repartoRow}>
+                  <select style={styles.repartoSelect} value={asignarA} onChange={e => setAsignarA(e.target.value)}>
+                    <option value="">Elegir filtrador…</option>
+                    {empleados.map(e => <option key={e.id} value={e.id}>{e.nombre} {e.apellido}</option>)}
+                  </select>
+                  <input style={styles.repartoInput} type="number" placeholder="Cantidad" value={cantAsignar} onChange={e => setCantAsignar(e.target.value)} />
+                  <button style={styles.repartoBtn} onClick={asignarPorCantidad} disabled={guardando}>Asignar por cantidad</button>
+                </div>
+                <div style={styles.repartoInfo}>Hay {crudosSinAsignar.length} dato(s) crudo(s) sin asignar.</div>
+                <button style={styles.repartoManoBtn} onClick={() => { setSelMode(!selMode); setSeleccionados({}); }}>
+                  {selMode ? "✕ Cancelar selección" : "🖐️ Elegir datos a mano"}
+                </button>
+                {selMode && (
+                  <button style={styles.repartoConfirmar} onClick={asignarAMano} disabled={guardando}>
+                    ✓ Asignar seleccionados a este filtrador
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
         {/* Filtros (admin) */}
         {esAdmin && (
           <div style={styles.filtrosBox}>
@@ -253,6 +347,13 @@ export default function ComercialDatos() {
               <div key={d.id}>
                 <div style={{ ...styles.trow, cursor: "pointer", ...(abierto ? { background: "var(--surface)" } : {}) }}
                   onClick={() => { setExpandido(abierto ? null : d.id); setEtapaAbierta(null); }}>
+                  {selMode && (
+                    <div style={{ ...styles.td, flex: 0.4 }} onClick={e => e.stopPropagation()}>
+                      {(d.estado === "crudo" && !d.filtradorUid) && (
+                        <input type="checkbox" checked={!!seleccionados[d.id]} onChange={() => toggleSel(d.id)} />
+                      )}
+                    </div>
+                  )}
                   <div style={{ ...styles.td, flex: 2, fontWeight: 600 }}>
                     <span style={{ marginRight: "8px", color: "var(--text2)" }}>{abierto ? "▾" : "▸"}</span>{d.nombre}
                   </div>
@@ -260,8 +361,8 @@ export default function ComercialDatos() {
                   <div style={{ ...styles.td, flex: 1 }}><span style={styles.estadoTag}>{RECORRIDO[idxActual]?.label || d.estado}</span></div>
                   {esAdmin && <div style={{ ...styles.td, flex: 1.5, color: "var(--text2)", fontSize: "12px" }}>{d.cargadoPorNombre}</div>}
                   <div style={{ ...styles.td, flex: 0.6, justifyContent: "flex-end" }}>
-                    {(esAdmin || (puedeEditar && d.cargadoPorUid === currentUser.uid)) && d.estado === "crudo" && (
-                      <button style={styles.delBtn} onClick={(e) => { e.stopPropagation(); eliminar(d); }} title="Eliminar">✕</button>
+                    {(esAdmin || (puedeEditar && d.cargadoPorUid === currentUser.uid && d.estado === "crudo")) && (
+                      <button style={styles.delBtn} onClick={(e) => { e.stopPropagation(); eliminar(d); }} title="Eliminar contacto">✕</button>
                     )}
                   </div>
                 </div>
@@ -342,6 +443,16 @@ const styles = {
   input: { flex: 1, minWidth: "140px", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
   addBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
   listaHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" },
+  repartoBox: { background: "var(--card)", border: "1.5px solid var(--acc)", borderRadius: "12px", padding: "16px", marginBottom: "16px" },
+  repartoTit: { fontSize: "15px", fontWeight: "700", color: "var(--text)", marginBottom: "12px" },
+  repartoHint: { fontSize: "13px", color: "var(--text2)", lineHeight: "1.5" },
+  repartoRow: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", marginBottom: "8px" },
+  repartoSelect: { padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", cursor: "pointer", minWidth: "160px" },
+  repartoInput: { padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", width: "110px", boxSizing: "border-box" },
+  repartoBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "9px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  repartoInfo: { fontSize: "12px", color: "var(--text2)", marginBottom: "10px" },
+  repartoManoBtn: { background: "transparent", border: "1.5px solid var(--border2)", color: "var(--text)", padding: "9px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600", marginRight: "8px" },
+  repartoConfirmar: { background: "#16a34a", color: "#fff", border: "none", padding: "9px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
   filtrosBox: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "14px", marginBottom: "16px" },
   filtrosRow: { display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" },
   filtroSelect: { padding: "8px 10px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", cursor: "pointer" },
