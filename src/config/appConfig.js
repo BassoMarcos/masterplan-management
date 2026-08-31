@@ -185,3 +185,34 @@ export function construirRecorrido(etapasExtra) {
   })) : [];
   return [...RECORRIDO_BASE, ...extra];
 }
+
+// Qué pasos automáticos (contacto/filtro/llamado) tiene un dato según su pipeline
+export function pasosAutomaticosDe(d) {
+  const hechos = { contacto: true };
+  const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || ["filtrado", "en_venta", "vendido"].includes(d.estado);
+  if (filtrado) hechos.filtro = true;
+  if (d.ventaEstado || d.vendedorUid) hechos.llamado = true;
+  return hechos;
+}
+
+// Índice de la etapa actual (última alcanzada) de un dato, dado un recorrido
+export function etapaActualIdxDe(d, recorrido) {
+  const auto = pasosAutomaticosDe(d);
+  const rec = d.recorrido || {};
+  let idx = 0;
+  recorrido.forEach((p, i) => {
+    if (p.auto ? auto[p.id] : rec[p.id]) idx = i;
+  });
+  return idx;
+}
+
+// Etiqueta de la etapa actual de un dato (para mostrar el mismo estado en todos lados)
+export function etiquetaEtapa(d, etapasExtra) {
+  const recorrido = construirRecorrido(etapasExtra);
+  const idx = etapaActualIdxDe(d, recorrido);
+  const paso = recorrido[idx];
+  // Si la compra fue rechazada, mostrar "Descartado"
+  if (d.recorrido?.compra?.resultado === "rechazo") return "Descartado";
+  return paso ? paso.label : "Contacto";
+}
+
