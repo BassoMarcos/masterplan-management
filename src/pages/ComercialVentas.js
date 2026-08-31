@@ -35,7 +35,6 @@ export default function ComercialVentas() {
 
   const [proyecto, setProyecto] = useState(null);
   const [datos, setDatos] = useState([]);
-  const [empleados, setEmpleados] = useState([]);
   const [formulario, setFormulario] = useState([]);
   const [disenoReserva, setDisenoReserva] = useState(null);
   const [respBoleto, setRespBoleto] = useState({});
@@ -45,10 +44,8 @@ export default function ComercialVentas() {
   const [RECORRIDO, setRECORRIDO] = useState(construirRecorrido([]));
   const [loading, setLoading] = useState(true);
 
-  const [selMode, setSelMode] = useState(false);
+  const selMode = false;
   const [seleccionados, setSeleccionados] = useState({});
-  const [asignarA, setAsignarA] = useState("");
-  const [cantidad, setCantidad] = useState("");
 
   const [editando, setEditando] = useState(null);
   const [estadoV, setEstadoV] = useState("");
@@ -86,17 +83,11 @@ export default function ComercialVentas() {
       let lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       lista.sort((a, b) => (b.creadoMs || 0) - (a.creadoMs || 0));
       setDatos(lista);
-
-      if (esAdmin) {
-        const qe = query(collection(db, "empleados"), where("empresaId", "==", empresaUid), where("estado", "==", "aprobado"));
-        const snapE = await getDocs(qe);
-        setEmpleados(snapE.docs.map(d => ({ id: d.id, ...d.data() })));
-      }
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, [proyectoId, empresaUid, esAdmin, navigate]);
+  }, [proyectoId, empresaUid, navigate]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -112,52 +103,9 @@ export default function ComercialVentas() {
   );
 
   // Para asignar: filtrados sin vendedor
-  const filtradosSinAsignar = datosVenta.filter(d => d.estado === "filtrado" && !d.vendedorUid);
 
   function toggleSel(id) { setSeleccionados(s => ({ ...s, [id]: !s[id] })); }
 
-  async function asignarAMano() {
-    const ids = Object.keys(seleccionados).filter(k => seleccionados[k]);
-    if (!ids.length) { alert("Seleccioná al menos un dato."); return; }
-    if (!asignarA) { alert("Elegí a quién asignar."); return; }
-    const emp = empleados.find(e => e.id === asignarA);
-    setGuardando(true);
-    try {
-      for (const id of ids) {
-        await updateDoc(doc(db, "comercial_datos", id), {
-          vendedorUid: asignarA,
-          vendedorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
-          estado: "en_venta",
-        });
-      }
-      setSeleccionados({}); setSelMode(false); setAsignarA("");
-      cargar();
-    } catch (e) { alert("Error: " + e.message); }
-    setGuardando(false);
-  }
-
-  async function asignarPorCantidad() {
-    const n = parseInt(cantidad, 10);
-    if (!n || n < 1) { alert("Poné una cantidad válida."); return; }
-    if (!asignarA) { alert("Elegí a quién asignar."); return; }
-    const emp = empleados.find(e => e.id === asignarA);
-    const aAsignar = filtradosSinAsignar.slice(0, n);
-    if (!aAsignar.length) { alert("No hay datos filtrados sin asignar."); return; }
-    setGuardando(true);
-    try {
-      for (const d of aAsignar) {
-        await updateDoc(doc(db, "comercial_datos", d.id), {
-          vendedorUid: asignarA,
-          vendedorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
-          estado: "en_venta",
-        });
-      }
-      setCantidad(""); setAsignarA("");
-      cargar();
-      alert(`${aAsignar.length} dato(s) asignados a ${emp?.nombre}.`);
-    } catch (e) { alert("Error: " + e.message); }
-    setGuardando(false);
-  }
 
   async function desasignar(d) {
     if (!window.confirm(`¿Quitar la asignación de ${d.nombre}?`)) return;
@@ -382,36 +330,6 @@ export default function ComercialVentas() {
       <main style={styles.main}>
         {esAdmin && (
           <>
-            <section style={styles.section}>
-              <h2 style={styles.sectionTitle}>📤 Repartir datos filtrados a vendedores</h2>
-              <div style={styles.asignarBox}>
-                <div style={styles.asignarRow}>
-                  <label style={styles.miniLabel}>Vendedor:</label>
-                  <select style={styles.select} value={asignarA} onChange={e => setAsignarA(e.target.value)}>
-                    <option value="">Elegir…</option>
-                    {empleados.map(e => <option key={e.id} value={e.id}>{e.nombre} {e.apellido}</option>)}
-                  </select>
-                </div>
-                <div style={styles.asignarRow}>
-                  <label style={styles.miniLabel}>Por cantidad:</label>
-                  <input style={styles.inputMini} type="number" placeholder="Ej: 20" value={cantidad} onChange={e => setCantidad(e.target.value)} />
-                  <button style={styles.asignarBtn} onClick={asignarPorCantidad} disabled={guardando}>Asignar {cantidad || "N"} sin asignar</button>
-                </div>
-                <div style={styles.hintTxt}>Hay {filtradosSinAsignar.length} dato(s) filtrados sin asignar.</div>
-                <div style={styles.separador} />
-                <div style={styles.asignarRow}>
-                  <button style={styles.selBtn} onClick={() => { setSelMode(!selMode); setSeleccionados({}); }}>
-                    {selMode ? "Cancelar selección" : "🖐️ Elegir datos a mano"}
-                  </button>
-                  {selMode && (
-                    <button style={styles.asignarBtn} onClick={asignarAMano} disabled={guardando}>
-                      Asignar seleccionados a este vendedor
-                    </button>
-                  )}
-                </div>
-              </div>
-            </section>
-
             {Object.keys(resumen).length > 0 && (
               <section style={styles.section}>
                 <h2 style={styles.sectionTitle}>📊 Progreso por vendedor</h2>
