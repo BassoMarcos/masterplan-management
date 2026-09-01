@@ -688,7 +688,7 @@ export default function ComercialVentas() {
           <div style={styles.rsvOverlay}>
             <style>{`
               @media print {
-                @page { margin: 1.4cm; }
+                @page { size: A4; margin: 1.4cm; }
                 body * { visibility: hidden !important; }
                 #hoja-reserva, #hoja-reserva * { visibility: visible !important; }
                 #hoja-reserva {
@@ -697,30 +697,33 @@ export default function ComercialVentas() {
                 }
                 #hoja-reserva .rsv-titulo {
                   text-align: center !important; font-size: 22px !important; font-weight: 800 !important;
-                  color: #111 !important; margin-bottom: 20px !important;
+                  color: #111 !important; margin-bottom: 16px !important;
+                }
+                #hoja-reserva .rsv-texto {
+                  color: #222 !important; font-size: 12px !important; line-height: 1.6 !important;
+                  margin-bottom: 18px !important; text-align: justify !important;
                 }
                 #hoja-reserva .rsv-seccion {
                   background: #fff !important; border: 1px solid #bbb !important;
-                  border-radius: 8px !important; padding: 14px 16px !important; margin-bottom: 12px !important;
+                  border-radius: 8px !important; padding: 12px 14px !important; margin-bottom: 10px !important;
                   page-break-inside: avoid !important;
                 }
                 #hoja-reserva .rsv-sectit {
                   color: #555 !important; border-bottom: none !important;
                   font-size: 11px !important; font-weight: 700 !important; letter-spacing: 0.5px !important;
-                  margin-bottom: 12px !important; text-transform: uppercase !important;
+                  margin-bottom: 10px !important; text-transform: uppercase !important;
                 }
-                #hoja-reserva .rsv-label {
-                  color: #666 !important; font-size: 10px !important; font-weight: 600 !important;
-                }
+                #hoja-reserva .rsv-label { color: #666 !important; font-size: 10px !important; font-weight: 600 !important; }
                 #hoja-reserva input, #hoja-reserva select {
                   border: 1px solid #bbb !important; border-radius: 6px !important;
                   background: transparent !important; color: #111 !important;
-                  padding: 6px 8px !important; font-size: 13px !important;
+                  padding: 5px 8px !important; font-size: 12px !important;
                   -webkit-appearance: none; appearance: none;
                 }
-                #hoja-reserva .rsv-titular {
-                  background: #fff !important; border: 1px solid #ccc !important; border-radius: 8px !important;
-                }
+                #hoja-reserva .rsv-titular { background: #fff !important; border: 1px solid #ccc !important; border-radius: 8px !important; }
+                #hoja-reserva .rsv-firmas { display: flex !important; gap: 40px !important; margin-top: 50px !important; page-break-inside: avoid !important; }
+                #hoja-reserva .rsv-firma-linea { border-top: 1px solid #333 !important; }
+                #hoja-reserva .rsv-firma-lbl { color: #333 !important; font-size: 11px !important; }
                 #hoja-reserva button { display: none !important; }
               }
             `}</style>
@@ -735,7 +738,10 @@ export default function ComercialVentas() {
 
             <div style={styles.rsvScroll}>
               <div id="hoja-reserva" style={styles.rsvHoja}>
-                <div className="rsv-titulo" style={styles.rsvHojaTitulo}>{dis.titulo || "Datos de Cliente"}</div>
+                <div className="rsv-titulo" style={styles.rsvHojaTitulo}>{dis.titulo || "Contrato de Reserva"}</div>
+                {dis.textoContrato && dis.textoContrato.trim() && (
+                  <div className="rsv-texto" style={styles.rsvTexto}>{dis.textoContrato}</div>
+                )}
                 {dis.secciones.map(s => (
                   <div key={s.id} className="rsv-seccion" style={styles.rsvSeccion}>
                     {s.esTitular ? (
@@ -767,6 +773,10 @@ export default function ComercialVentas() {
                     )}
                   </div>
                 ))}
+                <div className="rsv-firmas" style={styles.rsvFirmas}>
+                  <div style={styles.rsvFirmaCol}><div className="rsv-firma-linea" style={styles.rsvFirmaLinea} /><span className="rsv-firma-lbl" style={styles.rsvFirmaLbl}>{dis.firmaIzq || "En representación de"}</span></div>
+                  <div style={styles.rsvFirmaCol}><div className="rsv-firma-linea" style={styles.rsvFirmaLinea} /><span className="rsv-firma-lbl" style={styles.rsvFirmaLbl}>{dis.firmaDer || "Firma del comprador"}</span></div>
+                </div>
               </div>
             </div>
           </div>
@@ -798,6 +808,11 @@ const styles = {
   rsvScroll: { flex: 1, overflow: "auto", padding: "20px", display: "flex", justifyContent: "center" },
   rsvHoja: { background: "transparent", color: "var(--text)", padding: "0", width: "100%", maxWidth: "680px", boxSizing: "border-box" },
   rsvHojaTitulo: { fontSize: "22px", fontWeight: "800", color: "var(--text)", marginBottom: "20px", paddingLeft: "2px" },
+  rsvTexto: { fontSize: "13.5px", color: "var(--text)", lineHeight: "1.6", whiteSpace: "pre-wrap", marginBottom: "18px", padding: "0 2px" },
+  rsvFirmas: { display: "flex", gap: "40px", marginTop: "44px", justifyContent: "space-between" },
+  rsvFirmaCol: { flex: 1, textAlign: "center" },
+  rsvFirmaLinea: { borderTop: "1px solid var(--text2)", marginBottom: "6px" },
+  rsvFirmaLbl: { fontSize: "12px", color: "var(--text2)" },
   rsvSeccion: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "18px 20px", marginBottom: "14px" },
   rsvSecTit: { fontSize: "13px", fontWeight: "700", color: "var(--acc)", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.4px", display: "flex", justifyContent: "space-between", alignItems: "center" },
   rsvCamposRow: { display: "flex", flexWrap: "wrap", gap: "14px 16px" },
