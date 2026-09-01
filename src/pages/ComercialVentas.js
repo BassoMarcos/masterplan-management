@@ -688,20 +688,39 @@ export default function ComercialVentas() {
           <div style={styles.rsvOverlay}>
             <style>{`
               @media print {
-                @page { margin: 1.5cm; }
+                @page { margin: 1.4cm; }
                 body * { visibility: hidden !important; }
                 #hoja-reserva, #hoja-reserva * { visibility: visible !important; }
-                #hoja-reserva { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; color: #000 !important; }
-                #hoja-reserva .rsv-titulo { text-align: center !important; font-size: 22px !important; color: #000 !important; }
-                #hoja-reserva .rsv-seccion { background: #fff !important; border: none !important; border-radius: 0 !important; padding: 0 0 10px 0 !important; margin-bottom: 14px !important; }
-                #hoja-reserva .rsv-sectit { color: #000 !important; border-bottom: 2px solid #000 !important; padding-bottom: 3px !important; }
-                #hoja-reserva .rsv-label { color: #333 !important; }
-                #hoja-reserva input, #hoja-reserva select {
-                  border: none !important; border-bottom: 1px solid #000 !important;
-                  border-radius: 0 !important; background: transparent !important; color: #000 !important;
-                  padding: 2px 2px !important; -webkit-appearance: none; appearance: none;
+                #hoja-reserva {
+                  position: absolute !important; left: 0 !important; top: 0 !important;
+                  width: 100% !important; max-width: 100% !important; color: #222 !important;
                 }
-                #hoja-reserva .rsv-titular { background: #fff !important; border: 1px solid #999 !important; }
+                #hoja-reserva .rsv-titulo {
+                  text-align: center !important; font-size: 22px !important; font-weight: 800 !important;
+                  color: #111 !important; margin-bottom: 20px !important;
+                }
+                #hoja-reserva .rsv-seccion {
+                  background: #fff !important; border: 1px solid #bbb !important;
+                  border-radius: 8px !important; padding: 14px 16px !important; margin-bottom: 12px !important;
+                  page-break-inside: avoid !important;
+                }
+                #hoja-reserva .rsv-sectit {
+                  color: #555 !important; border-bottom: none !important;
+                  font-size: 11px !important; font-weight: 700 !important; letter-spacing: 0.5px !important;
+                  margin-bottom: 12px !important; text-transform: uppercase !important;
+                }
+                #hoja-reserva .rsv-label {
+                  color: #666 !important; font-size: 10px !important; font-weight: 600 !important;
+                }
+                #hoja-reserva input, #hoja-reserva select {
+                  border: 1px solid #bbb !important; border-radius: 6px !important;
+                  background: transparent !important; color: #111 !important;
+                  padding: 6px 8px !important; font-size: 13px !important;
+                  -webkit-appearance: none; appearance: none;
+                }
+                #hoja-reserva .rsv-titular {
+                  background: #fff !important; border: 1px solid #ccc !important; border-radius: 8px !important;
+                }
                 #hoja-reserva button { display: none !important; }
               }
             `}</style>
