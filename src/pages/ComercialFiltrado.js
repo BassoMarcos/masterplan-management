@@ -363,6 +363,9 @@ export default function ComercialFiltrado() {
                           <button key={op} onClick={() => setRespuestas({ ...respuestas, [p.id]: op })}
                             style={{ ...styles.fsOpcionBtn, ...(respuestas[p.id] === op ? styles.fsBtnActivo : {}) }}>{op}</button>
                         ))}
+                        {["otro", "otros"].includes(String(respuestas[p.id] || "").trim().toLowerCase()) && (
+                          <input style={styles.fsOtroInput} value={respuestas[p.id + "_otro"] || ""} onChange={e => setRespuestas({ ...respuestas, [p.id + "_otro"]: e.target.value })} placeholder="Aclarar…" autoFocus />
+                        )}
                       </div>
                     )}
                   </div>
@@ -408,6 +411,7 @@ const styles = {
   fsSinoBtn: { flex: 1, padding: "16px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text2)", cursor: "pointer", fontSize: "16px", fontWeight: "700" },
   fsOpcionesRow: { display: "flex", gap: "10px", flexWrap: "wrap" },
   fsOpcionBtn: { padding: "12px 20px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text2)", cursor: "pointer", fontSize: "15px", fontWeight: "600" },
+  fsOtroInput: { flexBasis: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--acc)", background: "var(--bg)", color: "var(--text)", fontSize: "15px", boxSizing: "border-box", marginTop: "8px" },
   fsBtnActivo: { background: "var(--acc)", color: "#fff", borderColor: "var(--acc)" },
   fsFooter: { display: "flex", justifyContent: "flex-end", gap: "12px", padding: "16px 28px", borderTop: "1.5px solid var(--border)", background: "var(--card)" },
   fsCancelBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "14px 28px", borderRadius: "10px", cursor: "pointer", fontSize: "15px", fontWeight: "600" },
