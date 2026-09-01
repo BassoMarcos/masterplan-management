@@ -75,7 +75,7 @@ export default function ComercialVentas() {
       const snapCfg = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
       setFormulario(snapCfg.exists() && Array.isArray(snapCfg.data().preguntasFiltro) ? snapCfg.data().preguntasFiltro : []);
       if (snapCfg.exists() && snapCfg.data().plantillaWhatsFirma) setPlantillaWhats(snapCfg.data().plantillaWhatsFirma);
-      setDisenoReserva(snapCfg.exists() && snapCfg.data().disenoReserva ? snapCfg.data().disenoReserva : null);
+      setDisenoReserva(snapCfg.exists() && snapCfg.data().disenoReservaV2 ? snapCfg.data().disenoReservaV2 : null);
       setRECORRIDO(construirRecorrido(snapCfg.exists() ? snapCfg.data().recorridoExtra : []));
 
       const q = query(collection(db, "comercial_datos"), where("empresaId", "==", empresaUid), where("proyectoId", "==", proyectoId));
@@ -641,27 +641,48 @@ export default function ComercialVentas() {
         const dato = datos.find(d => d.id === reservaFull.datoId);
         if (!dato) return null;
         const dis = disenoReserva;
-        if (!dis || !Array.isArray(dis.campos) || dis.campos.length === 0) {
+        if (!dis || !Array.isArray(dis.secciones) || dis.secciones.length === 0) {
           return (
             <div style={styles.rsvOverlay}>
               <div style={styles.rsvVacio}>
                 <p>📄 Todavía no hay un formulario de reserva diseñado.</p>
-                <p style={{ fontSize: "13px", color: "var(--text2)" }}>El admin puede armarlo en ⚙️ Configuración → Diseñar formulario de reserva.</p>
+                <p style={{ fontSize: "13px", color: "var(--text2)" }}>El admin puede armarlo en ⚙️ Configuración → Formulario de reserva.</p>
                 <button style={styles.fsCancelBtn} onClick={() => setReservaFull(null)}>Cerrar</button>
               </div>
             </div>
           );
         }
-        const tituLabels = dis.tituladoresLabels || [];
-        const hojaAlto = dis.campos.reduce((m, c) => Math.max(m, c.y + (c.tipo === "titular" ? 200 : 70)), 0) + 40;
+        const tituLabels = dis.titularLabels || [];
+        const anchoFlex = (ancho) => ancho === "half" ? "1 1 calc(50% - 8px)" : ancho === "third" ? "1 1 calc(33.33% - 8px)" : "1 1 100%";
 
         function setCampoVal(id, v) { setRespBoleto({ ...respBoleto, [id]: v }); }
         function setTitVal(idx, label, v) {
-          const nuevos = titularesReserva.map((t, i) => i === idx ? { ...t, [label]: v } : t);
-          setTitularesReserva(nuevos);
+          setTitularesReserva(titularesReserva.map((t, i) => i === idx ? { ...t, [label]: v } : t));
         }
         function agregarTitular() { setTitularesReserva([...titularesReserva, {}]); }
         function quitarTitular(idx) { if (titularesReserva.length > 1) setTitularesReserva(titularesReserva.filter((_, i) => i !== idx)); }
+
+        function renderCampo(c) {
+          return (
+            <div key={c.id} style={{ flex: anchoFlex(c.ancho), minWidth: "180px" }}>
+              <label style={styles.rsvCampoLabel}>{c.label}</label>
+              {c.tipo === "sino" ? (
+                <select style={styles.rsvCampoInput} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, e.target.value)} disabled={!puedeEditar}>
+                  <option value="">—</option><option value="Sí">Sí</option><option value="No">No</option>
+                </select>
+              ) : c.tipo === "opciones" ? (
+                <select style={styles.rsvCampoInput} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, e.target.value)} disabled={!puedeEditar}>
+                  <option value="">Elegir…</option>
+                  {(c.opciones || []).map(op => <option key={op} value={op}>{op}</option>)}
+                </select>
+              ) : c.tipo === "monto" ? (
+                <input style={styles.rsvCampoInput} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, formatearMonto(e.target.value))} disabled={!puedeEditar} placeholder="$" inputMode="numeric" />
+              ) : (
+                <input style={styles.rsvCampoInput} type={c.tipo === "fecha" ? "date" : c.tipo === "numero" ? "number" : "text"} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, e.target.value)} disabled={!puedeEditar} />
+              )}
+            </div>
+          );
+        }
 
         return (
           <div style={styles.rsvOverlay}>
@@ -669,8 +690,7 @@ export default function ComercialVentas() {
               @media print {
                 body * { visibility: hidden !important; }
                 #hoja-reserva, #hoja-reserva * { visibility: visible !important; }
-                #hoja-reserva { position: absolute !important; left: 0 !important; top: 0 !important; box-shadow: none !important; }
-                #hoja-reserva input, #hoja-reserva select { border-bottom: 1px solid #333 !important; -webkit-appearance: none; appearance: none; }
+                #hoja-reserva { position: absolute !important; left: 0 !important; top: 0 !important; box-shadow: none !important; width: 100% !important; }
               }
             `}</style>
             <div style={styles.rsvHeader}>
@@ -683,53 +703,39 @@ export default function ComercialVentas() {
             </div>
 
             <div style={styles.rsvScroll}>
-              <div id="hoja-reserva" style={{ ...styles.rsvHoja, width: 760, minHeight: hojaAlto }}>
+              <div id="hoja-reserva" style={styles.rsvHoja}>
                 <div style={styles.rsvHojaTitulo}>{dis.titulo || "Datos de Cliente"}</div>
-                {dis.campos.map(c => {
-                  if (c.tipo === "titular") {
-                    return (
-                      <div key={c.id} style={{ position: "absolute", left: c.x, top: c.y + 50, width: Math.max(c.w, 480) }}>
+                {dis.secciones.map(s => (
+                  <div key={s.id} style={styles.rsvSeccion}>
+                    {s.esTitular ? (
+                      <>
                         {titularesReserva.map((tit, idx) => (
                           <div key={idx} style={styles.rsvTitularBloque}>
-                            <div style={styles.rsvTitularHead}>
-                              <span>Titular {idx + 1}</span>
-                              {puedeEditar && titularesReserva.length > 1 && <button style={styles.rsvTitQuitar} onClick={() => quitarTitular(idx)}>✕</button>}
+                            <div style={styles.rsvSecTit}>{s.titulo} {idx + 1}
+                              {puedeEditar && titularesReserva.length > 1 && <button style={styles.rsvTitQuitar} onClick={() => quitarTitular(idx)}>✕ quitar</button>}
                             </div>
-                            <div style={styles.rsvTitularGrid}>
+                            <div style={styles.rsvCamposRow}>
                               {tituLabels.map((lb, li) => (
-                                <div key={li} style={styles.rsvCampoRow}>
-                                  <span style={styles.rsvLabel}>{lb}:</span>
-                                  <input style={styles.rsvInput} value={tit[lb] || ""} onChange={e => setTitVal(idx, lb, e.target.value)} disabled={!puedeEditar} />
+                                <div key={li} style={{ flex: "1 1 calc(50% - 8px)", minWidth: "180px" }}>
+                                  <label style={styles.rsvCampoLabel}>{lb}</label>
+                                  <input style={styles.rsvCampoInput} value={tit[lb] || ""} onChange={e => setTitVal(idx, lb, e.target.value)} disabled={!puedeEditar} />
                                 </div>
                               ))}
                             </div>
                           </div>
                         ))}
                         {puedeEditar && <button style={styles.rsvAddTitular} onClick={agregarTitular}>➕ Agregar titular</button>}
-                      </div>
-                    );
-                  }
-                  // Campo normal
-                  return (
-                    <div key={c.id} style={{ position: "absolute", left: c.x, top: c.y + 50, width: c.w, display: "flex", alignItems: "baseline", gap: "6px" }}>
-                      <span style={styles.rsvLabel}>{c.label}:</span>
-                      {c.tipo === "sino" ? (
-                        <select style={styles.rsvInputLinea} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, e.target.value)} disabled={!puedeEditar}>
-                          <option value="">—</option><option value="Sí">Sí</option><option value="No">No</option>
-                        </select>
-                      ) : c.tipo === "opciones" ? (
-                        <select style={styles.rsvInputLinea} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, e.target.value)} disabled={!puedeEditar}>
-                          <option value="">—</option>
-                          {(c.opciones || []).map(op => <option key={op} value={op}>{op}</option>)}
-                        </select>
-                      ) : c.tipo === "monto" ? (
-                        <input style={styles.rsvInputLinea} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, formatearMonto(e.target.value))} disabled={!puedeEditar} placeholder="$" inputMode="numeric" />
-                      ) : (
-                        <input style={styles.rsvInputLinea} type={c.tipo === "fecha" ? "date" : c.tipo === "numero" ? "number" : "text"} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, e.target.value)} disabled={!puedeEditar} />
-                      )}
-                    </div>
-                  );
-                })}
+                      </>
+                    ) : (
+                      <>
+                        <div style={styles.rsvSecTit}>{s.titulo}</div>
+                        <div style={styles.rsvCamposRow}>
+                          {s.campos.map(renderCampo)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -759,17 +765,16 @@ const styles = {
   rsvTitulo: { fontSize: "16px", fontWeight: "700", color: "var(--text)" },
   rsvImprimir: { background: "var(--surface)", border: "1.5px solid var(--border2)", color: "var(--text)", padding: "9px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   rsvScroll: { flex: 1, overflow: "auto", padding: "24px", display: "flex", justifyContent: "center" },
-  rsvHoja: { position: "relative", background: "#fff", color: "#111", borderRadius: "4px", boxShadow: "0 4px 24px rgba(0,0,0,0.2)", flexShrink: 0, padding: "0" },
-  rsvHojaTitulo: { position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", fontSize: "20px", fontWeight: "800", color: "#111" },
-  rsvLabel: { fontWeight: "700", color: "#111", whiteSpace: "nowrap", fontSize: "13px" },
-  rsvInputLinea: { flex: 1, border: "none", borderBottom: "1px solid #333", background: "transparent", color: "#111", fontSize: "13px", outline: "none", minWidth: "40px", padding: "2px 4px" },
-  rsvTitularBloque: { border: "1px solid #ccc", borderRadius: "6px", padding: "10px", marginBottom: "10px" },
-  rsvTitularHead: { display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "13px", fontWeight: "800", color: "#111", marginBottom: "8px" },
-  rsvTitQuitar: { background: "transparent", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "13px" },
-  rsvTitularGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px" },
-  rsvCampoRow: { display: "flex", alignItems: "baseline", gap: "4px" },
-  rsvInput: { flex: 1, border: "none", borderBottom: "1px solid #333", background: "transparent", color: "#111", fontSize: "12px", outline: "none", minWidth: "30px", padding: "1px 3px" },
-  rsvAddTitular: { background: "#2563eb", color: "#fff", border: "none", padding: "8px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
+  rsvHoja: { background: "#fff", color: "#111", borderRadius: "6px", boxShadow: "0 4px 24px rgba(0,0,0,0.2)", padding: "32px", width: "100%", maxWidth: "760px", boxSizing: "border-box" },
+  rsvHojaTitulo: { fontSize: "22px", fontWeight: "800", color: "#111", textAlign: "center", marginBottom: "24px" },
+  rsvSeccion: { marginBottom: "22px" },
+  rsvSecTit: { fontSize: "13px", fontWeight: "800", color: "#333", borderBottom: "2px solid #333", paddingBottom: "4px", marginBottom: "12px", textTransform: "uppercase", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  rsvCamposRow: { display: "flex", flexWrap: "wrap", gap: "12px 16px" },
+  rsvCampoLabel: { display: "block", fontSize: "11px", fontWeight: "700", color: "#555", marginBottom: "3px" },
+  rsvCampoInput: { width: "100%", border: "none", borderBottom: "1.5px solid #333", background: "transparent", color: "#111", fontSize: "14px", outline: "none", padding: "4px 2px", boxSizing: "border-box" },
+  rsvTitularBloque: { border: "1px solid #ddd", borderRadius: "8px", padding: "12px", marginBottom: "10px", background: "#fafafa" },
+  rsvTitQuitar: { background: "transparent", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px", fontWeight: "600" },
+  rsvAddTitular: { background: "#2563eb", color: "#fff", border: "none", padding: "9px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700", marginTop: "4px" },
   container: { minHeight: "100vh", background: "var(--bg)", fontFamily: "'Segoe UI', sans-serif" },
   header: { background: "var(--nav)", color: "var(--text)", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { display: "flex", alignItems: "center", gap: "16px" },
