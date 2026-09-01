@@ -86,8 +86,29 @@ export function AuthProvider({ children }) {
     return cred;
   }
 
-  async function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  async function login(email, password, tipoAcceso) {
+    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const user = cred.user;
+    // El superadmin puede entrar por cualquier puerta
+    if (user.email === SUPERADMIN_EMAIL) return cred;
+    if (tipoAcceso) {
+      // Verificar que la cuenta corresponda a la puerta usada
+      const esEmpresaCuenta = (await getDoc(doc(db, "empresas", user.uid))).exists();
+      const esEmpleadoCuenta = (await getDoc(doc(db, "empleados", user.uid))).exists();
+      if (tipoAcceso === "empresa" && !esEmpresaCuenta) {
+        await signOut(auth);
+        throw new Error(esEmpleadoCuenta
+          ? "Esta cuenta es de empleado. Ingresá por “Acceso Personal”."
+          : "Esta cuenta no está registrada como empresa.");
+      }
+      if (tipoAcceso === "personal" && !esEmpleadoCuenta) {
+        await signOut(auth);
+        throw new Error(esEmpresaCuenta
+          ? "Esta cuenta es de empresa. Ingresá por “Acceso Empresas”."
+          : "Esta cuenta no está registrada como empleado.");
+      }
+    }
+    return cred;
   }
 
   async function logout() {
