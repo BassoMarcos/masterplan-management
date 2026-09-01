@@ -24,7 +24,7 @@ export default function ComercialConfigEstrategia() {
 
   // La config de estrategia la puede editar quien tenga edición en ventas (o admin)
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "ventas") : "editar";
-  const puedeEditar = !esEmpleado || nivel === "editar";
+  const puedeEditar = !esEmpleado || empleadoData?.accesoTotal || nivel === "editar";
 
   const cargar = useCallback(async () => {
     setLoading(true);
