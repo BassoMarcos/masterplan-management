@@ -87,6 +87,8 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password, tipoAcceso) {
+    // Bloqueamos la UI (muestra "Cargando") mientras validamos, para no mostrar la pantalla interna
+    if (tipoAcceso) setCargandoDatos(true);
     const cred = await signInWithEmailAndPassword(auth, email, password);
     const user = cred.user;
     // El superadmin puede entrar por cualquier puerta
@@ -95,15 +97,14 @@ export function AuthProvider({ children }) {
       // Verificar que la cuenta corresponda a la puerta usada
       const esEmpresaCuenta = (await getDoc(doc(db, "empresas", user.uid))).exists();
       const esEmpleadoCuenta = (await getDoc(doc(db, "empleados", user.uid))).exists();
+      const rechazar = (msg) => { return signOut(auth).then(() => { throw new Error(msg); }); };
       if (tipoAcceso === "empresa" && !esEmpresaCuenta) {
-        await signOut(auth);
-        throw new Error(esEmpleadoCuenta
+        return rechazar(esEmpleadoCuenta
           ? "Esta cuenta es de empleado. Ingresá por “Acceso Personal”."
           : "Esta cuenta no está registrada como empresa.");
       }
       if (tipoAcceso === "personal" && !esEmpleadoCuenta) {
-        await signOut(auth);
-        throw new Error(esEmpresaCuenta
+        return rechazar(esEmpresaCuenta
           ? "Esta cuenta es de empresa. Ingresá por “Acceso Empresas”."
           : "Esta cuenta no está registrada como empleado.");
       }
