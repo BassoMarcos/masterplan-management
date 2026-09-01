@@ -665,7 +665,7 @@ export default function ComercialVentas() {
         function renderCampo(c) {
           return (
             <div key={c.id} style={{ flex: anchoFlex(c.ancho), minWidth: "180px" }}>
-              <label style={styles.rsvCampoLabel}>{c.label}</label>
+              <label className="rsv-label" style={styles.rsvCampoLabel}>{c.label}</label>
               {c.tipo === "sino" ? (
                 <select style={styles.rsvCampoInput} value={respBoleto[c.id] || ""} onChange={e => setCampoVal(c.id, e.target.value)} disabled={!puedeEditar}>
                   <option value="">—</option><option value="Sí">Sí</option><option value="No">No</option>
@@ -688,9 +688,21 @@ export default function ComercialVentas() {
           <div style={styles.rsvOverlay}>
             <style>{`
               @media print {
+                @page { margin: 1.5cm; }
                 body * { visibility: hidden !important; }
                 #hoja-reserva, #hoja-reserva * { visibility: visible !important; }
-                #hoja-reserva { position: absolute !important; left: 0 !important; top: 0 !important; box-shadow: none !important; width: 100% !important; }
+                #hoja-reserva { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; max-width: 100% !important; color: #000 !important; }
+                #hoja-reserva .rsv-titulo { text-align: center !important; font-size: 22px !important; color: #000 !important; }
+                #hoja-reserva .rsv-seccion { background: #fff !important; border: none !important; border-radius: 0 !important; padding: 0 0 10px 0 !important; margin-bottom: 14px !important; }
+                #hoja-reserva .rsv-sectit { color: #000 !important; border-bottom: 2px solid #000 !important; padding-bottom: 3px !important; }
+                #hoja-reserva .rsv-label { color: #333 !important; }
+                #hoja-reserva input, #hoja-reserva select {
+                  border: none !important; border-bottom: 1px solid #000 !important;
+                  border-radius: 0 !important; background: transparent !important; color: #000 !important;
+                  padding: 2px 2px !important; -webkit-appearance: none; appearance: none;
+                }
+                #hoja-reserva .rsv-titular { background: #fff !important; border: 1px solid #999 !important; }
+                #hoja-reserva button { display: none !important; }
               }
             `}</style>
             <div style={styles.rsvHeader}>
@@ -704,20 +716,20 @@ export default function ComercialVentas() {
 
             <div style={styles.rsvScroll}>
               <div id="hoja-reserva" style={styles.rsvHoja}>
-                <div style={styles.rsvHojaTitulo}>{dis.titulo || "Datos de Cliente"}</div>
+                <div className="rsv-titulo" style={styles.rsvHojaTitulo}>{dis.titulo || "Datos de Cliente"}</div>
                 {dis.secciones.map(s => (
-                  <div key={s.id} style={styles.rsvSeccion}>
+                  <div key={s.id} className="rsv-seccion" style={styles.rsvSeccion}>
                     {s.esTitular ? (
                       <>
                         {titularesReserva.map((tit, idx) => (
-                          <div key={idx} style={styles.rsvTitularBloque}>
-                            <div style={styles.rsvSecTit}>{s.titulo} {idx + 1}
+                          <div key={idx} className="rsv-titular" style={styles.rsvTitularBloque}>
+                            <div className="rsv-sectit" style={styles.rsvSecTit}>{s.titulo} {idx + 1}
                               {puedeEditar && titularesReserva.length > 1 && <button style={styles.rsvTitQuitar} onClick={() => quitarTitular(idx)}>✕ quitar</button>}
                             </div>
                             <div style={styles.rsvCamposRow}>
                               {tituLabels.map((lb, li) => (
                                 <div key={li} style={{ flex: "1 1 calc(50% - 8px)", minWidth: "180px" }}>
-                                  <label style={styles.rsvCampoLabel}>{lb}</label>
+                                  <label className="rsv-label" style={styles.rsvCampoLabel}>{lb}</label>
                                   <input style={styles.rsvCampoInput} value={tit[lb] || ""} onChange={e => setTitVal(idx, lb, e.target.value)} disabled={!puedeEditar} />
                                 </div>
                               ))}
@@ -728,7 +740,7 @@ export default function ComercialVentas() {
                       </>
                     ) : (
                       <>
-                        <div style={styles.rsvSecTit}>{s.titulo}</div>
+                        <div className="rsv-sectit" style={styles.rsvSecTit}>{s.titulo}</div>
                         <div style={styles.rsvCamposRow}>
                           {s.campos.map(renderCampo)}
                         </div>
@@ -764,17 +776,17 @@ const styles = {
   rsvHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 24px", borderBottom: "1.5px solid var(--border)", background: "var(--card)", gap: "12px" },
   rsvTitulo: { fontSize: "16px", fontWeight: "700", color: "var(--text)" },
   rsvImprimir: { background: "var(--surface)", border: "1.5px solid var(--border2)", color: "var(--text)", padding: "9px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
-  rsvScroll: { flex: 1, overflow: "auto", padding: "24px", display: "flex", justifyContent: "center" },
-  rsvHoja: { background: "#fff", color: "#111", borderRadius: "6px", boxShadow: "0 4px 24px rgba(0,0,0,0.2)", padding: "32px", width: "100%", maxWidth: "760px", boxSizing: "border-box" },
-  rsvHojaTitulo: { fontSize: "22px", fontWeight: "800", color: "#111", textAlign: "center", marginBottom: "24px" },
-  rsvSeccion: { marginBottom: "22px" },
-  rsvSecTit: { fontSize: "13px", fontWeight: "800", color: "#333", borderBottom: "2px solid #333", paddingBottom: "4px", marginBottom: "12px", textTransform: "uppercase", display: "flex", justifyContent: "space-between", alignItems: "center" },
-  rsvCamposRow: { display: "flex", flexWrap: "wrap", gap: "12px 16px" },
-  rsvCampoLabel: { display: "block", fontSize: "11px", fontWeight: "700", color: "#555", marginBottom: "3px" },
-  rsvCampoInput: { width: "100%", border: "none", borderBottom: "1.5px solid #333", background: "transparent", color: "#111", fontSize: "14px", outline: "none", padding: "4px 2px", boxSizing: "border-box" },
-  rsvTitularBloque: { border: "1px solid #ddd", borderRadius: "8px", padding: "12px", marginBottom: "10px", background: "#fafafa" },
+  rsvScroll: { flex: 1, overflow: "auto", padding: "20px", display: "flex", justifyContent: "center" },
+  rsvHoja: { background: "transparent", color: "var(--text)", padding: "0", width: "100%", maxWidth: "680px", boxSizing: "border-box" },
+  rsvHojaTitulo: { fontSize: "22px", fontWeight: "800", color: "var(--text)", marginBottom: "20px", paddingLeft: "2px" },
+  rsvSeccion: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "18px 20px", marginBottom: "14px" },
+  rsvSecTit: { fontSize: "13px", fontWeight: "700", color: "var(--acc)", marginBottom: "14px", textTransform: "uppercase", letterSpacing: "0.4px", display: "flex", justifyContent: "space-between", alignItems: "center" },
+  rsvCamposRow: { display: "flex", flexWrap: "wrap", gap: "14px 16px" },
+  rsvCampoLabel: { display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text2)", marginBottom: "5px" },
+  rsvCampoInput: { width: "100%", border: "1.5px solid var(--border)", borderRadius: "9px", background: "var(--bg)", color: "var(--text)", fontSize: "14px", outline: "none", padding: "9px 11px", boxSizing: "border-box" },
+  rsvTitularBloque: { border: "1.5px solid var(--border)", borderRadius: "10px", padding: "14px", marginBottom: "10px", background: "var(--surface)" },
   rsvTitQuitar: { background: "transparent", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px", fontWeight: "600" },
-  rsvAddTitular: { background: "#2563eb", color: "#fff", border: "none", padding: "9px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700", marginTop: "4px" },
+  rsvAddTitular: { background: "var(--acc)", color: "#fff", border: "none", padding: "9px 16px", borderRadius: "9px", cursor: "pointer", fontSize: "13px", fontWeight: "700", marginTop: "4px" },
   container: { minHeight: "100vh", background: "var(--bg)", fontFamily: "'Segoe UI', sans-serif" },
   header: { background: "var(--nav)", color: "var(--text)", padding: "16px 32px", display: "flex", alignItems: "center", justifyContent: "space-between" },
   headerLeft: { display: "flex", alignItems: "center", gap: "16px" },
