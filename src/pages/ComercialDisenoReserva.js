@@ -242,28 +242,34 @@ export default function ComercialDisenoReserva() {
           </div>
         )}
 
-        {/* Vista previa */}
+        {/* Vista previa (moderna, como la verá el vendedor) */}
         {secciones.length > 0 && (
           <div style={styles.preview}>
-            <div style={styles.previewTag}>Vista previa</div>
-            <div style={styles.previewHoja}>
-              <div style={styles.previewTitulo}>{titulo}</div>
-              {secciones.map(s => (
-                <div key={s.id} style={styles.previewSeccion}>
-                  <div style={styles.previewSecTit}>{s.titulo}{s.esTitular && " (Titular 1)"}</div>
-                  <div style={styles.previewCampos}>
-                    {s.esTitular
-                      ? titularLabels.map((lb, i) => (
-                          <div key={i} style={{ flex: "1 1 calc(50% - 6px)" }}><span style={styles.previewLabel}>{lb}:</span><span style={styles.previewLinea} /></div>
-                        ))
-                      : s.campos.map(c => {
-                          const anchoFlex = (ANCHOS.find(a => a.id === c.ancho) || ANCHOS[0]).flex;
-                          return <div key={c.id} style={{ flex: anchoFlex }}><span style={styles.previewLabel}>{c.label}:</span><span style={styles.previewLinea} /></div>;
-                        })}
-                  </div>
+            <div style={styles.previewTag}>Vista previa (así la ve el vendedor)</div>
+            <div style={styles.previewTitulo}>{titulo}</div>
+            {secciones.map(s => (
+              <div key={s.id} style={styles.previewSeccion}>
+                <div style={styles.previewSecTit}>{s.titulo}{s.esTitular && " (Titular 1)"}</div>
+                <div style={styles.previewCampos}>
+                  {s.esTitular
+                    ? titularLabels.map((lb, i) => (
+                        <div key={i} style={{ flex: "1 1 calc(50% - 8px)", minWidth: "160px" }}>
+                          <label style={styles.previewLabel}>{lb}</label>
+                          <div style={styles.previewInput} />
+                        </div>
+                      ))
+                    : s.campos.map(c => {
+                        const anchoFlex = (ANCHOS.find(a => a.id === c.ancho) || ANCHOS[0]).flex;
+                        return (
+                          <div key={c.id} style={{ flex: anchoFlex, minWidth: "160px" }}>
+                            <label style={styles.previewLabel}>{c.label}</label>
+                            <div style={styles.previewInput} />
+                          </div>
+                        );
+                      })}
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
         )}
       </main>
@@ -313,11 +319,11 @@ const styles = {
   addTitularBtn: { flex: 1, background: "transparent", border: "1.5px solid var(--acc)", color: "var(--text)", padding: "12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", fontWeight: "700", minWidth: "160px" },
   preview: { marginTop: "28px" },
   previewTag: { fontSize: "12px", fontWeight: "700", color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" },
-  previewHoja: { background: "#fff", color: "#111", borderRadius: "8px", padding: "28px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" },
-  previewTitulo: { fontSize: "20px", fontWeight: "800", textAlign: "center", marginBottom: "20px", color: "#111" },
-  previewSeccion: { marginBottom: "18px" },
-  previewSecTit: { fontSize: "13px", fontWeight: "800", color: "#333", borderBottom: "2px solid #333", paddingBottom: "3px", marginBottom: "10px", textTransform: "uppercase" },
-  previewCampos: { display: "flex", flexWrap: "wrap", gap: "12px" },
-  previewLabel: { fontWeight: "700", color: "#111", fontSize: "12px", whiteSpace: "nowrap", marginRight: "4px" },
-  previewLinea: { flex: 1, borderBottom: "1px solid #999", minWidth: "40px", display: "inline-block", minHeight: "14px" },
+  previewHoja: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "20px" },
+  previewTitulo: { fontSize: "20px", fontWeight: "800", marginBottom: "16px", color: "var(--text)" },
+  previewSeccion: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "16px 18px", marginBottom: "12px" },
+  previewSecTit: { fontSize: "12px", fontWeight: "700", color: "var(--acc)", marginBottom: "12px", textTransform: "uppercase", letterSpacing: "0.4px" },
+  previewCampos: { display: "flex", flexWrap: "wrap", gap: "12px 16px" },
+  previewLabel: { display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text2)", marginBottom: "4px" },
+  previewInput: { height: "34px", borderRadius: "9px", border: "1.5px solid var(--border)", background: "var(--bg)" },
 };
