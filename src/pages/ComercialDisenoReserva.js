@@ -33,10 +33,13 @@ export default function ComercialDisenoReserva() {
   const [guardando, setGuardando] = useState(false);
   const [guardadoOk, setGuardadoOk] = useState(false);
 
-  const [titulo, setTitulo] = useState("Datos de Cliente");
+  const [titulo, setTitulo] = useState("Contrato de Reserva");
   // secciones: [{ id, titulo, esTitular, campos: [{id,label,tipo,ancho,opciones}] }]
   const [secciones, setSecciones] = useState([]);
   const [titularLabels, setTitularLabels] = useState(TITULAR_DEFAULT);
+  const [textoContrato, setTextoContrato] = useState("");
+  const [firmaIzq, setFirmaIzq] = useState("En representación de");
+  const [firmaDer, setFirmaDer] = useState("Firma del comprador");
   const [nuevaOpcion, setNuevaOpcion] = useState({});
 
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "ventas") : "editar";
@@ -54,6 +57,9 @@ export default function ComercialDisenoReserva() {
         if (dr.titulo) setTitulo(dr.titulo);
         if (Array.isArray(dr.secciones)) setSecciones(dr.secciones);
         if (Array.isArray(dr.titularLabels)) setTitularLabels(dr.titularLabels);
+        if (typeof dr.textoContrato === "string") setTextoContrato(dr.textoContrato);
+        if (dr.firmaIzq) setFirmaIzq(dr.firmaIzq);
+        if (dr.firmaDer) setFirmaDer(dr.firmaDer);
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -135,7 +141,7 @@ export default function ComercialDisenoReserva() {
       await setDoc(ref, {
         empresaId: empresaUid,
         proyectoId,
-        disenoReservaV2: { titulo, secciones, titularLabels },
+        disenoReservaV2: { titulo, secciones, titularLabels, textoContrato, firmaIzq, firmaDer },
         actualizadoEn: new Date().toISOString(),
       }, { merge: true });
       setGuardadoOk(true);
@@ -169,6 +175,11 @@ export default function ComercialDisenoReserva() {
           <input style={styles.tituloInput} value={titulo} onChange={e => setTitulo(e.target.value)} disabled={!puedeEditar} />
         </div>
 
+        <div style={styles.bloqueConfig}>
+          <label style={styles.lbl}>📄 Texto del contrato (aparece impreso en la reserva)</label>
+          <textarea style={styles.textoContratoInput} rows={5} value={textoContrato} onChange={e => setTextoContrato(e.target.value)} disabled={!puedeEditar} placeholder="Escribí acá el texto que siempre va en la reserva..." />
+        </div>
+
         {secciones.length === 0 && (
           <div style={styles.vacio}>Todavía no hay secciones. Agregá la primera abajo. 👇</div>
         )}
@@ -196,7 +207,7 @@ export default function ComercialDisenoReserva() {
                 {s.campos.map((c, cidx) => (
                   <div key={c.id} style={styles.campoBox}>
                     <div style={styles.campoTop}>
-                      <input style={styles.campoLabel} placeholder="Nombre del campo (ej: Superficie)" value={c.label} onChange={e => actualizarCampo(s.id, c.id, { label: e.target.value })} disabled={!puedeEditar} />
+                      <input style={styles.campoLabel} placeholder="Nombre del campo" value={c.label} onChange={e => actualizarCampo(s.id, c.id, { label: e.target.value })} disabled={!puedeEditar} />
                       {puedeEditar && (
                         <div style={styles.campoCtrls}>
                           <button style={styles.iconBtn} onClick={() => moverCampo(s.id, cidx, -1)} disabled={cidx === 0}>↑</button>
@@ -242,11 +253,26 @@ export default function ComercialDisenoReserva() {
           </div>
         )}
 
+        <div style={styles.bloqueConfig}>
+          <label style={styles.lbl}>✍️ Firmas (al pie de la reserva)</label>
+          <div style={styles.firmasRow}>
+            <div style={{ flex: 1 }}>
+              <span style={styles.firmaMini}>Izquierda</span>
+              <input style={styles.inp} value={firmaIzq} onChange={e => setFirmaIzq(e.target.value)} disabled={!puedeEditar} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <span style={styles.firmaMini}>Derecha</span>
+              <input style={styles.inp} value={firmaDer} onChange={e => setFirmaDer(e.target.value)} disabled={!puedeEditar} />
+            </div>
+          </div>
+        </div>
+
         {/* Vista previa (moderna, como la verá el vendedor) */}
         {secciones.length > 0 && (
           <div style={styles.preview}>
             <div style={styles.previewTag}>Vista previa (así la ve el vendedor)</div>
             <div style={styles.previewTitulo}>{titulo}</div>
+            {textoContrato.trim() && <div style={styles.previewTexto}>{textoContrato}</div>}
             {secciones.map(s => (
               <div key={s.id} style={styles.previewSeccion}>
                 <div style={styles.previewSecTit}>{s.titulo}{s.esTitular && " (Titular 1)"}</div>
@@ -270,6 +296,10 @@ export default function ComercialDisenoReserva() {
                 </div>
               </div>
             ))}
+            <div style={styles.previewFirmas}>
+              <div style={styles.previewFirmaCol}><div style={styles.previewFirmaLinea} /><span style={styles.previewFirmaLbl}>{firmaIzq}</span></div>
+              <div style={styles.previewFirmaCol}><div style={styles.previewFirmaLinea} /><span style={styles.previewFirmaLbl}>{firmaDer}</span></div>
+            </div>
           </div>
         )}
       </main>
@@ -289,6 +319,15 @@ const styles = {
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "760px", margin: "0 auto", padding: "24px" },
   tituloBox: { marginBottom: "20px" },
+  bloqueConfig: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "16px" },
+  textoContratoInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical", lineHeight: "1.5" },
+  firmasRow: { display: "flex", gap: "12px" },
+  firmaMini: { display: "block", fontSize: "11px", color: "var(--text2)", marginBottom: "4px" },
+  previewTexto: { fontSize: "13px", color: "var(--text)", lineHeight: "1.6", whiteSpace: "pre-wrap", marginBottom: "16px", padding: "0 2px" },
+  previewFirmas: { display: "flex", gap: "40px", marginTop: "36px", justifyContent: "space-between" },
+  previewFirmaCol: { flex: 1, textAlign: "center" },
+  previewFirmaLinea: { borderTop: "1px solid var(--text2)", marginBottom: "6px" },
+  previewFirmaLbl: { fontSize: "12px", color: "var(--text2)" },
   lbl: { display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text2)", marginBottom: "6px" },
   tituloInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text)", fontSize: "18px", fontWeight: "700", boxSizing: "border-box" },
   vacio: { textAlign: "center", color: "var(--text2)", fontSize: "14px", padding: "30px", background: "var(--card)", borderRadius: "12px", border: "1.5px dashed var(--border2)" },
