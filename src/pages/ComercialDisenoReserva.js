@@ -4,7 +4,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
-import { empleadoNivelPanel } from "../config/appConfig";
 
 const TIPOS = [
   { id: "texto", label: "Texto", icono: "✏️" },
@@ -25,7 +24,7 @@ const TITULAR_DEFAULT = ["Apellido y Nombre", "DNI", "Nacionalidad", "Estado civ
 
 export default function ComercialDisenoReserva() {
   const { proyectoId } = useParams();
-  const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
+  const { empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
 
   const [proyecto, setProyecto] = useState(null);
@@ -42,8 +41,8 @@ export default function ComercialDisenoReserva() {
   const [firmaDer, setFirmaDer] = useState("Firma del comprador");
   const [nuevaOpcion, setNuevaOpcion] = useState({});
 
-  const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "ventas") : "editar";
-  const puedeEditar = !esEmpleado || nivel === "editar";
+  // El diseño del formulario solo lo edita la empresa (dueño). Los empleados no.
+  const puedeEditar = !esEmpleado;
 
   const cargar = useCallback(async () => {
     setLoading(true);
