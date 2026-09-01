@@ -42,6 +42,8 @@ export function AuthProvider({ children }) {
       emailVerificado: false,
       codigoEmpresa: generarCodigoEmpresa()
     });
+    // Lista pública de emails de empresa (para bloquear el acceso por la puerta equivocada)
+    try { await setDoc(doc(db, "emails_empresa", email.trim().toLowerCase()), { uid: cred.user.uid }); } catch (e) { /* no bloquea el registro */ }
     await signOut(auth);
     return cred;
   }
@@ -87,6 +89,12 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password, tipoAcceso) {
+    const emailNorm = email.trim().toLowerCase();
+    // Chequeo previo (sin autenticar): ¿este email es de una empresa?
+    if (tipoAcceso === "personal") {
+      const esEmpresa = (await getDoc(doc(db, "emails_empresa", emailNorm))).exists();
+      if (esEmpresa) throw new Error("Esta cuenta es de empresa. Ingresá por “Acceso Empresas”.");
+    }
     // Bloqueamos la UI (muestra "Cargando") mientras validamos, para no mostrar la pantalla interna
     if (tipoAcceso) setCargandoDatos(true);
     const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -102,6 +110,10 @@ export function AuthProvider({ children }) {
         return rechazar(esEmpleadoCuenta
           ? "Esta cuenta es de empleado. Ingresá por “Acceso Personal”."
           : "Esta cuenta no está registrada como empresa.");
+      }
+      // Si entró bien como empresa, aseguramos que su email esté en la lista pública
+      if (tipoAcceso === "empresa" && esEmpresaCuenta) {
+        try { await setDoc(doc(db, "emails_empresa", emailNorm), { uid: user.uid }); } catch (e) { /* ignora */ }
       }
       if (tipoAcceso === "personal" && !esEmpleadoCuenta) {
         return rechazar(esEmpresaCuenta
