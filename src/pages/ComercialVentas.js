@@ -408,10 +408,12 @@ export default function ComercialVentas() {
                       {formulario.map(p => {
                         const r = editando.respuestasFiltro?.[p.id];
                         if (r === undefined || r === "" || r === null) return null;
+                        const otro = editando.respuestasFiltro?.[p.id + "_otro"];
+                        const esOtro = ["otro", "otros"].includes(String(r).trim().toLowerCase()) && otro;
                         return (
                           <div key={p.id} style={styles.infoItem}>
                             <div style={styles.infoPreg}>{p.texto}</div>
-                            <div style={styles.infoResp}>{String(r)}</div>
+                            <div style={styles.infoResp}>{String(r)}{esOtro ? `: ${otro}` : ""}</div>
                           </div>
                         );
                       })}
@@ -447,6 +449,9 @@ export default function ComercialVentas() {
                               <button key={op} onClick={() => setRespFiltro({ ...respFiltro, [p.id]: op })}
                                 style={{ ...styles.miniOpBtn, ...(respFiltro[p.id] === op ? styles.miniOpActivo : {}) }}>{op}</button>
                             ))}
+                            {["otro", "otros"].includes(String(respFiltro[p.id] || "").trim().toLowerCase()) && (
+                              <input style={{ ...styles.campoFiltroInput, flexBasis: "100%", marginTop: "6px" }} value={respFiltro[p.id + "_otro"] || ""} onChange={e => setRespFiltro({ ...respFiltro, [p.id + "_otro"]: e.target.value })} placeholder="Aclarar…" />
+                            )}
                           </div>
                         )}
                       </div>
