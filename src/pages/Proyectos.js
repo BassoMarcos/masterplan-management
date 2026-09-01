@@ -11,6 +11,7 @@ const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔�
 
 export default function Proyectos() {
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
+  const esAdminEfectivo = !esEmpleado || empleadoData?.accesoTotal;
   const navigate = useNavigate();
 
   const [proyectos, setProyectos] = useState([]);
@@ -130,8 +131,8 @@ export default function Proyectos() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <ThemeSelector />
-          {!esEmpleado && <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>}
-          {!esEmpleado && <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>}
+          {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>}
+          {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>}
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
       </header>
@@ -152,7 +153,7 @@ export default function Proyectos() {
                 onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
               >
-                {!esEmpleado && (
+                {esAdminEfectivo && (
                   <button
                     style={styles.eliminarProyBtn}
                     title="Eliminar proyecto"
@@ -171,7 +172,7 @@ export default function Proyectos() {
                 <p style={styles.tarjetaSub}>Ver proyecto →</p>
               </div>
             ))}
-            {!esEmpleado && (
+            {esAdminEfectivo && (
             <div
               style={styles.tarjetaAgregar}
               onClick={() => setShowModal(true)}
