@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
@@ -6,12 +6,7 @@ import { doc, getDoc, setDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import { empleadoNivelPanel } from "../config/appConfig";
 
-// Tamaño de la grilla (imán) en px
-const GRID = 20;
-// Ancho de la hoja de diseño (px). La altura se ajusta al contenido.
-const HOJA_W = 760;
-
-const TIPOS_CAMPO = [
+const TIPOS = [
   { id: "texto", label: "Texto", icono: "✏️" },
   { id: "numero", label: "Número", icono: "🔢" },
   { id: "monto", label: "Monto ($)", icono: "💲" },
@@ -20,7 +15,13 @@ const TIPOS_CAMPO = [
   { id: "sino", label: "Sí / No", icono: "✅" },
 ];
 
-const snap = (v) => Math.round(v / GRID) * GRID;
+const ANCHOS = [
+  { id: "full", label: "Fila completa", flex: "1 1 100%" },
+  { id: "half", label: "Media fila", flex: "1 1 calc(50% - 6px)" },
+  { id: "third", label: "Un tercio", flex: "1 1 calc(33.33% - 8px)" },
+];
+
+const TITULAR_DEFAULT = ["Apellido y Nombre", "DNI", "Nacionalidad", "Estado civil", "Domicilio", "N°", "Localidad", "Partido", "Contacto"];
 
 export default function ComercialDisenoReserva() {
   const { proyectoId } = useParams();
@@ -32,16 +33,11 @@ export default function ComercialDisenoReserva() {
   const [guardando, setGuardando] = useState(false);
   const [guardadoOk, setGuardadoOk] = useState(false);
 
-  // titulo del formulario
   const [titulo, setTitulo] = useState("Datos de Cliente");
-  // campos: [{ id, label, tipo, x, y, w, opciones }]
-  const [campos, setCampos] = useState([]);
-  // bloque de titular repetible: campos que forman "datos personales"
-  const [tituladoresLabels, setTituladoresLabels] = useState(["Apellido y Nombre", "DNI", "Nacionalidad", "Estado civil", "Domicilio", "N°", "Localidad", "Partido", "Contacto"]);
-  const [seleccionado, setSeleccionado] = useState(null);
-
-  const hojaRef = useRef(null);
-  const drag = useRef(null); // { id, offsetX, offsetY }
+  // secciones: [{ id, titulo, esTitular, campos: [{id,label,tipo,ancho,opciones}] }]
+  const [secciones, setSecciones] = useState([]);
+  const [titularLabels, setTitularLabels] = useState(TITULAR_DEFAULT);
+  const [nuevaOpcion, setNuevaOpcion] = useState({});
 
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "comercial", "ventas") : "editar";
   const puedeEditar = !esEmpleado || nivel === "editar";
@@ -53,11 +49,11 @@ export default function ComercialDisenoReserva() {
       if (!snapP.exists() || snapP.data().empresaId !== empresaUid) { navigate("/proyectos"); return; }
       setProyecto({ id: snapP.id, ...snapP.data() });
       const s = await getDoc(doc(db, "comercial_config", `${empresaUid}_${proyectoId}`));
-      if (s.exists() && s.data().disenoReserva) {
-        const dr = s.data().disenoReserva;
+      if (s.exists() && s.data().disenoReservaV2) {
+        const dr = s.data().disenoReservaV2;
         if (dr.titulo) setTitulo(dr.titulo);
-        if (Array.isArray(dr.campos)) setCampos(dr.campos);
-        if (Array.isArray(dr.tituladoresLabels)) setTituladoresLabels(dr.tituladoresLabels);
+        if (Array.isArray(dr.secciones)) setSecciones(dr.secciones);
+        if (Array.isArray(dr.titularLabels)) setTitularLabels(dr.titularLabels);
       }
     } catch (e) { console.error(e); }
     setLoading(false);
@@ -65,74 +61,81 @@ export default function ComercialDisenoReserva() {
 
   useEffect(() => { cargar(); }, [cargar]);
 
-  // ── Agregar / editar / borrar campos ──
-  function agregarCampo(tipo) {
-    const id = "cp_" + Date.now();
-    // Ubicarlo en un lugar libre (abajo del todo)
-    const maxY = campos.reduce((m, c) => Math.max(m, c.y + 60), 20);
-    setCampos([...campos, { id, label: "Nuevo campo", tipo, x: 20, y: snap(maxY), w: 340, opciones: [] }]);
-    setSeleccionado(id);
+  // ── Secciones ──
+  function agregarSeccion() {
+    setSecciones([...secciones, { id: "sec_" + Date.now(), titulo: "Nueva sección", esTitular: false, campos: [] }]);
   }
-  function agregarBloqueTitular() {
-    // Evitar más de un bloque de titular (se repite en el llenado, no en el diseño)
-    if (campos.some(c => c.tipo === "titular")) { alert("Ya hay un bloque de titular. Al llenar el formulario se puede repetir con el botón 'Agregar titular'."); return; }
-    const id = "tit_" + Date.now();
-    const maxY = campos.reduce((m, c) => Math.max(m, c.y + 60), 20);
-    setCampos([...campos, { id, label: "Datos del titular", tipo: "titular", x: 20, y: snap(maxY), w: 480, opciones: [] }]);
-    setSeleccionado(id);
+  function agregarSeccionTitular() {
+    if (secciones.some(s => s.esTitular)) { alert("Ya hay una sección de titulares. Al llenar se puede repetir con 'Agregar titular'."); return; }
+    setSecciones([...secciones, { id: "tit_" + Date.now(), titulo: "Datos del titular", esTitular: true, campos: [] }]);
   }
-  function actualizarCampo(id, patch) {
-    setCampos(campos.map(c => c.id === id ? { ...c, ...patch } : c));
+  function actualizarSeccion(sid, patch) {
+    setSecciones(secciones.map(s => s.id === sid ? { ...s, ...patch } : s));
   }
-  function borrarCampo(id) {
-    setCampos(campos.filter(c => c.id !== id));
-    if (seleccionado === id) setSeleccionado(null);
+  function borrarSeccion(sid) {
+    if (!window.confirm("¿Borrar esta sección y sus campos?")) return;
+    setSecciones(secciones.filter(s => s.id !== sid));
   }
-
-  // ── Drag con snap a grilla ──
-  function onDragStart(e, campo) {
-    if (!puedeEditar) return;
-    const rect = hojaRef.current.getBoundingClientRect();
-    const px = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const py = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    drag.current = { id: campo.id, offsetX: px - campo.x, offsetY: py - campo.y };
-    setSeleccionado(campo.id);
-    window.addEventListener("mousemove", onDragMove);
-    window.addEventListener("mouseup", onDragEnd);
-    window.addEventListener("touchmove", onDragMove, { passive: false });
-    window.addEventListener("touchend", onDragEnd);
-  }
-  function onDragMove(e) {
-    if (!drag.current || !hojaRef.current) return;
-    if (e.cancelable) e.preventDefault();
-    const rect = hojaRef.current.getBoundingClientRect();
-    const px = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    const py = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
-    let nx = snap(px - drag.current.offsetX);
-    let ny = snap(py - drag.current.offsetY);
-    nx = Math.max(0, Math.min(nx, HOJA_W - 100));
-    ny = Math.max(0, ny);
-    setCampos(prev => prev.map(c => c.id === drag.current.id ? { ...c, x: nx, y: ny } : c));
-  }
-  function onDragEnd() {
-    drag.current = null;
-    window.removeEventListener("mousemove", onDragMove);
-    window.removeEventListener("mouseup", onDragEnd);
-    window.removeEventListener("touchmove", onDragMove);
-    window.removeEventListener("touchend", onDragEnd);
+  function moverSeccion(idx, dir) {
+    const d = idx + dir;
+    if (d < 0 || d >= secciones.length) return;
+    const n = [...secciones];
+    [n[idx], n[d]] = [n[d], n[idx]];
+    setSecciones(n);
   }
 
-  // Alto de la hoja según el campo más abajo
-  const hojaAlto = Math.max(400, campos.reduce((m, c) => Math.max(m, c.y + 70), 0) + 40);
+  // ── Campos dentro de una sección ──
+  function agregarCampo(sid) {
+    setSecciones(secciones.map(s => s.id === sid
+      ? { ...s, campos: [...s.campos, { id: "cp_" + Date.now(), label: "Nuevo campo", tipo: "texto", ancho: "full", opciones: [] }] }
+      : s));
+  }
+  function actualizarCampo(sid, cid, patch) {
+    setSecciones(secciones.map(s => s.id === sid
+      ? { ...s, campos: s.campos.map(c => c.id === cid ? { ...c, ...patch } : c) }
+      : s));
+  }
+  function borrarCampo(sid, cid) {
+    setSecciones(secciones.map(s => s.id === sid ? { ...s, campos: s.campos.filter(c => c.id !== cid) } : s));
+  }
+  function moverCampo(sid, idx, dir) {
+    setSecciones(secciones.map(s => {
+      if (s.id !== sid) return s;
+      const d = idx + dir;
+      if (d < 0 || d >= s.campos.length) return s;
+      const n = [...s.campos];
+      [n[idx], n[d]] = [n[d], n[idx]];
+      return { ...s, campos: n };
+    }));
+  }
+  function agregarOpcion(sid, cid, texto) {
+    const t = (texto || "").trim();
+    if (!t) return;
+    setSecciones(secciones.map(s => s.id === sid
+      ? { ...s, campos: s.campos.map(c => c.id === cid ? { ...c, opciones: [...(c.opciones || []), t] } : c) }
+      : s));
+  }
+  function quitarOpcion(sid, cid, opIdx) {
+    setSecciones(secciones.map(s => s.id === sid
+      ? { ...s, campos: s.campos.map(c => c.id === cid ? { ...c, opciones: (c.opciones || []).filter((_, i) => i !== opIdx) } : c) }
+      : s));
+  }
 
   async function guardar() {
+    for (const s of secciones) {
+      for (const c of s.campos) {
+        if (c.tipo === "opciones" && (!c.opciones || c.opciones.length < 2)) {
+          alert(`El campo "${c.label}" es de opciones: cargá al menos 2.`); return;
+        }
+      }
+    }
     setGuardando(true);
     try {
       const ref = doc(db, "comercial_config", `${empresaUid}_${proyectoId}`);
       await setDoc(ref, {
         empresaId: empresaUid,
         proyectoId,
-        disenoReserva: { titulo, campos, tituladoresLabels },
+        disenoReservaV2: { titulo, secciones, titularLabels },
         actualizadoEn: new Date().toISOString(),
       }, { merge: true });
       setGuardadoOk(true);
@@ -143,15 +146,13 @@ export default function ComercialDisenoReserva() {
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
-  const campoSel = campos.find(c => c.id === seleccionado);
-
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={styles.headerLeft}>
           <button style={styles.backBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/config_estrategia`)}>← Volver</button>
           <div>
-            <h1 style={styles.headerTitle}>🎨 Diseño del formulario de reserva</h1>
+            <h1 style={styles.headerTitle}>📝 Formulario de reserva</h1>
             <p style={styles.headerSub}>{proyecto?.nombre}{!puedeEditar && " · 👁️ Solo lectura"}</p>
           </div>
         </div>
@@ -162,101 +163,112 @@ export default function ComercialDisenoReserva() {
         </div>
       </header>
 
-      <div style={styles.body}>
-        {/* Panel izquierdo: agregar campos y editar el seleccionado */}
-        {puedeEditar && (
-          <aside style={styles.panel}>
-            <div style={styles.panelTit}>Agregar campo</div>
-            <div style={styles.tipoGrid}>
-              {TIPOS_CAMPO.map(t => (
-                <button key={t.id} style={styles.tipoBtn} onClick={() => agregarCampo(t.id)}>{t.icono} {t.label}</button>
-              ))}
-            </div>
-            <button style={styles.titularBtn} onClick={agregarBloqueTitular}>👤 Bloque de titular (repetible)</button>
+      <main style={styles.main}>
+        <div style={styles.tituloBox}>
+          <label style={styles.lbl}>Título del formulario</label>
+          <input style={styles.tituloInput} value={titulo} onChange={e => setTitulo(e.target.value)} disabled={!puedeEditar} />
+        </div>
 
-            <div style={styles.sep} />
-
-            {campoSel ? (
-              <>
-                <div style={styles.panelTit}>Editar {campoSel.tipo === "titular" ? "bloque titular" : "campo"}</div>
-                {campoSel.tipo !== "titular" && (
-                  <>
-                    <label style={styles.lbl}>Etiqueta</label>
-                    <input style={styles.inp} value={campoSel.label} onChange={e => actualizarCampo(campoSel.id, { label: e.target.value })} />
-
-                    <label style={styles.lbl}>Tipo</label>
-                    <select style={styles.inp} value={campoSel.tipo} onChange={e => actualizarCampo(campoSel.id, { tipo: e.target.value })}>
-                      {TIPOS_CAMPO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-                    </select>
-                  </>
-                )}
-
-                <label style={styles.lbl}>Ancho</label>
-                <div style={styles.anchoRow}>
-                  <button style={styles.anchoBtn} onClick={() => actualizarCampo(campoSel.id, { w: Math.max(120, campoSel.w - GRID) })}>−</button>
-                  <span style={styles.anchoVal}>{campoSel.w}px</span>
-                  <button style={styles.anchoBtn} onClick={() => actualizarCampo(campoSel.id, { w: Math.min(HOJA_W, campoSel.w + GRID) })}>+</button>
-                </div>
-
-                {campoSel.tipo === "opciones" && (
-                  <>
-                    <label style={styles.lbl}>Opciones (una por línea)</label>
-                    <textarea style={{ ...styles.inp, minHeight: "70px" }} value={(campoSel.opciones || []).join("\n")} onChange={e => actualizarCampo(campoSel.id, { opciones: e.target.value.split("\n").filter(Boolean) })} />
-                  </>
-                )}
-
-                <button style={styles.borrarBtn} onClick={() => borrarCampo(campoSel.id)}>🗑️ Borrar campo</button>
-              </>
-            ) : (
-              <div style={styles.hint}>Tocá un campo en la hoja para editarlo. Arrastralos para moverlos — se acomodan solos a la grilla.</div>
-            )}
-          </aside>
+        {secciones.length === 0 && (
+          <div style={styles.vacio}>Todavía no hay secciones. Agregá la primera abajo. 👇</div>
         )}
 
-        {/* Hoja de diseño */}
-        <main style={styles.hojaWrap}>
-          <div ref={hojaRef} style={{ ...styles.hoja, width: HOJA_W, height: hojaAlto }}>
-            <input style={styles.tituloInput} value={titulo} onChange={e => puedeEditar && setTitulo(e.target.value)} disabled={!puedeEditar} />
-            {campos.map(c => (
-              <div
-                key={c.id}
-                style={{ ...styles.campo, left: c.x, top: c.y, width: c.w, ...(c.tipo === "titular" ? styles.campoTitular : {}), ...(seleccionado === c.id ? styles.campoSel : {}) }}
-                onMouseDown={e => onDragStart(e, c)}
-                onTouchStart={e => onDragStart(e, c)}
-              >
-                {c.tipo === "titular" ? (
-                  <div style={{ width: "100%" }}>
-                    <div style={styles.titularHead}>👤 Titular <span style={styles.titularHint}>(se repite al llenar)</span></div>
-                    <div style={styles.titularGrid}>
-                      {tituladoresLabels.map((lb, i) => (
-                        <div key={i} style={styles.titularCampo}>
-                          <span style={styles.campoLabel}>{lb}:</span>
-                          <span style={styles.campoLineaMini} />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <span style={styles.campoLabel}>{c.label}:</span>
-                    <span style={styles.campoLinea}>{tipoPlaceholder(c.tipo)}</span>
-                  </>
-                )}
+        {secciones.map((s, sidx) => (
+          <div key={s.id} style={{ ...styles.seccion, ...(s.esTitular ? styles.seccionTitular : {}) }}>
+            <div style={styles.seccionHead}>
+              <input style={styles.seccionTitulo} value={s.titulo} onChange={e => actualizarSeccion(s.id, { titulo: e.target.value })} disabled={!puedeEditar} />
+              {s.esTitular && <span style={styles.titularBadge}>👤 Repetible</span>}
+              {puedeEditar && (
+                <div style={styles.seccionCtrls}>
+                  <button style={styles.iconBtn} onClick={() => moverSeccion(sidx, -1)} disabled={sidx === 0}>↑</button>
+                  <button style={styles.iconBtn} onClick={() => moverSeccion(sidx, 1)} disabled={sidx === secciones.length - 1}>↓</button>
+                  <button style={styles.iconBtnRed} onClick={() => borrarSeccion(s.id)}>🗑️</button>
+                </div>
+              )}
+            </div>
+
+            {s.esTitular ? (
+              <div style={styles.titularInfo}>
+                Esta sección tiene los datos personales: {titularLabels.join(", ")}. Al llenar la reserva se puede repetir por cada titular.
               </div>
-            ))}
-            {campos.length === 0 && <div style={styles.hojaVacia}>Agregá campos desde el panel de la izquierda y acomodalos acá.</div>}
+            ) : (
+              <>
+                {s.campos.map((c, cidx) => (
+                  <div key={c.id} style={styles.campoBox}>
+                    <div style={styles.campoTop}>
+                      <input style={styles.campoLabel} placeholder="Nombre del campo (ej: Superficie)" value={c.label} onChange={e => actualizarCampo(s.id, c.id, { label: e.target.value })} disabled={!puedeEditar} />
+                      {puedeEditar && (
+                        <div style={styles.campoCtrls}>
+                          <button style={styles.iconBtn} onClick={() => moverCampo(s.id, cidx, -1)} disabled={cidx === 0}>↑</button>
+                          <button style={styles.iconBtn} onClick={() => moverCampo(s.id, cidx, 1)} disabled={cidx === s.campos.length - 1}>↓</button>
+                          <button style={styles.iconBtnRed} onClick={() => borrarCampo(s.id, c.id)}>✕</button>
+                        </div>
+                      )}
+                    </div>
+                    <div style={styles.campoOpts}>
+                      <select style={styles.miniSelect} value={c.tipo} onChange={e => actualizarCampo(s.id, c.id, { tipo: e.target.value })} disabled={!puedeEditar}>
+                        {TIPOS.map(t => <option key={t.id} value={t.id}>{t.icono} {t.label}</option>)}
+                      </select>
+                      <select style={styles.miniSelect} value={c.ancho} onChange={e => actualizarCampo(s.id, c.id, { ancho: e.target.value })} disabled={!puedeEditar}>
+                        {ANCHOS.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+                      </select>
+                    </div>
+                    {c.tipo === "opciones" && (
+                      <div style={styles.opcBox}>
+                        {(c.opciones || []).map((op, oi) => (
+                          <span key={oi} style={styles.opcChip}>{op}{puedeEditar && <button style={styles.opcX} onClick={() => quitarOpcion(s.id, c.id, oi)}>✕</button>}</span>
+                        ))}
+                        {puedeEditar && (
+                          <div style={styles.opcAddRow}>
+                            <input style={styles.opcInput} placeholder="Agregar opción" value={nuevaOpcion[c.id] || ""} onChange={e => setNuevaOpcion({ ...nuevaOpcion, [c.id]: e.target.value })}
+                              onKeyDown={e => { if (e.key === "Enter") { agregarOpcion(s.id, c.id, nuevaOpcion[c.id]); setNuevaOpcion({ ...nuevaOpcion, [c.id]: "" }); } }} />
+                            <button style={styles.opcAddBtn} onClick={() => { agregarOpcion(s.id, c.id, nuevaOpcion[c.id]); setNuevaOpcion({ ...nuevaOpcion, [c.id]: "" }); }}>+</button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {puedeEditar && <button style={styles.addCampoBtn} onClick={() => agregarCampo(s.id)}>➕ Agregar campo</button>}
+              </>
+            )}
           </div>
-        </main>
-      </div>
+        ))}
+
+        {puedeEditar && (
+          <div style={styles.addSecciones}>
+            <button style={styles.addSeccionBtn} onClick={agregarSeccion}>➕ Agregar sección</button>
+            <button style={styles.addTitularBtn} onClick={agregarSeccionTitular}>👤 Agregar sección de titulares</button>
+          </div>
+        )}
+
+        {/* Vista previa */}
+        {secciones.length > 0 && (
+          <div style={styles.preview}>
+            <div style={styles.previewTag}>Vista previa</div>
+            <div style={styles.previewHoja}>
+              <div style={styles.previewTitulo}>{titulo}</div>
+              {secciones.map(s => (
+                <div key={s.id} style={styles.previewSeccion}>
+                  <div style={styles.previewSecTit}>{s.titulo}{s.esTitular && " (Titular 1)"}</div>
+                  <div style={styles.previewCampos}>
+                    {s.esTitular
+                      ? titularLabels.map((lb, i) => (
+                          <div key={i} style={{ flex: "1 1 calc(50% - 6px)" }}><span style={styles.previewLabel}>{lb}:</span><span style={styles.previewLinea} /></div>
+                        ))
+                      : s.campos.map(c => {
+                          const anchoFlex = (ANCHOS.find(a => a.id === c.ancho) || ANCHOS[0]).flex;
+                          return <div key={c.id} style={{ flex: anchoFlex }}><span style={styles.previewLabel}>{c.label}:</span><span style={styles.previewLinea} /></div>;
+                        })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
-}
-
-function tipoPlaceholder(tipo) {
-  if (tipo === "monto") return "$";
-  if (tipo === "fecha") return "__/__/____";
-  if (tipo === "sino") return "Sí / No";
-  return "";
 }
 
 const styles = {
@@ -269,32 +281,43 @@ const styles = {
   headerSub: { margin: 0, fontSize: "12px", color: "var(--text2)" },
   guardarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "8px 18px", borderRadius: "6px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
-  body: { display: "flex", gap: "16px", padding: "16px 24px", alignItems: "flex-start", flexWrap: "wrap" },
-  panel: { width: "260px", flexShrink: 0, background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", position: "sticky", top: "16px" },
-  panelTit: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "10px" },
-  tipoGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" },
-  tipoBtn: { background: "var(--surface)", border: "1.5px solid var(--border)", color: "var(--text)", padding: "8px 6px", borderRadius: "8px", cursor: "pointer", fontSize: "12px", fontWeight: "600" },
-  sep: { height: "1px", background: "var(--border)", margin: "16px 0" },
-  lbl: { display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text2)", margin: "10px 0 4px" },
-  inp: { width: "100%", padding: "8px 10px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", boxSizing: "border-box", fontFamily: "inherit" },
-  anchoRow: { display: "flex", alignItems: "center", gap: "8px" },
-  anchoBtn: { width: "32px", height: "32px", borderRadius: "6px", border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--text)", cursor: "pointer", fontSize: "16px" },
-  anchoVal: { fontSize: "13px", color: "var(--text2)", minWidth: "50px", textAlign: "center" },
-  borrarBtn: { width: "100%", marginTop: "16px", background: "transparent", border: "1.5px solid #dc2626", color: "#dc2626", padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
-  hint: { fontSize: "12.5px", color: "var(--text2)", lineHeight: "1.5", background: "var(--surface)", padding: "12px", borderRadius: "8px" },
-  hojaWrap: { flex: 1, minWidth: "320px", overflowX: "auto", display: "flex", justifyContent: "center" },
-  hoja: { position: "relative", background: "#ffffff", color: "#111", borderRadius: "4px", boxShadow: "0 4px 24px rgba(0,0,0,0.25)", backgroundImage: "radial-gradient(circle, #e5e5e5 1px, transparent 1px)", backgroundSize: `${GRID}px ${GRID}px`, flexShrink: 0 },
-  tituloInput: { position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", textAlign: "center", fontSize: "20px", fontWeight: "800", border: "none", borderBottom: "1px dashed transparent", background: "transparent", color: "#111", width: "70%", outline: "none" },
-  campo: { position: "absolute", display: "flex", alignItems: "baseline", gap: "6px", cursor: "grab", padding: "6px 8px", borderRadius: "4px", userSelect: "none", fontSize: "13px", marginTop: "50px" },
-  campoSel: { outline: "2px solid #2563eb", background: "rgba(37,99,235,0.06)" },
-  campoLabel: { fontWeight: "700", color: "#111", whiteSpace: "nowrap" },
-  campoLinea: { flex: 1, color: "#999", borderBottom: "1px solid #333", minWidth: "60px", minHeight: "18px", paddingLeft: "4px", fontSize: "12px" },
-  titularBtn: { width: "100%", marginTop: "8px", background: "var(--surface)", border: "1.5px solid var(--acc)", color: "var(--text)", padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "12.5px", fontWeight: "700" },
-  campoTitular: { border: "1.5px dashed #888", borderRadius: "6px", padding: "10px", background: "rgba(0,0,0,0.02)" },
-  titularHead: { fontSize: "13px", fontWeight: "800", color: "#111", marginBottom: "8px" },
-  titularHint: { fontSize: "10px", fontWeight: "400", color: "#999" },
-  titularGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 14px" },
-  titularCampo: { display: "flex", alignItems: "baseline", gap: "4px", fontSize: "12px" },
-  campoLineaMini: { flex: 1, borderBottom: "1px solid #333", minWidth: "30px", minHeight: "14px" },
-  hojaVacia: { position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", color: "#aaa", fontSize: "14px", textAlign: "center", width: "80%" },
+  main: { maxWidth: "760px", margin: "0 auto", padding: "24px" },
+  tituloBox: { marginBottom: "20px" },
+  lbl: { display: "block", fontSize: "12px", fontWeight: "600", color: "var(--text2)", marginBottom: "6px" },
+  tituloInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text)", fontSize: "18px", fontWeight: "700", boxSizing: "border-box" },
+  vacio: { textAlign: "center", color: "var(--text2)", fontSize: "14px", padding: "30px", background: "var(--card)", borderRadius: "12px", border: "1.5px dashed var(--border2)" },
+  seccion: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "14px" },
+  seccionTitular: { borderColor: "var(--acc)", borderStyle: "dashed" },
+  seccionHead: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" },
+  seccionTitulo: { flex: 1, padding: "8px 10px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "15px", fontWeight: "700", boxSizing: "border-box" },
+  titularBadge: { fontSize: "11px", background: "var(--surface)", color: "var(--acc)", padding: "3px 8px", borderRadius: "20px", fontWeight: "700", whiteSpace: "nowrap" },
+  seccionCtrls: { display: "flex", gap: "4px" },
+  titularInfo: { fontSize: "12.5px", color: "var(--text2)", lineHeight: "1.5", background: "var(--surface)", padding: "10px", borderRadius: "8px" },
+  campoBox: { background: "var(--surface)", borderRadius: "8px", padding: "10px", marginBottom: "8px" },
+  campoTop: { display: "flex", gap: "6px", alignItems: "center", marginBottom: "8px" },
+  campoLabel: { flex: 1, padding: "8px 10px", borderRadius: "6px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
+  campoCtrls: { display: "flex", gap: "4px" },
+  campoOpts: { display: "flex", gap: "6px" },
+  miniSelect: { flex: 1, padding: "7px 8px", borderRadius: "6px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "12px", cursor: "pointer" },
+  iconBtn: { background: "var(--bg)", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
+  iconBtnRed: { background: "var(--bg)", border: "1px solid #dc2626", color: "#dc2626", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
+  opcBox: { marginTop: "8px", display: "flex", flexWrap: "wrap", gap: "6px", alignItems: "center" },
+  opcChip: { fontSize: "12px", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "3px 8px", display: "inline-flex", alignItems: "center", gap: "4px" },
+  opcX: { background: "transparent", border: "none", color: "#dc2626", cursor: "pointer", fontSize: "11px" },
+  opcAddRow: { display: "flex", gap: "4px" },
+  opcInput: { padding: "6px 8px", borderRadius: "6px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "12px", width: "140px" },
+  opcAddBtn: { background: "var(--acc)", color: "#fff", border: "none", width: "30px", borderRadius: "6px", cursor: "pointer", fontSize: "16px" },
+  addCampoBtn: { background: "transparent", border: "1.5px dashed var(--border2)", color: "var(--text)", padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600", width: "100%", marginTop: "4px" },
+  addSecciones: { display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" },
+  addSeccionBtn: { flex: 1, background: "var(--acc)", color: "#fff", border: "none", padding: "12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", fontWeight: "700", minWidth: "160px" },
+  addTitularBtn: { flex: 1, background: "transparent", border: "1.5px solid var(--acc)", color: "var(--text)", padding: "12px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", fontWeight: "700", minWidth: "160px" },
+  preview: { marginTop: "28px" },
+  previewTag: { fontSize: "12px", fontWeight: "700", color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px" },
+  previewHoja: { background: "#fff", color: "#111", borderRadius: "8px", padding: "28px", boxShadow: "0 4px 20px rgba(0,0,0,0.15)" },
+  previewTitulo: { fontSize: "20px", fontWeight: "800", textAlign: "center", marginBottom: "20px", color: "#111" },
+  previewSeccion: { marginBottom: "18px" },
+  previewSecTit: { fontSize: "13px", fontWeight: "800", color: "#333", borderBottom: "2px solid #333", paddingBottom: "3px", marginBottom: "10px", textTransform: "uppercase" },
+  previewCampos: { display: "flex", flexWrap: "wrap", gap: "12px" },
+  previewLabel: { fontWeight: "700", color: "#111", fontSize: "12px", whiteSpace: "nowrap", marginRight: "4px" },
+  previewLinea: { flex: 1, borderBottom: "1px solid #999", minWidth: "40px", display: "inline-block", minHeight: "14px" },
 };
