@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
@@ -26,6 +26,7 @@ export default function ComercialDisenoReserva() {
   const { proyectoId } = useParams();
   const { empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
+  const textoRef = useRef(null);
 
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -149,6 +150,28 @@ export default function ComercialDisenoReserva() {
     setGuardando(false);
   }
 
+  // Lista de todos los campos disponibles para insertar en el texto
+  const camposDisponibles = [];
+  secciones.forEach(s => {
+    if (s.esTitular) {
+      titularLabels.forEach(lb => camposDisponibles.push({ etiqueta: `Titular: ${lb}`, valor: lb }));
+    } else {
+      s.campos.forEach(c => { if (c.label.trim()) camposDisponibles.push({ etiqueta: c.label, valor: c.label }); });
+    }
+  });
+
+  function insertarCampo(valor) {
+    const marca = `{${valor}}`;
+    const ta = textoRef.current;
+    if (!ta) { setTextoContrato(textoContrato + marca); return; }
+    const ini = ta.selectionStart ?? textoContrato.length;
+    const fin = ta.selectionEnd ?? textoContrato.length;
+    const nuevo = textoContrato.slice(0, ini) + marca + textoContrato.slice(fin);
+    setTextoContrato(nuevo);
+    // Reponer el cursor después de la marca
+    setTimeout(() => { ta.focus(); const pos = ini + marca.length; ta.setSelectionRange(pos, pos); }, 0);
+  }
+
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
   return (
@@ -176,7 +199,17 @@ export default function ComercialDisenoReserva() {
 
         <div style={styles.bloqueConfig}>
           <label style={styles.lbl}>📄 Texto del contrato (aparece impreso en la reserva)</label>
-          <textarea style={styles.textoContratoInput} rows={5} value={textoContrato} onChange={e => setTextoContrato(e.target.value)} disabled={!puedeEditar} placeholder="Escribí acá el texto que siempre va en la reserva..." />
+          {puedeEditar && camposDisponibles.length > 0 && (
+            <div style={styles.insertarBox}>
+              <div style={styles.insertarHint}>Tocá un campo para insertarlo en el texto (se completa solo con lo que cargue el vendedor):</div>
+              <div style={styles.insertarChips}>
+                {camposDisponibles.map((c, i) => (
+                  <button key={i} style={styles.insertarChip} onClick={() => insertarCampo(c.valor)} title={`Insertar ${c.etiqueta}`}>🏷️ {c.etiqueta}</button>
+                ))}
+              </div>
+            </div>
+          )}
+          <textarea ref={textoRef} style={styles.textoContratoInput} rows={5} value={textoContrato} onChange={e => setTextoContrato(e.target.value)} disabled={!puedeEditar} placeholder="Escribí acá el texto que siempre va en la reserva. Tocá los campos de arriba para insertar datos." />
         </div>
 
         {secciones.length === 0 && (
@@ -320,6 +353,10 @@ const styles = {
   tituloBox: { marginBottom: "20px" },
   bloqueConfig: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "16px" },
   textoContratoInput: { width: "100%", padding: "12px 14px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical", lineHeight: "1.5" },
+  insertarBox: { marginBottom: "10px" },
+  insertarHint: { fontSize: "12px", color: "var(--text2)", marginBottom: "8px" },
+  insertarChips: { display: "flex", flexWrap: "wrap", gap: "6px" },
+  insertarChip: { background: "var(--surface)", border: "1.5px solid var(--acc)", color: "var(--text)", padding: "5px 10px", borderRadius: "16px", cursor: "pointer", fontSize: "12px", fontWeight: "600" },
   firmasRow: { display: "flex", gap: "12px" },
   firmaMini: { display: "block", fontSize: "11px", color: "var(--text2)", marginBottom: "4px" },
   previewTexto: { fontSize: "13px", color: "var(--text)", lineHeight: "1.6", whiteSpace: "pre-wrap", marginBottom: "16px", padding: "0 2px" },
