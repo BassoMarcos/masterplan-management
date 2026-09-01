@@ -14,7 +14,7 @@ const NIVELES = [
 const RANK = { ninguno: 0, ver: 1, editar: 2 };
 
 export default function Empleados() {
-  const { currentUser, empresaData, logout } = useAuth();
+  const { empresaData, empresaUid, logout } = useAuth();
   const navigate = useNavigate();
 
   const [empleados, setEmpleados] = useState([]);
@@ -31,18 +31,18 @@ export default function Empleados() {
   const cargar = useCallback(async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, "empleados"), where("empresaId", "==", currentUser.uid));
+      const q = query(collection(db, "empleados"), where("empresaId", "==", empresaUid));
       const snap = await getDocs(q);
       setEmpleados(snap.docs.map(d => ({ id: d.id, ...d.data() })));
       // Proyectos de la empresa (para asignar permisos por proyecto)
-      const qp = query(collection(db, "proyectos"), where("empresaId", "==", currentUser.uid));
+      const qp = query(collection(db, "proyectos"), where("empresaId", "==", empresaUid));
       const snapP = await getDocs(qp);
       setProyectos(snapP.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) {
       console.error(e);
     }
     setLoading(false);
-  }, [currentUser.uid]);
+  }, [empresaUid]);
 
   useEffect(() => { cargar(); }, [cargar]);
 
