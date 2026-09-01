@@ -24,7 +24,7 @@ const TITULAR_DEFAULT = ["Apellido y Nombre", "DNI", "Nacionalidad", "Estado civ
 
 export default function ComercialDisenoReserva() {
   const { proyectoId } = useParams();
-  const { empresaUid, esEmpleado, logout } = useAuth();
+  const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
   const textoRef = useRef(null);
 
@@ -42,8 +42,8 @@ export default function ComercialDisenoReserva() {
   const [firmaDer, setFirmaDer] = useState("Firma del comprador");
   const [nuevaOpcion, setNuevaOpcion] = useState({});
 
-  // El diseño del formulario solo lo edita la empresa (dueño). Los empleados no.
-  const puedeEditar = !esEmpleado;
+  // El diseño lo edita el dueño o un empleado con acceso total
+  const puedeEditar = !esEmpleado || empleadoData?.accesoTotal;
 
   const cargar = useCallback(async () => {
     setLoading(true);
