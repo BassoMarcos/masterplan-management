@@ -51,6 +51,8 @@ export default function AuthPage() {
     if (err.code === "auth/email-already-in-use") return "Ya existe una cuenta con ese email";
     if (err.code === "auth/weak-password") return "La contraseña debe tener al menos 6 caracteres";
     if (err.code === "auth/invalid-email") return "El email no es válido";
+    // Mensajes personalizados (ej: puerta de acceso equivocada)
+    if (err.message && err.message.startsWith("Esta cuenta")) return err.message;
     return "Ocurrió un error. Intentá de nuevo.";
   }
 
@@ -73,10 +75,10 @@ export default function AuthPage() {
     setLoading(true);
     try {
       if (vista === "empresa") {
-        if (modoEmpresa === "login") await login(email, password);
+        if (modoEmpresa === "login") await login(email, password, "empresa");
         else { await register(email, password, empresa); setRegistroExitoso(true); }
       } else {
-        if (modoPersonal === "login") await login(email, password);
+        if (modoPersonal === "login") await login(email, password, "personal");
         else { await registerEmpleado(email, password, nombre, apellido, codigo); setRegistroExitoso(true); }
       }
     } catch (err) {
