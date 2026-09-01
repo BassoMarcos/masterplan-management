@@ -662,6 +662,24 @@ export default function ComercialVentas() {
         function agregarTitular() { setTitularesReserva([...titularesReserva, {}]); }
         function quitarTitular(idx) { if (titularesReserva.length > 1) setTitularesReserva(titularesReserva.filter((_, i) => i !== idx)); }
 
+        // Reemplaza {campo} en el texto por el dato cargado
+        function textoCompletado(texto) {
+          if (!texto) return "";
+          // Mapa label -> valor (campos de secciones)
+          const mapa = {};
+          (dis.secciones || []).forEach(s => {
+            if (!s.esTitular) (s.campos || []).forEach(c => { mapa[c.label] = respBoleto[c.id] || ""; });
+          });
+          // Datos del primer titular (para {Titular: Campo} y también por label directo)
+          const t0 = titularesReserva[0] || {};
+          (dis.titularLabels || []).forEach(lb => { mapa[lb] = mapa[lb] || t0[lb] || ""; });
+          return texto.replace(/\{([^}]+)\}/g, (m, nombre) => {
+            const clave = nombre.trim().replace(/^Titular:\s*/i, "");
+            const val = mapa[clave];
+            return (val !== undefined && val !== "") ? val : "________";
+          });
+        }
+
         function renderCampo(c) {
           return (
             <div key={c.id} style={{ flex: anchoFlex(c.ancho), minWidth: "180px" }}>
@@ -740,7 +758,7 @@ export default function ComercialVentas() {
               <div id="hoja-reserva" style={styles.rsvHoja}>
                 <div className="rsv-titulo" style={styles.rsvHojaTitulo}>{dis.titulo || "Contrato de Reserva"}</div>
                 {dis.textoContrato && dis.textoContrato.trim() && (
-                  <div className="rsv-texto" style={styles.rsvTexto}>{dis.textoContrato}</div>
+                  <div className="rsv-texto" style={styles.rsvTexto}>{textoCompletado(dis.textoContrato)}</div>
                 )}
                 {dis.secciones.map(s => (
                   <div key={s.id} className="rsv-seccion" style={styles.rsvSeccion}>
