@@ -161,7 +161,12 @@ export default function Empleados() {
   }
 
   const pendientes = empleados.filter(e => e.estado === "pendiente");
-  const aprobados = empleados.filter(e => e.estado === "aprobado");
+  const ordenarLegajo = (a, b) => {
+    const na = parseInt(a.legajo, 10); const nb = parseInt(b.legajo, 10);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb; // ambos numéricos
+    return String(a.legajo || "").localeCompare(String(b.legajo || ""));
+  };
+  const aprobados = empleados.filter(e => e.estado === "aprobado").sort(ordenarLegajo);
   const bajas = empleados.filter(e => e.estado === "baja");
 
   if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>Cargando...</div>;
