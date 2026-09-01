@@ -78,7 +78,7 @@ export default function ComercialHub() {
                 <div style={styles.grupoTitulo}>📈 Estrategia de Ventas</div>
                 <div style={styles.grupoDesc}>Pipeline de captación: datos, filtrado y ventas.</div>
               </div>
-              {!esEmpleado && (
+              {(!esEmpleado || empleadoData?.accesoTotal) && (
                 <button style={styles.configEstBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/config_estrategia`)}>⚙️ Configuración</button>
               )}
             </div>
