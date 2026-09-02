@@ -38,13 +38,20 @@ export default function ComercialHub() {
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
-  const paneles = esEmpleado
+  let paneles = esEmpleado
     ? panelesVisiblesEmpleado(empleadoData, proyectoId, "comercial")
     : [
         { id: "datos", nombre: "Datos" },
         { id: "filtrado", nombre: "Filtrado" },
         { id: "ventas", nombre: "Ventas" },
       ];
+
+  // Si el empleado tiene acceso a Ventas (y no es acceso total), hace el filtro dentro del llamado:
+  // no necesita la cajita "Filtrado" como paso aparte.
+  if (esEmpleado && !empleadoData?.accesoTotal) {
+    const tieneVentas = empleadoNivelPanel(empleadoData, proyectoId, "comercial", "ventas") !== "ninguno";
+    if (tieneVentas) paneles = paneles.filter(p => p.id !== "filtrado");
+  }
 
   const tieneEstrategia = paneles.length > 0;
 
