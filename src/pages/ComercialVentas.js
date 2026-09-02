@@ -277,7 +277,10 @@ export default function ComercialVentas() {
             <span style={{ marginRight: "8px", color: "var(--text2)" }}>{abierto ? "▾" : "▸"}</span>{d.nombre}
           </div>
           <div style={{ flex: 1.3 }}>{d.numero}</div>
-          <div style={{ flex: 1.2 }}><span style={styles.estadoTag}>{RECORRIDO[idxActual]?.label || estadoLabel(d.estado)}</span></div>
+          <div style={{ flex: 1.2 }}>
+            <span style={styles.estadoTag}>{RECORRIDO[idxActual]?.label || estadoLabel(d.estado)}</span>
+            {(d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) && <span style={styles.filtradoBadge} title="Ya filtrado">🔍✓</span>}
+          </div>
           {opts.mostrarVendedor && <div style={{ flex: 1.5, fontSize: "12px", color: "var(--text2)" }}>{d.vendedorNombre || "—"}</div>}
           {opts.accion && <div style={{ flex: 1.2, textAlign: "right", display: "flex", gap: "6px", justifyContent: "flex-end" }} onClick={e => e.stopPropagation()}>{opts.accion(d)}</div>}
         </div>
@@ -868,6 +871,7 @@ const styles = {
   th: { fontSize: "11px", fontWeight: "700", color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.5px" },
   trow: { display: "flex", padding: "10px 16px", borderBottom: "1px solid var(--border)", alignItems: "center", fontSize: "14px", color: "var(--text)" },
   estadoTag: { fontSize: "11px", background: "var(--surface)", color: "var(--text2)", padding: "2px 10px", borderRadius: "20px", border: "1px solid var(--border)" },
+  filtradoBadge: { fontSize: "11px", marginLeft: "6px", color: "#16a34a", fontWeight: "700" },
   trabajarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
   miniBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   abrirBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "5px 12px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
