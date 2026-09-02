@@ -292,17 +292,19 @@ export default function ComercialVentas() {
                 const hecho = paso.auto ? !!auto[paso.id] : !!rec[paso.id];
                 const rechazado = paso.id === "compra" && rec[paso.id]?.resultado === "rechazo";
                 const activa = etapaAbierta && etapaAbierta.datoId === d.id && etapaAbierta.pasoId === paso.id;
+                // El filtro, si aún no se hizo, se muestra atenuado (se completa dentro del llamado)
+                const filtroPendiente = paso.id === "filtro" && !hecho;
                 return (
                   <div key={paso.id} style={styles.progPasoWrap}>
                     {i > 0 && <div style={{ ...styles.progLinea, ...(i <= ultIdx ? styles.progLineaHecha : {}) }} />}
                     <button
-                      style={{ ...styles.progPunto, ...(hecho ? styles.progPuntoHecho : {}), ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}), ...(activa ? styles.progPuntoActivo : {}) }}
+                      style={{ ...styles.progPunto, ...(hecho ? styles.progPuntoHecho : {}), ...(filtroPendiente ? styles.progPuntoAtenuado : {}), ...(rechazado ? { background: "#dc2626", borderColor: "#dc2626", color: "#fff" } : {}), ...(activa ? styles.progPuntoActivo : {}) }}
                       onClick={() => setEtapaAbierta({ datoId: d.id, pasoId: paso.id })}
-                      title={paso.label}
+                      title={filtroPendiente ? "El filtro se completa dentro del llamado" : paso.label}
                     >
                       {rechazado ? "✕" : hecho ? "✓" : i + 1}
                     </button>
-                    <div style={styles.progLabel}>{paso.label}</div>
+                    <div style={{ ...styles.progLabel, ...(filtroPendiente ? { opacity: 0.5 } : {}) }}>{paso.label}</div>
                   </div>
                 );
               })}
@@ -921,6 +923,7 @@ const styles = {
   progLineaHecha: { background: "#16a34a" },
   progPunto: { width: "38px", height: "38px", borderRadius: "50%", border: "2px solid var(--border)", background: "var(--bg)", color: "var(--text2)", fontSize: "14px", fontWeight: "700", zIndex: 1, position: "relative", display: "flex", alignItems: "center", justifyContent: "center" },
   progPuntoHecho: { background: "#16a34a", borderColor: "#16a34a", color: "#fff" },
+  progPuntoAtenuado: { background: "var(--surface)", borderColor: "var(--border)", color: "var(--text2)", borderStyle: "dashed", opacity: 0.6 },
   progPuntoActivo: { boxShadow: "0 0 0 3px rgba(37,99,235,0.4)", borderColor: "#2563eb" },
   progPuntoSiguiente: { borderColor: "#2563eb", borderStyle: "dashed", color: "#2563eb", boxShadow: "0 0 0 3px rgba(37,99,235,0.15)" },
   progLabel: { fontSize: "10.5px", color: "var(--text2)", textAlign: "center", marginTop: "6px", lineHeight: "1.2", maxWidth: "74px" },
