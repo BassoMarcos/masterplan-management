@@ -58,6 +58,9 @@ export default function ComercialVentas() {
   const [horaPaso, setHoraPaso] = useState("");
   const [resultadoCompra, setResultadoCompra] = useState(""); // "gusto" / "rechazo"
   const [expandido, setExpandido] = useState(null); // contacto con recorrido desplegado
+  const [mostrarCalendario, setMostrarCalendario] = useState(false);
+  const [mesCalendario, setMesCalendario] = useState(() => { const h = new Date(); return { anio: h.getFullYear(), mes: h.getMonth() }; });
+  const [diaSel, setDiaSel] = useState(null); // "YYYY-MM-DD"
   const [etapaAbierta, setEtapaAbierta] = useState(null); // {datoId, pasoId} de la etapa abierta en modal
   const [guardando, setGuardando] = useState(false);
 
@@ -245,6 +248,23 @@ export default function ComercialVentas() {
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
+  // ── Eventos del calendario (visitas, firmas programadas, reservas) ──
+  const fuenteCal = esAdmin ? datosVenta : misDatos;
+  const eventosCal = {}; // { "YYYY-MM-DD": [{tipo, nombre, hora, color}] }
+  function pushEvento(fecha, ev) {
+    if (!fecha) return;
+    const key = String(fecha).slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) return;
+    if (!eventosCal[key]) eventosCal[key] = [];
+    eventosCal[key].push(ev);
+  }
+  fuenteCal.forEach(d => {
+    const rec = d.recorrido || {};
+    if (rec.visita?.fechaEvento) pushEvento(rec.visita.fechaEvento, { tipo: "Visita", nombre: d.nombre, numero: d.numero, hora: rec.visita.horaEvento, color: "#2563eb", vendedor: d.vendedorNombre });
+    if (rec.firma_prog?.fechaEvento) pushEvento(rec.firma_prog.fechaEvento, { tipo: "Firma", nombre: d.nombre, numero: d.numero, hora: rec.firma_prog.horaEvento, color: "#16a34a", vendedor: d.vendedorNombre });
+    if (rec.reserva?.fechaEvento) pushEvento(rec.reserva.fechaEvento, { tipo: "Reserva", nombre: d.nombre, numero: d.numero, hora: rec.reserva.horaEvento, color: "#d97706", vendedor: d.vendedorNombre });
+  });
+
   const resumen = {};
   datosVenta.forEach(d => {
     if (d.vendedorUid) {
@@ -333,6 +353,82 @@ export default function ComercialVentas() {
       </header>
 
       <main style={styles.main}>
+        {/* Calendario de visitas/firmas/reservas */}
+        <div style={styles.calToggleRow}>
+          <button style={styles.calToggleBtn} onClick={() => setMostrarCalendario(!mostrarCalendario)}>
+            📅 {mostrarCalendario ? "Ocultar calendario" : "Ver calendario de fechas"}
+          </button>
+        </div>
+        {mostrarCalendario && (() => {
+          const { anio, mes } = mesCalendario;
+          const primerDia = new Date(anio, mes, 1);
+          const finMes = new Date(anio, mes + 1, 0).getDate();
+          const offset = (primerDia.getDay() + 6) % 7; // lunes=0
+          const nombreMes = primerDia.toLocaleDateString("es-AR", { month: "long", year: "numeric" });
+          const celdas = [];
+          for (let i = 0; i < offset; i++) celdas.push(null);
+          for (let dia = 1; dia <= finMes; dia++) celdas.push(dia);
+          const keyDe = (dia) => `${anio}-${String(mes + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+          const hoyKey = new Date().toISOString().slice(0, 10);
+          function cambiarMes(delta) {
+            let m = mes + delta, a = anio;
+            if (m < 0) { m = 11; a--; } if (m > 11) { m = 0; a++; }
+            setMesCalendario({ anio: a, mes: m }); setDiaSel(null);
+          }
+          return (
+            <div style={styles.calPanel}>
+              <div style={styles.calHeader}>
+                <button style={styles.calNav} onClick={() => cambiarMes(-1)}>‹</button>
+                <div style={styles.calMes}>{nombreMes}</div>
+                <button style={styles.calNav} onClick={() => cambiarMes(1)}>›</button>
+              </div>
+              <div style={styles.calGridDias}>
+                {["Lu", "Ma", "Mi", "Ju", "Vi", "Sá", "Do"].map(d => <div key={d} style={styles.calDiaSemana}>{d}</div>)}
+                {celdas.map((dia, i) => {
+                  if (!dia) return <div key={i} />;
+                  const key = keyDe(dia);
+                  const evs = eventosCal[key] || [];
+                  const esHoy = key === hoyKey;
+                  const sel = diaSel === key;
+                  return (
+                    <div key={i} onClick={() => setDiaSel(sel ? null : key)}
+                      style={{ ...styles.calCelda, ...(esHoy ? styles.calHoy : {}), ...(sel ? styles.calSel : {}) }}>
+                      <span style={styles.calNum}>{dia}</span>
+                      {evs.length > 0 && (
+                        <div style={styles.calPuntos}>
+                          {evs.slice(0, 3).map((e, j) => <span key={j} style={{ ...styles.calPunto, background: e.color }} />)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Detalle del día seleccionado */}
+              {diaSel && (
+                <div style={styles.calDetalle}>
+                  <div style={styles.calDetalleTit}>{new Date(diaSel + "T00:00").toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })}</div>
+                  {(eventosCal[diaSel] || []).length === 0 ? (
+                    <div style={styles.calVacio}>No hay eventos este día.</div>
+                  ) : (
+                    (eventosCal[diaSel] || []).sort((a, b) => (a.hora || "").localeCompare(b.hora || "")).map((e, i) => (
+                      <div key={i} style={styles.calEvento}>
+                        <span style={{ ...styles.calEventoTipo, background: e.color }}>{e.tipo}</span>
+                        <span style={styles.calEventoNombre}>{e.nombre}{e.hora ? ` · ${e.hora}hs` : ""}</span>
+                        {esAdmin && e.vendedor && <span style={styles.calEventoVend}>{e.vendedor}</span>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+              <div style={styles.calLeyenda}>
+                <span><span style={{ ...styles.calPunto, background: "#2563eb" }} /> Visita</span>
+                <span><span style={{ ...styles.calPunto, background: "#16a34a" }} /> Firma</span>
+                <span><span style={{ ...styles.calPunto, background: "#d97706" }} /> Reserva</span>
+              </div>
+            </div>
+          );
+        })()}
+
         {esAdmin && (
           <>
             {Object.keys(resumen).length > 0 && (
@@ -873,6 +969,28 @@ const styles = {
   th: { fontSize: "11px", fontWeight: "700", color: "var(--text2)", textTransform: "uppercase", letterSpacing: "0.5px" },
   trow: { display: "flex", padding: "10px 16px", borderBottom: "1px solid var(--border)", alignItems: "center", fontSize: "14px", color: "var(--text)" },
   estadoTag: { fontSize: "11px", background: "var(--surface)", color: "var(--text2)", padding: "2px 10px", borderRadius: "20px", border: "1px solid var(--border)" },
+  calToggleRow: { marginBottom: "16px" },
+  calToggleBtn: { background: "var(--card)", border: "1.5px solid var(--border2)", color: "var(--text)", padding: "10px 18px", borderRadius: "10px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
+  calPanel: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "18px", marginBottom: "20px" },
+  calHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" },
+  calNav: { background: "var(--surface)", border: "1.5px solid var(--border)", color: "var(--text)", width: "36px", height: "36px", borderRadius: "8px", cursor: "pointer", fontSize: "18px" },
+  calMes: { fontSize: "16px", fontWeight: "700", color: "var(--text)", textTransform: "capitalize" },
+  calGridDias: { display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "4px" },
+  calDiaSemana: { textAlign: "center", fontSize: "11px", fontWeight: "700", color: "var(--text2)", padding: "4px 0" },
+  calCelda: { minHeight: "48px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg)", cursor: "pointer", padding: "4px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start" },
+  calHoy: { borderColor: "var(--acc)", borderWidth: "2px" },
+  calSel: { background: "var(--surface)", borderColor: "var(--acc)" },
+  calNum: { fontSize: "13px", color: "var(--text)", fontWeight: "600" },
+  calPuntos: { display: "flex", gap: "3px", marginTop: "4px", flexWrap: "wrap", justifyContent: "center" },
+  calPunto: { width: "7px", height: "7px", borderRadius: "50%", display: "inline-block" },
+  calDetalle: { marginTop: "16px", background: "var(--surface)", borderRadius: "10px", padding: "14px" },
+  calDetalleTit: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "10px", textTransform: "capitalize" },
+  calVacio: { fontSize: "13px", color: "var(--text2)", fontStyle: "italic" },
+  calEvento: { display: "flex", alignItems: "center", gap: "8px", padding: "6px 0", flexWrap: "wrap" },
+  calEventoTipo: { fontSize: "11px", color: "#fff", padding: "2px 8px", borderRadius: "12px", fontWeight: "700" },
+  calEventoNombre: { fontSize: "14px", color: "var(--text)" },
+  calEventoVend: { fontSize: "12px", color: "var(--text2)", marginLeft: "auto" },
+  calLeyenda: { display: "flex", gap: "16px", marginTop: "14px", fontSize: "12px", color: "var(--text2)", justifyContent: "center", flexWrap: "wrap" },
   filtradoBadge: { fontSize: "11px", marginLeft: "6px", color: "#16a34a", fontWeight: "700" },
   trabajarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "6px 14px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "700" },
   miniBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
