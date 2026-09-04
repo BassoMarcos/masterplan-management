@@ -396,7 +396,8 @@ export default function ComercialVentas() {
                       <span style={styles.calNum}>{dia}</span>
                       {evs.length > 0 && (
                         <div style={styles.calPuntos}>
-                          {evs.slice(0, 3).map((e, j) => <span key={j} style={{ ...styles.calPunto, background: e.color }} />)}
+                          {evs.slice(0, 4).map((e, j) => <span key={j} style={{ ...styles.calPunto, background: e.color }} />)}
+                          {evs.length > 4 && <span style={styles.calMas}>+{evs.length - 4}</span>}
                         </div>
                       )}
                     </div>
@@ -981,7 +982,8 @@ const styles = {
   calHoy: { borderColor: "var(--acc)", borderWidth: "2px" },
   calSel: { background: "var(--surface)", borderColor: "var(--acc)" },
   calNum: { fontSize: "13px", color: "var(--text)", fontWeight: "600" },
-  calPuntos: { display: "flex", gap: "3px", marginTop: "4px", flexWrap: "wrap", justifyContent: "center" },
+  calPuntos: { display: "flex", gap: "3px", marginTop: "4px", flexWrap: "wrap", justifyContent: "center", alignItems: "center" },
+  calMas: { fontSize: "9px", color: "var(--text2)", fontWeight: "700" },
   calPunto: { width: "7px", height: "7px", borderRadius: "50%", display: "inline-block" },
   calDetalle: { marginTop: "16px", background: "var(--surface)", borderRadius: "10px", padding: "14px" },
   calDetalleTit: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "10px", textTransform: "capitalize" },
