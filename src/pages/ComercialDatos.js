@@ -51,6 +51,12 @@ export default function ComercialDatos() {
   const [etapaAbierta, setEtapaAbierta] = useState(null); // id de etapa con informe abierto
   // Reparto de crudos a filtradores (admin)
   const [empleados, setEmpleados] = useState([]);
+  const [todosEmpleados, setTodosEmpleados] = useState([]); // todos los aprobados (para asignar dateros)
+  const [masivoOpen, setMasivoOpen] = useState(false);
+  const [masivoTexto, setMasivoTexto] = useState("");
+  const [masivoParseado, setMasivoParseado] = useState(null); // { filas:[{nombre,numero,datero}], dateros:[..] }
+  const [masivoMapeo, setMasivoMapeo] = useState({}); // { "nahuel": uid|"empresa"|"yo" }
+  const [masivoCargando, setMasivoCargando] = useState(false);
   const [asignarA, setAsignarA] = useState("");
   const [cantAsignar, setCantAsignar] = useState("");
   const [selMode, setSelMode] = useState(false);
@@ -93,6 +99,7 @@ export default function ComercialDatos() {
         const qe = query(collection(db, "empleados"), where("empresaId", "==", empresaUid), where("estado", "==", "aprobado"));
         const snapE = await getDocs(qe);
         const todos = snapE.docs.map(d => ({ id: d.id, ...d.data() }));
+        setTodosEmpleados(todos);
         const conFiltrado = todos.filter(e => empleadoNivelPanel(e, proyectoId, "comercial", "filtrado") === "editar");
         setEmpleados(conFiltrado);
       }
@@ -128,6 +135,71 @@ export default function ComercialDatos() {
       alert("Error al guardar: " + e.message);
     }
     setGuardando(false);
+  }
+
+  // ── Carga masiva ──
+  function parsearMasivo() {
+    const lineas = masivoTexto.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+    const filas = [];
+    const dateросSet = {};
+    lineas.forEach(l => {
+      // Separar por TAB (Excel) o por 2+ espacios / coma como respaldo
+      let cols = l.includes("\t") ? l.split("\t") : l.split(/\s{2,}|,/);
+      cols = cols.map(c => c.trim());
+      const nombre = (cols[0] || "").replace(/^-$/, ""); // "-" => vacío
+      const numero = (cols[1] || "").replace(/[^\d]/g, "");
+      const datero = (cols[2] || "").trim();
+      if (!numero) return; // sin teléfono no sirve
+      filas.push({ nombre, numero, datero });
+      if (datero) dateросSet[datero.toLowerCase()] = datero;
+    });
+    const dateros = Object.values(dateросSet);
+    // Pre-mapear: intentar emparejar por nombre con empleados
+    const mapeoInicial = {};
+    dateros.forEach(dn => {
+      const match = todosEmpleados.find(e => `${e.nombre || ""} ${e.apellido || ""}`.toLowerCase().includes(dn.toLowerCase()) || (e.nombre || "").toLowerCase() === dn.toLowerCase());
+      mapeoInicial[dn.toLowerCase()] = match ? match.id : "empresa";
+    });
+    setMasivoMapeo(mapeoInicial);
+    setMasivoParseado({ filas, dateros });
+  }
+
+  async function confirmarMasivo() {
+    if (!masivoParseado || masivoParseado.filas.length === 0) return;
+    setMasivoCargando(true);
+    try {
+      const nombreEmpresa = empresaData?.nombre || "Empresa";
+      const nombreYo = esEmpleado ? `${empleadoData?.nombre || ""} ${empleadoData?.apellido || ""}`.trim() : (empresaData?.nombre || "Admin");
+      for (const f of masivoParseado.filas) {
+        // Resolver a quién se asigna según el datero de la fila
+        let cargadoPorUid = currentUser.uid;
+        let cargadoPorNombre = nombreYo;
+        if (f.datero) {
+          const destino = masivoMapeo[f.datero.toLowerCase()];
+          if (destino && destino !== "empresa" && destino !== "yo") {
+            const emp = todosEmpleados.find(e => e.id === destino);
+            if (emp) { cargadoPorUid = emp.id; cargadoPorNombre = `${emp.nombre || ""} ${emp.apellido || ""}`.trim(); }
+          } else if (destino === "empresa") {
+            cargadoPorUid = empresaUid; cargadoPorNombre = nombreEmpresa;
+          }
+        }
+        await addDoc(collection(db, "comercial_datos"), {
+          empresaId: empresaUid,
+          proyectoId,
+          nombre: f.nombre,
+          numero: f.numero,
+          estado: "crudo",
+          cargadoPorUid,
+          cargadoPorNombre,
+          creadoEn: serverTimestamp(),
+          creadoMs: Date.now(),
+        });
+      }
+      setMasivoOpen(false); setMasivoTexto(""); setMasivoParseado(null); setMasivoMapeo({});
+      cargar();
+      alert(`${masivoParseado.filas.length} dato(s) cargados.`);
+    } catch (e) { alert("Error: " + e.message); }
+    setMasivoCargando(false);
   }
 
   async function eliminar(d) {
@@ -254,6 +326,9 @@ export default function ComercialDatos() {
               <input style={styles.input} placeholder="Número" value={numero} onChange={e => setNumero(e.target.value)} onKeyDown={e => e.key === "Enter" && agregar()} />
               <button style={styles.addBtn} onClick={agregar} disabled={guardando}>{guardando ? "..." : "Agregar"}</button>
             </div>
+            {esAdmin && (
+              <button style={styles.masivoBtn} onClick={() => { setMasivoOpen(true); setMasivoParseado(null); setMasivoTexto(""); }}>📋 Carga masiva (pegar desde Excel)</button>
+            )}
           </div>
         )}
 
@@ -422,6 +497,60 @@ export default function ComercialDatos() {
             })}
           </div>
         )}
+      {/* Modal de carga masiva */}
+      {masivoOpen && (
+        <div style={styles.masOverlay} onClick={() => !masivoCargando && setMasivoOpen(false)}>
+          <div style={styles.masModal} onClick={e => e.stopPropagation()}>
+            <div style={styles.masTitulo}>📋 Carga masiva de datos</div>
+            {!masivoParseado ? (
+              <>
+                <div style={styles.masHint}>Copiá desde Excel las columnas <b>Nombre · Teléfono · Datero</b> y pegalas acá. Cada fila un contacto.</div>
+                <textarea style={styles.masTextarea} rows={10} value={masivoTexto} onChange={e => setMasivoTexto(e.target.value)} placeholder={"Rocío\t1135704644\tnahuel\njorge\t1128922431\tnahuel\n..."} />
+                <div style={styles.masActions}>
+                  <button style={styles.masCancelar} onClick={() => setMasivoOpen(false)}>Cancelar</button>
+                  <button style={styles.masBtnPrimary} onClick={parsearMasivo} disabled={!masivoTexto.trim()}>Continuar →</button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={styles.masResumen}>Se detectaron <b>{masivoParseado.filas.length}</b> contacto(s) válido(s).</div>
+                {masivoParseado.dateros.length > 0 && (
+                  <div style={styles.masMapeo}>
+                    <div style={styles.masMapeoTit}>¿A quién corresponde cada datero del Excel?</div>
+                    {masivoParseado.dateros.map(dn => (
+                      <div key={dn} style={styles.masMapeoRow}>
+                        <span style={styles.masDateroNombre}>"{dn}"</span>
+                        <span style={styles.masFlecha}>→</span>
+                        <select style={styles.masSelect} value={masivoMapeo[dn.toLowerCase()] || "empresa"} onChange={e => setMasivoMapeo({ ...masivoMapeo, [dn.toLowerCase()]: e.target.value })}>
+                          <option value="empresa">🏢 A nombre de la empresa</option>
+                          <option value="yo">Yo ({esEmpleado ? `${empleadoData?.nombre || ""}`.trim() : "Admin"})</option>
+                          {todosEmpleados.map(e => <option key={e.id} value={e.id}>{e.nombre} {e.apellido}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div style={styles.masPreview}>
+                  <div style={styles.masPreviewTit}>Vista previa (primeros 5):</div>
+                  {masivoParseado.filas.slice(0, 5).map((f, i) => (
+                    <div key={i} style={styles.masPreviewRow}>
+                      <span>{f.nombre || "(sin nombre)"}</span>
+                      <span style={{ color: "var(--text2)" }}>{f.numero}</span>
+                      <span style={{ color: "var(--text2)", fontSize: "12px" }}>{f.datero || "—"}</span>
+                    </div>
+                  ))}
+                  {masivoParseado.filas.length > 5 && <div style={styles.masPreviewMas}>…y {masivoParseado.filas.length - 5} más</div>}
+                </div>
+                <div style={styles.masActions}>
+                  <button style={styles.masCancelar} onClick={() => setMasivoParseado(null)} disabled={masivoCargando}>← Volver</button>
+                  <button style={styles.masBtnPrimary} onClick={confirmarMasivo} disabled={masivoCargando}>{masivoCargando ? "Cargando..." : `✓ Cargar ${masivoParseado.filas.length} datos`}</button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       </main>
     </div>
   );
@@ -438,6 +567,26 @@ const styles = {
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "900px", margin: "0 auto", padding: "32px 24px" },
   cargaBox: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "18px", marginBottom: "24px" },
+  masivoBtn: { marginTop: "12px", background: "transparent", border: "1.5px dashed var(--acc)", color: "var(--text)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600", width: "100%" },
+  masOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 3000, padding: "20px" },
+  masModal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "24px", maxWidth: "560px", width: "100%", maxHeight: "88vh", overflowY: "auto" },
+  masTitulo: { fontSize: "18px", fontWeight: "700", color: "var(--text)", marginBottom: "14px" },
+  masHint: { fontSize: "13px", color: "var(--text2)", marginBottom: "12px", lineHeight: "1.5" },
+  masTextarea: { width: "100%", padding: "12px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", boxSizing: "border-box", fontFamily: "monospace", resize: "vertical" },
+  masActions: { display: "flex", justifyContent: "space-between", gap: "10px", marginTop: "16px" },
+  masCancelar: { background: "transparent", border: "1.5px solid var(--border2)", color: "var(--text2)", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
+  masBtnPrimary: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
+  masResumen: { fontSize: "14px", color: "var(--text)", marginBottom: "14px", padding: "10px", background: "var(--surface)", borderRadius: "8px" },
+  masMapeo: { marginBottom: "14px" },
+  masMapeoTit: { fontSize: "13px", fontWeight: "700", color: "var(--text)", marginBottom: "10px" },
+  masMapeoRow: { display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px" },
+  masDateroNombre: { fontSize: "13px", fontWeight: "600", color: "var(--text)", minWidth: "70px" },
+  masFlecha: { color: "var(--text2)" },
+  masSelect: { flex: 1, padding: "8px 10px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", cursor: "pointer" },
+  masPreview: { background: "var(--surface)", borderRadius: "8px", padding: "12px", marginBottom: "10px" },
+  masPreviewTit: { fontSize: "12px", fontWeight: "700", color: "var(--text2)", marginBottom: "8px" },
+  masPreviewRow: { display: "flex", justifyContent: "space-between", gap: "10px", padding: "3px 0", fontSize: "13px", color: "var(--text)" },
+  masPreviewMas: { fontSize: "12px", color: "var(--text2)", fontStyle: "italic", marginTop: "6px" },
   cargaTitle: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "12px" },
   cargaRow: { display: "flex", gap: "10px", flexWrap: "wrap" },
   input: { flex: 1, minWidth: "140px", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
