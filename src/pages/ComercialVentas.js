@@ -103,7 +103,7 @@ export default function ComercialVentas() {
   const misDatos = datos.filter(d =>
     (d.vendedorUid === currentUser.uid) ||
     ((d.filtradorUid === currentUser.uid || d.cargadoPorUid === currentUser.uid) && !d.vendedorUid &&
-      ["filtrado", "en_venta", "vendido", "descartado", "crudo"].includes(d.estado))
+      ["filtrado", "en_venta", "vendido", "descartado", "crudo", "en_filtro"].includes(d.estado))
   );
 
   // Para asignar: filtrados sin vendedor
