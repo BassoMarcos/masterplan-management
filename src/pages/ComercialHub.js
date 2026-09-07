@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
+import Notificaciones from "../components/Notificaciones";
 import { panelesVisiblesEmpleado, empleadoNivelPanel } from "../config/appConfig";
 
 const PANEL_INFO = {
@@ -70,6 +71,7 @@ export default function ComercialHub() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
