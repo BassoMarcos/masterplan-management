@@ -53,8 +53,11 @@ export default function ComercialDatos() {
   const [empleados, setEmpleados] = useState([]);
   const [todosEmpleados, setTodosEmpleados] = useState([]); // todos los aprobados (para asignar dateros)
   const [masivoOpen, setMasivoOpen] = useState(false);
-  const [masivoTexto, setMasivoTexto] = useState("");
+  const [masNombres, setMasNombres] = useState("");
+  const [masTelefonos, setMasTelefonos] = useState("");
+  const [masDateros, setMasDateros] = useState("");
   const [masivoParseado, setMasivoParseado] = useState(null); // { filas:[{nombre,numero,datero}], dateros:[..] }
+  const [masTodosEmpresa, setMasTodosEmpresa] = useState(false); // cargar todos a nombre de la empresa
   const [masivoMapeo, setMasivoMapeo] = useState({}); // { "nahuel": uid|"empresa"|"yo" }
   const [masivoCargando, setMasivoCargando] = useState(false);
   const [asignarA, setAsignarA] = useState("");
@@ -139,29 +142,29 @@ export default function ComercialDatos() {
 
   // ── Carga masiva ──
   function parsearMasivo() {
-    const lineas = masivoTexto.split("\n").map(l => l.trim()).filter(l => l.length > 0);
+    const nombres = masNombres.split("\n").map(l => l.trim());
+    const telefonos = masTelefonos.split("\n").map(l => l.trim());
+    const dateros = masDateros.split("\n").map(l => l.trim());
+    const total = Math.max(nombres.length, telefonos.length);
     const filas = [];
     const dateросSet = {};
-    lineas.forEach(l => {
-      // Separar por TAB (Excel) o por 2+ espacios / coma como respaldo
-      let cols = l.includes("\t") ? l.split("\t") : l.split(/\s{2,}|,/);
-      cols = cols.map(c => c.trim());
-      const nombre = (cols[0] || "").replace(/^-$/, ""); // "-" => vacío
-      const numero = (cols[1] || "").replace(/[^\d]/g, "");
-      const datero = (cols[2] || "").trim();
-      if (!numero) return; // sin teléfono no sirve
+    for (let i = 0; i < total; i++) {
+      const numero = (telefonos[i] || "").replace(/[^\d]/g, "");
+      if (!numero) continue; // sin teléfono no sirve
+      const nombre = (nombres[i] || "").replace(/^-$/, "");
+      const datero = (dateros[i] || "").trim();
       filas.push({ nombre, numero, datero });
       if (datero) dateросSet[datero.toLowerCase()] = datero;
-    });
-    const dateros = Object.values(dateросSet);
+    }
+    const listaDateros = Object.values(dateросSet);
     // Pre-mapear: intentar emparejar por nombre con empleados
     const mapeoInicial = {};
-    dateros.forEach(dn => {
+    listaDateros.forEach(dn => {
       const match = todosEmpleados.find(e => `${e.nombre || ""} ${e.apellido || ""}`.toLowerCase().includes(dn.toLowerCase()) || (e.nombre || "").toLowerCase() === dn.toLowerCase());
       mapeoInicial[dn.toLowerCase()] = match ? match.id : "empresa";
     });
     setMasivoMapeo(mapeoInicial);
-    setMasivoParseado({ filas, dateros });
+    setMasivoParseado({ filas, dateros: listaDateros });
   }
 
   async function confirmarMasivo() {
@@ -171,22 +174,34 @@ export default function ComercialDatos() {
       const nombreEmpresa = empresaData?.nombre || "Empresa";
       const nombreYo = esEmpleado ? `${empleadoData?.nombre || ""} ${empleadoData?.apellido || ""}`.trim() : (empresaData?.nombre || "Admin");
       for (const f of masivoParseado.filas) {
-        // Resolver a quién se asigna según el datero de la fila
         let cargadoPorUid = currentUser.uid;
         let cargadoPorNombre = nombreYo;
-        if (f.datero) {
+        let nombreFinal = f.nombre;
+
+        if (masTodosEmpresa) {
+          // Todos a nombre de la empresa; el datero se suma al nombre del cliente
+          cargadoPorUid = empresaUid;
+          cargadoPorNombre = nombreEmpresa;
+          if (f.datero) nombreFinal = `${f.nombre || "Sin nombre"} - (Datero ${f.datero})`;
+        } else if (f.datero) {
           const destino = masivoMapeo[f.datero.toLowerCase()];
           if (destino && destino !== "empresa" && destino !== "yo") {
             const emp = todosEmpleados.find(e => e.id === destino);
             if (emp) { cargadoPorUid = emp.id; cargadoPorNombre = `${emp.nombre || ""} ${emp.apellido || ""}`.trim(); }
           } else if (destino === "empresa") {
+            // Ese datero va a la empresa → se suma al nombre
             cargadoPorUid = empresaUid; cargadoPorNombre = nombreEmpresa;
+            nombreFinal = `${f.nombre || "Sin nombre"} - (Datero ${f.datero})`;
           }
+        } else {
+          // Sin datero detectado → dato de la empresa
+          cargadoPorUid = empresaUid; cargadoPorNombre = nombreEmpresa;
         }
+
         await addDoc(collection(db, "comercial_datos"), {
           empresaId: empresaUid,
           proyectoId,
-          nombre: f.nombre,
+          nombre: nombreFinal,
           numero: f.numero,
           estado: "crudo",
           cargadoPorUid,
@@ -195,7 +210,7 @@ export default function ComercialDatos() {
           creadoMs: Date.now(),
         });
       }
-      setMasivoOpen(false); setMasivoTexto(""); setMasivoParseado(null); setMasivoMapeo({});
+      setMasivoOpen(false); setMasNombres(""); setMasTelefonos(""); setMasDateros(""); setMasivoParseado(null); setMasivoMapeo({}); setMasTodosEmpresa(false);
       cargar();
       alert(`${masivoParseado.filas.length} dato(s) cargados.`);
     } catch (e) { alert("Error: " + e.message); }
@@ -327,7 +342,7 @@ export default function ComercialDatos() {
               <button style={styles.addBtn} onClick={agregar} disabled={guardando}>{guardando ? "..." : "Agregar"}</button>
             </div>
             {esAdmin && (
-              <button style={styles.masivoBtn} onClick={() => { setMasivoOpen(true); setMasivoParseado(null); setMasivoTexto(""); }}>📋 Carga masiva (pegar desde Excel)</button>
+              <button style={styles.masivoBtn} onClick={() => { setMasivoOpen(true); setMasivoParseado(null); setMasNombres(""); setMasTelefonos(""); setMasDateros(""); setMasTodosEmpresa(false); }}>📋 Carga masiva (pegar desde Excel)</button>
             )}
           </div>
         )}
@@ -504,19 +519,38 @@ export default function ComercialDatos() {
             <div style={styles.masTitulo}>📋 Carga masiva de datos</div>
             {!masivoParseado ? (
               <>
-                <div style={styles.masHint}>Copiá desde Excel las columnas <b>Nombre · Teléfono · Datero</b> y pegalas acá. Cada fila un contacto.</div>
-                <textarea style={styles.masTextarea} rows={10} value={masivoTexto} onChange={e => setMasivoTexto(e.target.value)} placeholder={"Rocío\t1135704644\tnahuel\njorge\t1128922431\tnahuel\n..."} />
+                <div style={styles.masHint}>Pegá cada columna por separado (desde Excel). Se unen por fila: el 1° nombre con el 1° teléfono, etc.</div>
+                <div style={styles.mas3col}>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.mas3lbl}>👤 Nombres de clientes</label>
+                    <textarea style={styles.mas3area} rows={10} value={masNombres} onChange={e => setMasNombres(e.target.value)} placeholder={"Rocío\njorge\namarie\n..."} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.mas3lbl}>📞 Teléfonos</label>
+                    <textarea style={styles.mas3area} rows={10} value={masTelefonos} onChange={e => setMasTelefonos(e.target.value)} placeholder={"1135704644\n1128922431\n..."} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <label style={styles.mas3lbl}>🏷️ Dateros <span style={{ fontWeight: 400, color: "var(--text2)" }}>(opcional)</span></label>
+                    <textarea style={styles.mas3area} rows={10} value={masDateros} onChange={e => setMasDateros(e.target.value)} placeholder={"nahuel\nnahuel\n..."} />
+                  </div>
+                </div>
                 <div style={styles.masActions}>
                   <button style={styles.masCancelar} onClick={() => setMasivoOpen(false)}>Cancelar</button>
-                  <button style={styles.masBtnPrimary} onClick={parsearMasivo} disabled={!masivoTexto.trim()}>Continuar →</button>
+                  <button style={styles.masBtnPrimary} onClick={parsearMasivo} disabled={!masTelefonos.trim()}>Continuar →</button>
                 </div>
               </>
             ) : (
               <>
                 <div style={styles.masResumen}>Se detectaron <b>{masivoParseado.filas.length}</b> contacto(s) válido(s).</div>
-                {masivoParseado.dateros.length > 0 && (
+
+                <label style={styles.masTodosLbl}>
+                  <input type="checkbox" checked={masTodosEmpresa} onChange={e => setMasTodosEmpresa(e.target.checked)} />
+                  🏢 Cargar todos como datos de la empresa <span style={{ color: "var(--text2)", fontSize: "12px" }}>(el datero se suma al nombre: "Rocío - (Datero nahuel)")</span>
+                </label>
+
+                {!masTodosEmpresa && masivoParseado.dateros.length > 0 && (
                   <div style={styles.masMapeo}>
-                    <div style={styles.masMapeoTit}>¿A quién corresponde cada datero del Excel?</div>
+                    <div style={styles.masMapeoTit}>¿A quién corresponde cada datero?</div>
                     {masivoParseado.dateros.map(dn => (
                       <div key={dn} style={styles.masMapeoRow}>
                         <span style={styles.masDateroNombre}>"{dn}"</span>
@@ -572,7 +606,10 @@ const styles = {
   masModal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "24px", maxWidth: "560px", width: "100%", maxHeight: "88vh", overflowY: "auto" },
   masTitulo: { fontSize: "18px", fontWeight: "700", color: "var(--text)", marginBottom: "14px" },
   masHint: { fontSize: "13px", color: "var(--text2)", marginBottom: "12px", lineHeight: "1.5" },
-  masTextarea: { width: "100%", padding: "12px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", boxSizing: "border-box", fontFamily: "monospace", resize: "vertical" },
+  mas3col: { display: "flex", gap: "10px", flexWrap: "wrap" },
+  mas3lbl: { display: "block", fontSize: "12px", fontWeight: "700", color: "var(--text)", marginBottom: "6px" },
+  mas3area: { width: "100%", padding: "10px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "13px", boxSizing: "border-box", fontFamily: "monospace", resize: "vertical" },
+  masTodosLbl: { display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "var(--text)", cursor: "pointer", padding: "12px", background: "var(--surface)", borderRadius: "8px", marginBottom: "14px", flexWrap: "wrap" },
   masActions: { display: "flex", justifyContent: "space-between", gap: "10px", marginTop: "16px" },
   masCancelar: { background: "transparent", border: "1.5px solid var(--border2)", color: "var(--text2)", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   masBtnPrimary: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
