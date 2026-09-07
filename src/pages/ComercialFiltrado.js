@@ -4,7 +4,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
+import Notificaciones from "../components/Notificaciones";
 import { empleadoNivelPanel, etiquetaEtapa } from "../config/appConfig";
+import { crearNotificacion } from "../utils/notificar";
 
 // Panel de FILTRADO (Comercial).
 // - Admin: reparte datos crudos a filtradores (a mano o por cantidad) y ve el progreso.
@@ -92,6 +94,12 @@ export default function ComercialFiltrado() {
           estado: "en_venta",
         });
       }
+      await crearNotificacion({
+        tipo: "trabajo",
+        titulo: `Te enviaron ${ids.length} dato(s) filtrados para vender`,
+        detalle: `Tenés ${ids.length} contacto(s) ya filtrados esperando el llamado de venta.`,
+        areas: ["comercial"], paneles: ["ventas"], soloEmpresaId: empresaUid, paraUid: asignarA,
+      });
       setSeleccionados({}); setSelMode(false); setAsignarA("");
       cargar();
     } catch (e) { alert("Error: " + e.message); }
@@ -114,6 +122,12 @@ export default function ComercialFiltrado() {
           estado: "en_venta",
         });
       }
+      await crearNotificacion({
+        tipo: "trabajo",
+        titulo: `Te enviaron ${aAsignar.length} dato(s) filtrados para vender`,
+        detalle: `Tenés ${aAsignar.length} contacto(s) ya filtrados esperando el llamado de venta.`,
+        areas: ["comercial"], paneles: ["ventas"], soloEmpresaId: empresaUid, paraUid: asignarA,
+      });
       setCantidad(""); setAsignarA("");
       cargar();
       alert(`${aAsignar.length} dato(s) enviados a ${emp?.nombre} para vender.`);
@@ -181,6 +195,7 @@ export default function ComercialFiltrado() {
           {puedeEditar && (
             <button style={styles.configBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/config_filtro`)} title="Configurar formulario de filtro">⚙️ Formulario</button>
           )}
+          <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
