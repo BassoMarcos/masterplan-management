@@ -5,6 +5,7 @@ import { db } from "../firebase/config";
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
+import Notificaciones from "../components/Notificaciones";
 import PizarraFlotante from "../components/PizarraFlotante";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
@@ -130,6 +131,7 @@ export default function Proyectos() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Notificaciones />
           <ThemeSelector />
           {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>}
           {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>}
