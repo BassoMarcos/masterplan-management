@@ -4,7 +4,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, addDoc, deleteDoc, doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
+import Notificaciones from "../components/Notificaciones";
 import { empleadoNivelPanel, construirRecorrido } from "../config/appConfig";
+import { crearNotificacion } from "../utils/notificar";
 
 // Etapas del recorrido del contacto (mismo orden que en Ventas)
 function pasosAutomaticos(d) {
@@ -253,6 +255,12 @@ export default function ComercialDatos() {
           estado: "en_filtro",
         });
       }
+      await crearNotificacion({
+        tipo: "trabajo",
+        titulo: `Te asignaron ${aAsignar.length} dato(s) para filtrar`,
+        detalle: `Se te asignaron ${aAsignar.length} contacto(s) nuevos para hacer el primer llamado y completar el filtro.`,
+        areas: ["comercial"], paneles: ["filtrado"], soloEmpresaId: empresaUid, paraUid: asignarA,
+      });
       setCantAsignar(""); cargar();
     } catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
@@ -272,6 +280,12 @@ export default function ComercialDatos() {
           estado: "en_filtro",
         });
       }
+      await crearNotificacion({
+        tipo: "trabajo",
+        titulo: `Te asignaron ${ids.length} dato(s) para filtrar`,
+        detalle: `Se te asignaron ${ids.length} contacto(s) nuevos para hacer el primer llamado y completar el filtro.`,
+        areas: ["comercial"], paneles: ["filtrado"], soloEmpresaId: empresaUid, paraUid: asignarA,
+      });
       setSeleccionados({}); setSelMode(false); cargar();
     } catch (e) { alert("Error: " + e.message); }
     setGuardando(false);
@@ -327,6 +341,7 @@ export default function ComercialDatos() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
