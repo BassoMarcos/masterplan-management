@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
+import Notificaciones from "../components/Notificaciones";
 import { empleadoNivelPanel, construirRecorrido } from "../config/appConfig";
 
 const ESTADOS_VENTA = [
@@ -372,6 +373,7 @@ export default function ComercialVentas() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
