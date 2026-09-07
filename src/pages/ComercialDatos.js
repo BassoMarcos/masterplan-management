@@ -105,8 +105,10 @@ export default function ComercialDatos() {
         const snapE = await getDocs(qe);
         const todos = snapE.docs.map(d => ({ id: d.id, ...d.data() }));
         setTodosEmpleados(todos);
-        const conFiltrado = todos.filter(e => empleadoNivelPanel(e, proyectoId, "comercial", "filtrado") === "editar");
-        setEmpleados(conFiltrado);
+        const puedenRecibir = todos.filter(e =>
+          empleadoNivelPanel(e, proyectoId, "comercial", "filtrado") === "editar" ||
+          empleadoNivelPanel(e, proyectoId, "comercial", "ventas") === "editar");
+        setEmpleados(puedenRecibir);
       }
     } catch (e) {
       console.error(e);
@@ -234,6 +236,17 @@ export default function ComercialDatos() {
     }
   }
 
+
+  // Según el permiso del empleado: si vende, el dato va directo a Ventas; si solo filtra, a Filtrado.
+  function camposAsignacion(emp) {
+    const nombre = `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim();
+    const vende = emp && empleadoNivelPanel(emp, proyectoId, "comercial", "ventas") === "editar";
+    if (vende) {
+      return { vendedorUid: emp.id, vendedorNombre: nombre, estado: "en_venta" };
+    }
+    return { filtradorUid: emp.id, filtradorNombre: nombre, estado: "en_filtro" };
+  }
+
   // ── Repartir crudos a filtradores ──
   const crudosSinAsignar = datos.filter(d => d.estado === "crudo" && !d.filtradorUid);
 
@@ -249,17 +262,13 @@ export default function ComercialDatos() {
     setGuardando(true);
     try {
       for (const d of aAsignar) {
-        await updateDoc(doc(db, "comercial_datos", d.id), {
-          filtradorUid: asignarA,
-          filtradorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
-          estado: "en_filtro",
-        });
+        await updateDoc(doc(db, "comercial_datos", d.id), camposAsignacion(emp));
       }
       await crearNotificacion({
         tipo: "trabajo",
-        titulo: `Te asignaron ${aAsignar.length} dato(s) para filtrar`,
-        detalle: `Se te asignaron ${aAsignar.length} contacto(s) nuevos para hacer el primer llamado y completar el filtro.`,
-        areas: ["comercial"], paneles: ["filtrado"], soloEmpresaId: empresaUid, paraUid: asignarA,
+        titulo: `Te asignaron ${aAsignar.length} dato(s) nuevos`,
+        detalle: `Se te asignaron ${aAsignar.length} contacto(s) nuevos para trabajar.`,
+        areas: ["comercial"], paneles: [], soloEmpresaId: empresaUid, paraUid: asignarA,
       });
       setCantAsignar(""); cargar();
     } catch (e) { alert("Error: " + e.message); }
@@ -274,17 +283,13 @@ export default function ComercialDatos() {
     setGuardando(true);
     try {
       for (const id of ids) {
-        await updateDoc(doc(db, "comercial_datos", id), {
-          filtradorUid: asignarA,
-          filtradorNombre: `${emp?.nombre || ""} ${emp?.apellido || ""}`.trim(),
-          estado: "en_filtro",
-        });
+        await updateDoc(doc(db, "comercial_datos", id), camposAsignacion(emp));
       }
       await crearNotificacion({
         tipo: "trabajo",
-        titulo: `Te asignaron ${ids.length} dato(s) para filtrar`,
-        detalle: `Se te asignaron ${ids.length} contacto(s) nuevos para hacer el primer llamado y completar el filtro.`,
-        areas: ["comercial"], paneles: ["filtrado"], soloEmpresaId: empresaUid, paraUid: asignarA,
+        titulo: `Te asignaron ${ids.length} dato(s) nuevos`,
+        detalle: `Se te asignaron ${ids.length} contacto(s) nuevos para trabajar.`,
+        areas: ["comercial"], paneles: [], soloEmpresaId: empresaUid, paraUid: asignarA,
       });
       setSeleccionados({}); setSelMode(false); cargar();
     } catch (e) { alert("Error: " + e.message); }
@@ -365,14 +370,14 @@ export default function ComercialDatos() {
         {/* Repartir crudos a filtradores (admin) */}
         {esAdmin && (
           <div style={styles.repartoBox}>
-            <div style={styles.repartoTit}>📤 Repartir datos a filtradores</div>
+            <div style={styles.repartoTit}>📤 Repartir datos al equipo</div>
             {empleados.length === 0 ? (
-              <div style={styles.repartoHint}>No hay empleados con acceso a Filtrado. Dales permiso de Filtrado en Empleados para poder asignarles.</div>
+              <div style={styles.repartoHint}>No hay empleados con acceso a Filtrado o Ventas. Dales permiso en Empleados para poder asignarles.</div>
             ) : (
               <>
                 <div style={styles.repartoRow}>
                   <select style={styles.repartoSelect} value={asignarA} onChange={e => setAsignarA(e.target.value)}>
-                    <option value="">Elegir filtrador…</option>
+                    <option value="">Elegir persona…</option>
                     {empleados.map(e => <option key={e.id} value={e.id}>{e.nombre} {e.apellido}</option>)}
                   </select>
                   <input style={styles.repartoInput} type="number" placeholder="Cantidad" value={cantAsignar} onChange={e => setCantAsignar(e.target.value)} />
