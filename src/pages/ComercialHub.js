@@ -8,7 +8,7 @@ import Notificaciones from "../components/Notificaciones";
 import { panelesVisiblesEmpleado, empleadoNivelPanel } from "../config/appConfig";
 
 const PANEL_INFO = {
-  datos: { icono: "📇", desc: "Cargar y ver contactos crudos" },
+  datos: { icono: "📇", desc: "Cargar contactos y ver su situación" },
   filtrado: { icono: "🔍", desc: "Primer llamado y formulario de filtro" },
   ventas: { icono: "💰", desc: "Trabajar datos filtrados y reportar" },
 };
@@ -42,7 +42,7 @@ export default function ComercialHub() {
   let paneles = esEmpleado
     ? panelesVisiblesEmpleado(empleadoData, proyectoId, "comercial")
     : [
-        { id: "datos", nombre: "Datos" },
+        { id: "datos", nombre: "Carga de Datos" },
         { id: "filtrado", nombre: "Filtrado" },
         { id: "ventas", nombre: "Ventas" },
       ];
