@@ -341,7 +341,7 @@ export default function ComercialDatos() {
         <div style={styles.headerLeft}>
           <button style={styles.backBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial`)}>← Volver</button>
           <div>
-            <h1 style={styles.headerTitle}>📇 Datos</h1>
+            <h1 style={styles.headerTitle}>📇 Carga de Datos</h1>
             <p style={styles.headerSub}>{proyecto?.nombre} · Comercial{!puedeEditar && " · 👁️ Solo lectura"}</p>
           </div>
         </div>
