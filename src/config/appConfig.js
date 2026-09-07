@@ -31,7 +31,7 @@ export const AREAS_DEFAULT = [
   {
     id: "comercial", nombre: "Comercial", icono: "🤝", desc: "Estrategia de ventas y más",
     paneles: [
-      { id: "datos", nombre: "Datos" },
+      { id: "datos", nombre: "Carga de Datos" },
       { id: "filtrado", nombre: "Filtrado" },
       { id: "ventas", nombre: "Ventas" },
     ],
