@@ -265,6 +265,30 @@ export default function ComercialVentas() {
     if (rec.reserva?.fechaEvento) pushEvento(rec.reserva.fechaEvento, { tipo: "Reserva", nombre: d.nombre, numero: d.numero, hora: rec.reserva.horaEvento, color: "#d97706", vendedor: d.vendedorNombre });
   });
 
+  // ── Fechas vencidas sin resolver (por revisar) ──
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  const pendientesRevisar = [];
+  fuenteCal.forEach(d => {
+    if (["vendido", "descartado"].includes(d.estado)) return;
+    const rec = d.recorrido || {};
+    const idxRec = RECORRIDO.findIndex(p => p.id === "reserva");
+    const ultIdx = ultimoPasoIdx(d);
+    // Visita vencida: tiene fecha pasada y no avanzó a compra
+    if (rec.visita?.fechaEvento && rec.visita.fechaEvento < hoyStr && !rec.compra) {
+      pendientesRevisar.push({ dato: d, tipo: "Visita", pasoId: "visita", fecha: rec.visita.fechaEvento, hora: rec.visita.horaEvento });
+    }
+    // Reserva vencida: fecha pasada y no avanzó a firma programada
+    if (rec.reserva?.fechaEvento && rec.reserva.fechaEvento < hoyStr && !rec.firma_prog && ultIdx <= idxRec) {
+      pendientesRevisar.push({ dato: d, tipo: "Reserva", pasoId: "reserva", fecha: rec.reserva.fechaEvento, hora: rec.reserva.horaEvento });
+    }
+    // Firma programada vencida: fecha pasada y no se firmó
+    if (rec.firma_prog?.fechaEvento && rec.firma_prog.fechaEvento < hoyStr && !rec.firma) {
+      pendientesRevisar.push({ dato: d, tipo: "Firma", pasoId: "firma_prog", fecha: rec.firma_prog.fechaEvento, hora: rec.firma_prog.horaEvento });
+    }
+  });
+  const idsPendientes = {};
+  pendientesRevisar.forEach(p => { idsPendientes[p.dato.id] = true; });
+
   const resumen = {};
   datosVenta.forEach(d => {
     if (d.vendedorUid) {
@@ -295,6 +319,7 @@ export default function ComercialVentas() {
           )}
           <div style={{ flex: 2, fontWeight: 600 }}>
             <span style={{ marginRight: "8px", color: "var(--text2)" }}>{abierto ? "▾" : "▸"}</span>{d.nombre}
+            {idsPendientes[d.id] && <span style={styles.pendienteBadge} title="Fecha vencida sin revisar">⚠️</span>}
           </div>
           <div style={{ flex: 1.3 }}>{d.numero}</div>
           <div style={{ flex: 1.2 }}>
@@ -353,6 +378,30 @@ export default function ComercialVentas() {
       </header>
 
       <main style={styles.main}>
+        {/* Fechas vencidas por revisar */}
+        {pendientesRevisar.length > 0 && (
+          <div style={styles.revisarBox}>
+            <div style={styles.revisarTit}>⚠️ Tenés {pendientesRevisar.length} fecha(s) por revisar</div>
+            <div style={styles.revisarHint}>Ya pasó la fecha y no se cargó qué pasó. Revisá cada caso para reprogramar o avanzar.</div>
+            {pendientesRevisar.map((p, i) => (
+              <div key={i} style={styles.revisarItem}>
+                <div style={styles.revisarInfo}>
+                  <span style={styles.revisarNombre}>{p.dato.nombre}</span>
+                  <span style={styles.revisarDetalle}>
+                    {p.tipo} del {new Date(p.fecha + "T00:00").toLocaleDateString()}{p.hora ? ` · ${p.hora}hs` : ""}
+                    {esAdmin && p.dato.vendedorNombre ? ` · ${p.dato.vendedorNombre}` : ""}
+                  </span>
+                </div>
+                {puedeEditar && (
+                  <button style={styles.revisarBtn} onClick={() => { setExpandido(p.dato.id); setEtapaAbierta({ datoId: p.dato.id, pasoId: p.pasoId }); }}>
+                    Revisar
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Calendario de visitas/firmas/reservas */}
         <div style={styles.calToggleRow}>
           <button style={styles.calToggleBtn} onClick={() => setMostrarCalendario(!mostrarCalendario)}>
@@ -657,6 +706,25 @@ export default function ComercialVentas() {
                         <span style={styles.etModalDatoLabel}>📝 Nota</span>
                         <span style={styles.etModalDatoValor}>{info.nota || "Sin nota."}</span>
                       </div>
+                      {/* Si la fecha ya pasó y no se resolvió, ofrecer acciones */}
+                      {puedeEditar && info.fechaEvento && info.fechaEvento < new Date().toISOString().slice(0, 10) && idsPendientes[d.id] && (
+                        <div style={styles.venceBox}>
+                          <div style={styles.venceTit}>⚠️ Esta fecha ya pasó. ¿Qué pasó?</div>
+                          <button style={styles.etModalBtnPrimary} onClick={() => {
+                            cerrar();
+                            // Reprogramar: borra el paso y lo vuelve a pedir
+                            desmarcarPaso(d, paso.id).then(() => {
+                              setMarcandoPaso({ datoId: d.id, pasoId: paso.id });
+                              setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra("");
+                            });
+                          }}>📅 Reprogramar</button>
+                          <button style={styles.etModalBtnGhost} onClick={() => {
+                            const sig = RECORRIDO[RECORRIDO.findIndex(p => p.id === paso.id) + 1];
+                            cerrar();
+                            if (sig) { setMarcandoPaso({ datoId: d.id, pasoId: sig.id }); setNotaPaso(""); setFechaPaso(""); setHoraPaso(""); setResultadoCompra(""); }
+                          }}>➡️ Avanzar a la etapa siguiente</button>
+                        </div>
+                      )}
                       {puedeEditar && <button style={styles.etModalBtnGhost} onClick={() => { desmarcarPaso(d, paso.id); cerrar(); }}>↩ Deshacer esta etapa</button>}
                     </>
                   )}
@@ -1036,6 +1104,17 @@ const styles = {
   etModalDatoValor: { fontSize: "15px", color: "var(--text)", lineHeight: "1.4" },
   etModalBtnPrimary: { display: "block", width: "100%", background: "var(--acc)", color: "#fff", border: "none", padding: "14px", borderRadius: "10px", cursor: "pointer", fontSize: "15px", fontWeight: "700", marginTop: "8px" },
   etModalBtnGhost: { display: "block", width: "100%", background: "transparent", color: "var(--text2)", border: "1.5px solid var(--border2)", padding: "11px", borderRadius: "10px", cursor: "pointer", fontSize: "13px", fontWeight: "600", marginTop: "18px" },
+  revisarBox: { background: "var(--card)", border: "1.5px solid #d97706", borderRadius: "14px", padding: "16px", marginBottom: "18px" },
+  revisarTit: { fontSize: "15px", fontWeight: "700", color: "#d97706", marginBottom: "4px" },
+  revisarHint: { fontSize: "12.5px", color: "var(--text2)", marginBottom: "12px" },
+  revisarItem: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px", padding: "10px 0", borderTop: "1px solid var(--border)", flexWrap: "wrap" },
+  revisarInfo: { display: "flex", flexDirection: "column", gap: "2px" },
+  revisarNombre: { fontSize: "14px", fontWeight: "600", color: "var(--text)" },
+  revisarDetalle: { fontSize: "12px", color: "var(--text2)" },
+  revisarBtn: { background: "#d97706", color: "#fff", border: "none", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "700" },
+  pendienteBadge: { marginLeft: "6px", fontSize: "13px" },
+  venceBox: { marginTop: "16px", padding: "12px", background: "var(--surface)", borderRadius: "10px", border: "1px solid #d97706" },
+  venceTit: { fontSize: "13px", fontWeight: "700", color: "#d97706", marginBottom: "10px", textAlign: "center" },
   recorridoTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "14px" },
   progBarra: { display: "flex", alignItems: "flex-start", justifyContent: "space-between", overflowX: "auto", paddingBottom: "8px" },
   progPasoWrap: { display: "flex", flexDirection: "column", alignItems: "center", position: "relative", flex: 1, minWidth: "72px" },
