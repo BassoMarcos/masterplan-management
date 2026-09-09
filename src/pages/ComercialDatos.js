@@ -382,7 +382,7 @@ export default function ComercialDatos() {
               <button style={{ ...styles.addBtn, ...(numeroRepetido ? styles.addBtnOff : {}) }} onClick={agregar} disabled={guardando || numeroRepetido}>{guardando ? "..." : "Agregar"}</button>
             </div>
             {numeroRepetido && (
-              <div style={styles.avisoRepetido}>⚠️ Este número ya está registrado. No hace falta cargarlo de nuevo.</div>
+              <div style={styles.avisoRepetido}>Este número ya está en la lista de datos.</div>
             )}
             {esAdmin && (
               <button style={styles.masivoBtn} onClick={() => { setMasivoOpen(true); setMasivoParseado(null); setMasNombres(""); setMasTelefonos(""); setMasDateros(""); setMasTodosEmpresa(false); }}>📋 Carga masiva (pegar desde Excel)</button>
