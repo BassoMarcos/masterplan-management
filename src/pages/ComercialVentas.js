@@ -565,6 +565,7 @@ export default function ComercialVentas() {
                         const esOtro = ["otro", "otros"].includes(String(r).trim().toLowerCase()) && otro;
                         return (
                           <div key={p.id} style={styles.infoItem}>
+                            {p.titulo && <div style={styles.infoTituloPreg}>{p.titulo}</div>}
                             <div style={styles.infoPreg}>{p.texto}</div>
                             <div style={styles.infoResp}>{String(r)}{esOtro ? `: ${otro}` : ""}</div>
                           </div>
@@ -581,6 +582,7 @@ export default function ComercialVentas() {
                     <div style={styles.infoHint}>Este contacto no fue filtrado. Podés hacer estas preguntas mientras hablás y quedan guardadas.</div>
                     {formulario.map(p => (
                       <div key={p.id} style={styles.campoFiltro}>
+                        {p.titulo && <div style={styles.infoTituloPreg}>{p.titulo}</div>}
                         <label style={styles.campoFiltroLabel}>{p.texto}</label>
                         {p.tipo === "texto" && (
                           <textarea style={styles.campoFiltroInput} rows={2} value={respFiltro[p.id] || ""} onChange={e => setRespFiltro({ ...respFiltro, [p.id]: e.target.value })} />
@@ -1080,6 +1082,7 @@ const styles = {
   infoFiltro: { background: "var(--surface)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "16px", marginBottom: "24px" },
   infoHint: { fontSize: "12px", color: "var(--text2)", marginBottom: "14px", lineHeight: "1.4" },
   campoFiltro: { marginBottom: "14px" },
+  infoTituloPreg: { fontSize: "11px", fontWeight: "800", color: "var(--acc)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" },
   campoFiltroLabel: { display: "block", fontSize: "13px", fontWeight: "600", color: "var(--text)", marginBottom: "6px" },
   campoFiltroInput: { width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" },
   miniSinoRow: { display: "flex", gap: "6px", flexWrap: "wrap" },
