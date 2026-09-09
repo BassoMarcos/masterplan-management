@@ -9,6 +9,13 @@ import { empleadoNivelPanel, construirRecorrido } from "../config/appConfig";
 import { crearNotificacion } from "../utils/notificar";
 
 // Etapas del recorrido del contacto (mismo orden que en Ventas)
+// Clave para comparar teléfonos: solo los últimos 8 dígitos.
+// Así 1130088898 y 5491130088898 se detectan como el mismo número.
+function clave8(num) {
+  const soloNum = String(num || "").replace(/[^\d]/g, "");
+  return soloNum.length >= 8 ? soloNum.slice(-8) : soloNum;
+}
+
 function pasosAutomaticos(d) {
   const hechos = { contacto: true };
   const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || ["filtrado", "en_venta", "vendido"].includes(d.estado);
@@ -40,6 +47,7 @@ export default function ComercialDatos() {
   const [loading, setLoading] = useState(true);
   const [nombre, setNombre] = useState("");
   const [numero, setNumero] = useState("");
+  const [clavesTodas, setClavesTodas] = useState(new Set());
   const [guardando, setGuardando] = useState(false);
   // Filtros (admin)
   const [fMes, setFMes] = useState("");        // "2026-08" o ""
@@ -91,6 +99,8 @@ export default function ComercialDatos() {
       let lista = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       // Ordenar por fecha de carga (más nuevo primero)
       lista.sort((a, b) => (b.creadoMs || 0) - (a.creadoMs || 0));
+      // Claves de TODOS los números de la empresa (para detectar repetidos aunque el empleado no los vea)
+      setClavesTodas(new Set(lista.map(d => clave8(d.numero))));
       // Si es empleado NO admin: solo ve los datos que cargó él
       if (esEmpleado && !empleadoData?.accesoTotal) {
         lista = lista.filter(d => d.cargadoPorUid === currentUser.uid);
@@ -152,9 +162,15 @@ export default function ComercialDatos() {
     const total = Math.max(nombres.length, telefonos.length);
     const filas = [];
     const dateросSet = {};
+    const vistas = new Set(); // claves dentro de este mismo pegado
+    let repetidos = 0;
     for (let i = 0; i < total; i++) {
       const numero = (telefonos[i] || "").replace(/[^\d]/g, "");
       if (!numero) continue; // sin teléfono no sirve
+      const k = clave8(numero);
+      // Saltear si ya está cargado en el sistema o repetido en el mismo pegado
+      if (k.length >= 8 && (clavesTodas.has(k) || vistas.has(k))) { repetidos++; continue; }
+      vistas.add(k);
       const nombre = (nombres[i] || "").replace(/^-$/, "");
       const datero = (dateros[i] || "").trim();
       filas.push({ nombre, numero, datero });
@@ -168,7 +184,7 @@ export default function ComercialDatos() {
       mapeoInicial[dn.toLowerCase()] = match ? match.id : "empresa";
     });
     setMasivoMapeo(mapeoInicial);
-    setMasivoParseado({ filas, dateros: listaDateros });
+    setMasivoParseado({ filas, dateros: listaDateros, repetidos });
   }
 
   async function confirmarMasivo() {
@@ -298,6 +314,10 @@ export default function ComercialDatos() {
 
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
+  // ── Detección de números repetidos (últimos 8 dígitos) ──
+  const claveEscrita = clave8(numero);
+  const numeroRepetido = claveEscrita.length >= 8 && clavesTodas.has(claveEscrita);
+
   // ── Listas para los selects (a partir de los datos) ──
   const dateros = [];
   const vendedores = [];
@@ -358,9 +378,12 @@ export default function ComercialDatos() {
             <div style={styles.cargaTitle}>➕ Cargar un dato</div>
             <div style={styles.cargaRow}>
               <input style={styles.input} placeholder="Nombre" value={nombre} onChange={e => setNombre(e.target.value)} />
-              <input style={styles.input} placeholder="Número" value={numero} onChange={e => setNumero(e.target.value)} onKeyDown={e => e.key === "Enter" && agregar()} />
-              <button style={styles.addBtn} onClick={agregar} disabled={guardando}>{guardando ? "..." : "Agregar"}</button>
+              <input style={{ ...styles.input, ...(numeroRepetido ? styles.inputError : {}) }} placeholder="Número" value={numero} onChange={e => setNumero(e.target.value)} onKeyDown={e => e.key === "Enter" && !numeroRepetido && agregar()} />
+              <button style={{ ...styles.addBtn, ...(numeroRepetido ? styles.addBtnOff : {}) }} onClick={agregar} disabled={guardando || numeroRepetido}>{guardando ? "..." : "Agregar"}</button>
             </div>
+            {numeroRepetido && (
+              <div style={styles.avisoRepetido}>⚠️ Este número ya está registrado. No hace falta cargarlo de nuevo.</div>
+            )}
             {esAdmin && (
               <button style={styles.masivoBtn} onClick={() => { setMasivoOpen(true); setMasivoParseado(null); setMasNombres(""); setMasTelefonos(""); setMasDateros(""); setMasTodosEmpresa(false); }}>📋 Carga masiva (pegar desde Excel)</button>
             )}
@@ -561,7 +584,12 @@ export default function ComercialDatos() {
               </>
             ) : (
               <>
-                <div style={styles.masResumen}>Se detectaron <b>{masivoParseado.filas.length}</b> contacto(s) válido(s).</div>
+                <div style={styles.masResumen}>
+                  Se detectaron <b>{masivoParseado.filas.length}</b> contacto(s) nuevo(s).
+                  {masivoParseado.repetidos > 0 && (
+                    <div style={styles.masRepetidos}>⚠️ Se saltearon {masivoParseado.repetidos} número(s) que ya estaban registrados.</div>
+                  )}
+                </div>
 
                 <label style={styles.masTodosLbl}>
                   <input type="checkbox" checked={masTodosEmpresa} onChange={e => setMasTodosEmpresa(e.target.checked)} />
@@ -648,6 +676,10 @@ const styles = {
   cargaRow: { display: "flex", gap: "10px", flexWrap: "wrap" },
   input: { flex: 1, minWidth: "140px", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box" },
   addBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
+  addBtnOff: { background: "var(--surface)", color: "var(--text2)", cursor: "not-allowed", opacity: 0.6 },
+  inputError: { borderColor: "#dc2626" },
+  avisoRepetido: { marginTop: "10px", padding: "10px 12px", background: "rgba(220,38,38,0.12)", border: "1px solid #dc2626", borderRadius: "8px", color: "#dc2626", fontSize: "13px", fontWeight: "600" },
+  masRepetidos: { marginTop: "8px", fontSize: "12.5px", color: "#d97706", fontWeight: "600" },
   listaHeader: { display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" },
   repartoBox: { background: "var(--card)", border: "1.5px solid var(--acc)", borderRadius: "12px", padding: "16px", marginBottom: "16px" },
   repartoTit: { fontSize: "15px", fontWeight: "700", color: "var(--text)", marginBottom: "12px" },
