@@ -55,6 +55,7 @@ export default function ComercialConfigFiltro() {
   function nuevaPregunta() {
     setPreguntas([...preguntas, {
       id: "p_" + Date.now(),
+      titulo: "",
       texto: "",
       tipo: "texto",
       obligatoria: false,
@@ -156,6 +157,14 @@ export default function ComercialConfigFiltro() {
               )}
             </div>
 
+            <input
+              style={styles.inputTitulo}
+              placeholder="Título (opcional) — ej: Presentación"
+              value={p.titulo || ""}
+              onChange={e => actualizar(idx, "titulo", e.target.value)}
+              disabled={!puedeEditar}
+            />
+
             <textarea
               style={styles.inputPreg}
               placeholder="Escribí la pregunta"
@@ -253,6 +262,7 @@ const styles = {
   pregControls: { display: "flex", gap: "6px" },
   iconBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   iconBtnRed: { background: "transparent", border: "1px solid #fca5a5", color: "#dc2626", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
+  inputTitulo: { width: "100%", padding: "9px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--surface)", color: "var(--acc)", fontSize: "13px", boxSizing: "border-box", marginBottom: "8px", fontWeight: "700" },
   inputPreg: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--border)", background: "var(--bg)", color: "var(--text)", fontSize: "14px", boxSizing: "border-box", marginBottom: "10px", fontWeight: "600", fontFamily: "inherit", resize: "vertical", lineHeight: "1.5" },
   tipoRow: { display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "10px" },
   tipoBtn: { background: "var(--bg)", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "6px 10px", borderRadius: "6px", cursor: "pointer", fontSize: "12px", fontWeight: "600" },
