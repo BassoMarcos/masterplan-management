@@ -357,6 +357,7 @@ export default function ComercialFiltrado() {
               ) : (
                 formulario.map((p, i) => (
                   <div key={p.id} style={styles.fsCampo}>
+                    {p.titulo && <div style={styles.fsTitulo}>{p.titulo}</div>}
                     <label style={styles.fsLabel}><span style={styles.fsNum}>{i + 1}</span> {p.texto} {p.obligatoria && <span style={{ color: "#dc2626" }}>*</span>}</label>
                     {p.tipo === "texto" && (
                       <textarea style={styles.fsTextarea} rows={2} value={respuestas[p.id] || ""} onChange={e => setRespuestas({ ...respuestas, [p.id]: e.target.value })} placeholder="Escribí la respuesta…" />
@@ -418,6 +419,7 @@ const styles = {
   fsBody: { flex: 1, overflowY: "auto", padding: "24px 28px" },
   fsInner: { maxWidth: "640px", margin: "0 auto" },
   fsCampo: { marginBottom: "24px" },
+  fsTitulo: { fontSize: "12px", fontWeight: "800", color: "var(--acc)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" },
   fsLabel: { display: "block", fontSize: "17px", fontWeight: "600", color: "var(--text)", marginBottom: "10px", lineHeight: "1.4" },
   fsNum: { display: "inline-flex", alignItems: "center", justifyContent: "center", width: "24px", height: "24px", borderRadius: "50%", background: "var(--acc)", color: "#fff", fontSize: "13px", fontWeight: "700", marginRight: "6px" },
   fsTextarea: { width: "100%", padding: "14px 16px", borderRadius: "10px", border: "1.5px solid var(--border)", background: "var(--card)", color: "var(--text)", fontSize: "16px", boxSizing: "border-box", fontFamily: "inherit", resize: "vertical" },
