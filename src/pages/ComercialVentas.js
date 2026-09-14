@@ -264,6 +264,10 @@ export default function ComercialVentas() {
     if (rec.visita?.fechaEvento) pushEvento(rec.visita.fechaEvento, { tipo: "Visita", nombre: d.nombre, numero: d.numero, hora: rec.visita.horaEvento, color: "#2563eb", vendedor: d.vendedorNombre });
     if (rec.firma_prog?.fechaEvento) pushEvento(rec.firma_prog.fechaEvento, { tipo: "Firma", nombre: d.nombre, numero: d.numero, hora: rec.firma_prog.horaEvento, color: "#16a34a", vendedor: d.vendedorNombre });
     if (rec.reserva?.fechaEvento) pushEvento(rec.reserva.fechaEvento, { tipo: "Reserva", nombre: d.nombre, numero: d.numero, hora: rec.reserva.horaEvento, color: "#d97706", vendedor: d.vendedorNombre });
+    // La fecha de reserva se carga al marcar "Compra confirmada" (cuando le gustó)
+    if (!rec.reserva?.fechaEvento && rec.compra?.fechaEvento && rec.compra?.resultado === "gusto") {
+      pushEvento(rec.compra.fechaEvento, { tipo: "Reserva", nombre: d.nombre, numero: d.numero, hora: rec.compra.horaEvento, color: "#d97706", vendedor: d.vendedorNombre });
+    }
   });
 
   // ── Fechas vencidas sin resolver (por revisar) ──
@@ -281,6 +285,10 @@ export default function ComercialVentas() {
     // Reserva vencida: fecha pasada y no avanzó a firma programada
     if (rec.reserva?.fechaEvento && rec.reserva.fechaEvento < hoyStr && !rec.firma_prog && ultIdx <= idxRec) {
       pendientesRevisar.push({ dato: d, tipo: "Reserva", pasoId: "reserva", fecha: rec.reserva.fechaEvento, hora: rec.reserva.horaEvento });
+    }
+    // Reserva pactada en "Compra confirmada" que ya venció y todavía no se cargó la reserva
+    if (!rec.reserva && rec.compra?.resultado === "gusto" && rec.compra?.fechaEvento && rec.compra.fechaEvento < hoyStr) {
+      pendientesRevisar.push({ dato: d, tipo: "Reserva", pasoId: "compra", fecha: rec.compra.fechaEvento, hora: rec.compra.horaEvento });
     }
     // Firma programada vencida: fecha pasada y no se firmó
     if (rec.firma_prog?.fechaEvento && rec.firma_prog.fechaEvento < hoyStr && !rec.firma) {
