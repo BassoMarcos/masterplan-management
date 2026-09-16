@@ -330,7 +330,7 @@ export default function Proyectos() {
                   style={styles.copiarBtn}
                   onClick={async () => {
                     setDriveMsg("");
-                    try { await conectarDrive(); setDriveOk(true); }
+                    try { setEmpresaDrive(empresaUid); await conectarDrive(); setDriveOk(true); }
                     catch (e) { setDriveMsg("No se pudo conectar: " + e.message); }
                   }}
                 >
