@@ -83,6 +83,22 @@ export async function obtenerToken() {
   });
 }
 
+// Devuelve el email de la cuenta de Drive conectada
+export async function emailConectado() {
+  const s = sesion();
+  if (!s) return null;
+  if (s.email) return s.email;
+  try {
+    const r = await fetch("https://www.googleapis.com/drive/v3/about?fields=user(emailAddress,displayName)", {
+      headers: { Authorization: `Bearer ${s.token}` },
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    s.email = data.user?.emailAddress || null;
+    return s.email;
+  } catch { return null; }
+}
+
 export function hayConexion() {
   const s = sesion();
   return !!s && Date.now() < s.expira;
