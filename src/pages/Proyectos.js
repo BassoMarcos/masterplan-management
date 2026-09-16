@@ -6,7 +6,7 @@ import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, update
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { conectarDrive, hayConexion, desconectar, setEmpresaDrive } from "../utils/drive";
+import { conectarDrive, hayConexion, desconectar, setEmpresaDrive, emailConectado } from "../utils/drive";
 import PizarraFlotante from "../components/PizarraFlotante";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
@@ -27,6 +27,7 @@ export default function Proyectos() {
   const [showAjustes, setShowAjustes] = useState(false);
   const [driveOk, setDriveOk] = useState(false);
   const [driveMsg, setDriveMsg] = useState("");
+  const [driveEmail, setDriveEmail] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [editandoCod, setEditandoCod] = useState(false);
   const [codigoInput, setCodigoInput] = useState("");
@@ -57,7 +58,9 @@ export default function Proyectos() {
   // La conexión a Drive es por empresa
   useEffect(() => {
     setEmpresaDrive(empresaUid);
-    setDriveOk(hayConexion());
+    const conectado = hayConexion();
+    setDriveOk(conectado);
+    if (conectado) { emailConectado().then(e => setDriveEmail(e || "")); } else { setDriveEmail(""); }
   }, [empresaUid]);
 
   function handleFoto(e) {
@@ -323,14 +326,15 @@ export default function Proyectos() {
               {driveOk || hayConexion() ? (
                 <>
                   <div style={styles.driveOk}>✓ Drive conectado</div>
-                  <button style={styles.cancelarCodBtn} onClick={() => { desconectar(); setDriveOk(false); setDriveMsg(""); }}>Desconectar</button>
+                  {driveEmail && <div style={styles.driveEmail}>{driveEmail}</div>}
+                  <button style={styles.cancelarCodBtn} onClick={() => { desconectar(); setDriveOk(false); setDriveMsg(""); setDriveEmail(""); }}>Desconectar</button>
                 </>
               ) : (
                 <button
                   style={styles.copiarBtn}
                   onClick={async () => {
                     setDriveMsg("");
-                    try { setEmpresaDrive(empresaUid); await conectarDrive(); setDriveOk(true); }
+                    try { setEmpresaDrive(empresaUid); await conectarDrive(); setDriveOk(true); setDriveEmail(await emailConectado() || ""); }
                     catch (e) { setDriveMsg("No se pudo conectar: " + e.message); }
                   }}
                 >
@@ -381,6 +385,7 @@ const styles = {
   mapaBtn: { width: "100%", marginTop: "16px", background: "linear-gradient(135deg,#2FE0B0,#3FA9FF)", border: "none", color: "#04060a", padding: "11px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
   driveBox: { background: "var(--surface)", borderRadius: "12px", padding: "16px", marginTop: "16px", textAlign: "center" },
   driveOk: { color: "#16a34a", fontWeight: "700", fontSize: "14px", marginBottom: "10px" },
+  driveEmail: { fontSize: "12.5px", color: "var(--text2)", marginBottom: "10px", wordBreak: "break-all" },
   driveError: { color: "#dc2626", fontSize: "12.5px", marginTop: "10px" },
   cerrarAjustesBtn: { width: "100%", marginTop: "20px", background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   logoutBtn: {
