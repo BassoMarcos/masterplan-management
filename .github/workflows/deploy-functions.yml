@@ -30,7 +30,7 @@ jobs:
         run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEPLOY }}' > "$HOME/sa.json"
 
       - name: Desplegar funciones
-        run: firebase deploy --only functions --project masterplanproyects --non-interactive
+        run: firebase deploy --only functions --project masterplanproyects --non-interactive --debug 2>&1 | tail -60
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /home/runner/sa.json
 
