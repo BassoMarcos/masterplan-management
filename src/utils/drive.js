@@ -7,8 +7,20 @@ const SCOPE = "https://www.googleapis.com/auth/drive.file";
 const CARPETA_RAIZ = "MasterPlan";
 
 let tokenClient = null;
-let accessToken = null;
-let tokenExpira = 0;
+// La conexión es POR EMPRESA: cada una autoriza su propio Drive.
+// { [empresaUid]: { token, expira } }
+const sesiones = {};
+let empresaActual = null;
+
+// Define con qué empresa se está trabajando (llamar al entrar a la app)
+export function setEmpresaDrive(uid) {
+  empresaActual = uid || null;
+}
+
+function sesion() {
+  if (!empresaActual) return null;
+  return sesiones[empresaActual] || null;
+}
 
 // Carga el script de Google Identity Services una sola vez
 function cargarGIS() {
@@ -36,9 +48,12 @@ export async function conectarDrive() {
       scope: SCOPE,
       callback: (resp) => {
         if (resp.error) { reject(new Error(resp.error)); return; }
-        accessToken = resp.access_token;
-        tokenExpira = Date.now() + (resp.expires_in || 3600) * 1000;
-        resolve(accessToken);
+        if (!empresaActual) { reject(new Error("No hay empresa seleccionada")); return; }
+        sesiones[empresaActual] = {
+          token: resp.access_token,
+          expira: Date.now() + (resp.expires_in || 3600) * 1000,
+        };
+        resolve(resp.access_token);
       },
     });
     tokenClient.requestAccessToken({ prompt: "consent" });
@@ -47,7 +62,8 @@ export async function conectarDrive() {
 
 // Devuelve un token válido (pide de nuevo si venció)
 export async function obtenerToken() {
-  if (accessToken && Date.now() < tokenExpira - 60000) return accessToken;
+  const s = sesion();
+  if (s && Date.now() < s.expira - 60000) return s.token;
   await cargarGIS();
   return new Promise((resolve, reject) => {
     tokenClient = window.google.accounts.oauth2.initTokenClient({
@@ -55,9 +71,12 @@ export async function obtenerToken() {
       scope: SCOPE,
       callback: (resp) => {
         if (resp.error) { reject(new Error(resp.error)); return; }
-        accessToken = resp.access_token;
-        tokenExpira = Date.now() + (resp.expires_in || 3600) * 1000;
-        resolve(accessToken);
+        if (!empresaActual) { reject(new Error("No hay empresa seleccionada")); return; }
+        sesiones[empresaActual] = {
+          token: resp.access_token,
+          expira: Date.now() + (resp.expires_in || 3600) * 1000,
+        };
+        resolve(resp.access_token);
       },
     });
     tokenClient.requestAccessToken({ prompt: "" });
@@ -65,15 +84,16 @@ export async function obtenerToken() {
 }
 
 export function hayConexion() {
-  return !!accessToken && Date.now() < tokenExpira;
+  const s = sesion();
+  return !!s && Date.now() < s.expira;
 }
 
 export function desconectar() {
-  if (accessToken && window.google?.accounts?.oauth2) {
-    window.google.accounts.oauth2.revoke(accessToken, () => {});
+  const s = sesion();
+  if (s?.token && window.google?.accounts?.oauth2) {
+    window.google.accounts.oauth2.revoke(s.token, () => {});
   }
-  accessToken = null;
-  tokenExpira = 0;
+  if (empresaActual) delete sesiones[empresaActual];
 }
 
 // Busca (o crea) una carpeta dentro de Drive. Devuelve su id.
