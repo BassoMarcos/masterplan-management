@@ -6,7 +6,7 @@ import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, update
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { conectarDrive, hayConexion, desconectar } from "../utils/drive";
+import { conectarDrive, hayConexion, desconectar, setEmpresaDrive } from "../utils/drive";
 import PizarraFlotante from "../components/PizarraFlotante";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
@@ -53,6 +53,12 @@ export default function Proyectos() {
   useEffect(() => {
     cargarProyectos();
   }, [cargarProyectos]);
+
+  // La conexión a Drive es por empresa
+  useEffect(() => {
+    setEmpresaDrive(empresaUid);
+    setDriveOk(hayConexion());
+  }, [empresaUid]);
 
   function handleFoto(e) {
     const file = e.target.files[0];
