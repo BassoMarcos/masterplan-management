@@ -6,7 +6,7 @@ import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, update
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { conectarDrive, hayConexion, desconectar, setEmpresaDrive, emailConectado } from "../utils/drive";
+import { conectarDrive, estadoDrive, desconectarDrive } from "../utils/drive";
 import PizarraFlotante from "../components/PizarraFlotante";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
@@ -55,12 +55,15 @@ export default function Proyectos() {
     cargarProyectos();
   }, [cargarProyectos]);
 
-  // La conexión a Drive es por empresa
+  // Estado de la conexión a Drive (guardada en el servidor, por empresa)
   useEffect(() => {
-    setEmpresaDrive(empresaUid);
-    const conectado = hayConexion();
-    setDriveOk(conectado);
-    if (conectado) { emailConectado().then(e => setDriveEmail(e || "")); } else { setDriveEmail(""); }
+    let vivo = true;
+    estadoDrive().then(r => {
+      if (!vivo) return;
+      setDriveOk(!!r.conectado);
+      setDriveEmail(r.email || "");
+    });
+    return () => { vivo = false; };
   }, [empresaUid]);
 
   function handleFoto(e) {
@@ -323,18 +326,18 @@ export default function Proyectos() {
                 Conectá el Drive de tu empresa para guardar ahí los planos, boletos y archivos.
                 Los archivos quedan en tu cuenta, no en la nuestra.
               </p>
-              {driveOk || hayConexion() ? (
+              {driveOk ? (
                 <>
                   <div style={styles.driveOk}>✓ Drive conectado</div>
                   {driveEmail && <div style={styles.driveEmail}>{driveEmail}</div>}
-                  <button style={styles.cancelarCodBtn} onClick={() => { desconectar(); setDriveOk(false); setDriveMsg(""); setDriveEmail(""); }}>Desconectar</button>
+                  <button style={styles.cancelarCodBtn} onClick={async () => { await desconectarDrive(); setDriveOk(false); setDriveMsg(""); setDriveEmail(""); }}>Desconectar</button>
                 </>
               ) : (
                 <button
                   style={styles.copiarBtn}
                   onClick={async () => {
                     setDriveMsg("");
-                    try { setEmpresaDrive(empresaUid); await conectarDrive(); setDriveOk(true); setDriveEmail(await emailConectado() || ""); }
+                    try { const r = await conectarDrive(); setDriveOk(true); setDriveEmail(r?.email || ""); }
                     catch (e) { setDriveMsg("No se pudo conectar: " + e.message); }
                   }}
                 >
