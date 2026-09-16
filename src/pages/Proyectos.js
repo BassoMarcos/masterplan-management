@@ -6,6 +6,7 @@ import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, update
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
+import { conectarDrive, hayConexion, desconectar } from "../utils/drive";
 import PizarraFlotante from "../components/PizarraFlotante";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
@@ -24,6 +25,8 @@ export default function Proyectos() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [showAjustes, setShowAjustes] = useState(false);
+  const [driveOk, setDriveOk] = useState(false);
+  const [driveMsg, setDriveMsg] = useState("");
   const [copiado, setCopiado] = useState(false);
   const [editandoCod, setEditandoCod] = useState(false);
   const [codigoInput, setCodigoInput] = useState("");
@@ -305,6 +308,32 @@ export default function Proyectos() {
               )}
             </div>
 
+            <div style={styles.driveBox}>
+              <div style={styles.codigoLabel}>📁 Google Drive</div>
+              <p style={styles.codigoAyuda}>
+                Conectá el Drive de tu empresa para guardar ahí los planos, boletos y archivos.
+                Los archivos quedan en tu cuenta, no en la nuestra.
+              </p>
+              {driveOk || hayConexion() ? (
+                <>
+                  <div style={styles.driveOk}>✓ Drive conectado</div>
+                  <button style={styles.cancelarCodBtn} onClick={() => { desconectar(); setDriveOk(false); setDriveMsg(""); }}>Desconectar</button>
+                </>
+              ) : (
+                <button
+                  style={styles.copiarBtn}
+                  onClick={async () => {
+                    setDriveMsg("");
+                    try { await conectarDrive(); setDriveOk(true); }
+                    catch (e) { setDriveMsg("No se pudo conectar: " + e.message); }
+                  }}
+                >
+                  🔗 Conectar Google Drive
+                </button>
+              )}
+              {driveMsg && <div style={styles.driveError}>{driveMsg}</div>}
+            </div>
+
             <button
               style={styles.mapaBtn}
               onClick={() => window.open("/mapa.html", "_blank")}
@@ -344,6 +373,9 @@ const styles = {
   cancelarCodBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   codigoInput: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--acc)", background: "var(--card)", color: "var(--text)", fontSize: "20px", fontWeight: "700", textAlign: "center", fontFamily: "monospace", boxSizing: "border-box", letterSpacing: "1px" },
   mapaBtn: { width: "100%", marginTop: "16px", background: "linear-gradient(135deg,#2FE0B0,#3FA9FF)", border: "none", color: "#04060a", padding: "11px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
+  driveBox: { background: "var(--surface)", borderRadius: "12px", padding: "16px", marginTop: "16px", textAlign: "center" },
+  driveOk: { color: "#16a34a", fontWeight: "700", fontSize: "14px", marginBottom: "10px" },
+  driveError: { color: "#dc2626", fontSize: "12.5px", marginTop: "10px" },
   cerrarAjustesBtn: { width: "100%", marginTop: "20px", background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   logoutBtn: {
     background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)",
