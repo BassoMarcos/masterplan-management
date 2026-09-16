@@ -46,15 +46,21 @@ exports.drivePorConectar = onCall(
     const { code } = request.data || {};
     if (!code) throw new HttpsError("invalid-argument", "Falta el código de autorización.");
 
-    const empresaId = await empresaDelUsuario(request.auth.uid);
-
-    const oauth2 = nuevoOAuthClient(OAUTH_CLIENT_ID.value(), OAUTH_CLIENT_SECRET.value());
+    let empresaId, oauth2;
+    try {
+      empresaId = await empresaDelUsuario(request.auth.uid);
+      oauth2 = nuevoOAuthClient(OAUTH_CLIENT_ID.value(), OAUTH_CLIENT_SECRET.value());
+    } catch (e) {
+      console.error("Preparación falló:", e?.message);
+      throw new HttpsError("internal", "Error de configuración: " + (e?.message || "desconocido"));
+    }
     let tokens;
     try {
       const r = await oauth2.getToken(code);
       tokens = r.tokens;
     } catch (e) {
-      throw new HttpsError("invalid-argument", "No se pudo validar la autorización de Google.");
+      console.error("getToken falló:", e?.message, e?.response?.data);
+      throw new HttpsError("invalid-argument", "Google rechazó la autorización: " + (e?.response?.data?.error_description || e?.message || "desconocido"));
     }
     if (!tokens.refresh_token) {
       throw new HttpsError("failed-precondition", "Google no devolvió un permiso renovable. Probá desconectar y conectar de nuevo.");
