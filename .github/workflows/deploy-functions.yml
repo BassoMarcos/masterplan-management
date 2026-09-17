@@ -27,12 +27,20 @@ jobs:
         run: npm install -g firebase-tools
 
       - name: Preparar credenciales
-        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEPLOY }}' > "$HOME/sa.json"
+        run: |
+          echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEPLOY }}' > "$HOME/sa.json"
+          echo "Tamaño del archivo de credenciales:"
+          wc -c "$HOME/sa.json"
 
-      - name: Desplegar funciones
-        run: firebase deploy --only functions --project masterplanproyects --non-interactive --debug 2>&1 | tail -60
+      - name: Verificar acceso
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /home/runner/sa.json
+        run: firebase projects:list
+
+      - name: Desplegar funciones
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /home/runner/sa.json
+        run: firebase deploy --only functions --project masterplanproyects --non-interactive --force
 
       - name: Limpiar credenciales
         if: always()
