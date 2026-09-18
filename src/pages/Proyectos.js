@@ -6,7 +6,7 @@ import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, update
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { conectarDrive, estadoDrive, desconectarDrive } from "../utils/drive";
+import { conectarDrive, estadoDrive, desconectarDrive, subirArchivo } from "../utils/drive";
 import PizarraFlotante from "../components/PizarraFlotante";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
@@ -28,6 +28,8 @@ export default function Proyectos() {
   const [driveOk, setDriveOk] = useState(false);
   const [driveMsg, setDriveMsg] = useState("");
   const [driveEmail, setDriveEmail] = useState("");
+  const [pruebaMsg, setPruebaMsg] = useState("");
+  const [subiendo, setSubiendo] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [editandoCod, setEditandoCod] = useState(false);
   const [codigoInput, setCodigoInput] = useState("");
@@ -330,6 +332,24 @@ export default function Proyectos() {
                 <>
                   <div style={styles.driveOk}>✓ Drive conectado</div>
                   {driveEmail && <div style={styles.driveEmail}>{driveEmail}</div>}
+                  <label style={styles.pruebaBtn}>
+                    {subiendo ? "Subiendo…" : "🧪 Probar subida de archivo"}
+                    <input type="file" style={{ display: "none" }} disabled={subiendo}
+                      onChange={async (e) => {
+                        const f = e.target.files?.[0];
+                        if (!f) return;
+                        setSubiendo(true); setPruebaMsg("");
+                        try {
+                          const r = await subirArchivo(f, "Pruebas");
+                          setPruebaMsg("✓ Subido a tu Drive: " + r.nombre);
+                        } catch (err) {
+                          setPruebaMsg("✗ Error: " + (err?.message || "no se pudo subir"));
+                        }
+                        setSubiendo(false);
+                        e.target.value = "";
+                      }} />
+                  </label>
+                  {pruebaMsg && <div style={styles.pruebaMsg}>{pruebaMsg}</div>}
                   <button style={styles.cancelarCodBtn} onClick={async () => { await desconectarDrive(); setDriveOk(false); setDriveMsg(""); setDriveEmail(""); }}>Desconectar</button>
                 </>
               ) : (
@@ -389,6 +409,8 @@ const styles = {
   driveBox: { background: "var(--surface)", borderRadius: "12px", padding: "16px", marginTop: "16px", textAlign: "center" },
   driveOk: { color: "#16a34a", fontWeight: "700", fontSize: "14px", marginBottom: "10px" },
   driveEmail: { fontSize: "12.5px", color: "var(--text2)", marginBottom: "10px", wordBreak: "break-all" },
+  pruebaBtn: { display: "block", marginTop: "10px", marginBottom: "10px", background: "var(--bg)", border: "1.5px dashed var(--border2)", color: "var(--text2)", padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "12.5px", fontWeight: "600" },
+  pruebaMsg: { fontSize: "12.5px", color: "var(--text)", marginBottom: "10px", wordBreak: "break-word" },
   driveError: { color: "#dc2626", fontSize: "12.5px", marginTop: "10px" },
   cerrarAjustesBtn: { width: "100%", marginTop: "20px", background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   logoutBtn: {
