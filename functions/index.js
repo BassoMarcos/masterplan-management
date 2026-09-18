@@ -8,6 +8,7 @@ const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
 const { google } = require("googleapis");
+const { Readable } = require("stream");
 
 admin.initializeApp();
 const db = admin.firestore();
@@ -127,7 +128,7 @@ async function buscarOCrearCarpeta(drive, nombre, padreId) {
  * Recibe el archivo en base64 para no depender de la cuenta del empleado.
  */
 exports.driveSubir = onCall(
-  { secrets: [OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET], region: "us-central1", memory: "512MiB" },
+  { secrets: [OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET], region: "us-central1", memory: "1GiB", timeoutSeconds: 300 },
   async (request) => {
     if (!request.auth) throw new HttpsError("unauthenticated", "Tenés que iniciar sesión.");
     const { nombre, tipo, contenidoBase64, subcarpeta } = request.data || {};
@@ -144,7 +145,6 @@ exports.driveSubir = onCall(
     const raizId = await buscarOCrearCarpeta(drive, "MasterPlan", null);
     const carpetaId = await buscarOCrearCarpeta(drive, subcarpeta || "General", raizId);
 
-    const { Readable } = require("stream");
     const buffer = Buffer.from(contenidoBase64, "base64");
     const archivo = await drive.files.create({
       requestBody: { name: nombre, parents: [carpetaId] },
