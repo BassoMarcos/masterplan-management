@@ -118,6 +118,10 @@
 
 ---
 
+## 2026-09-21 — MasterPlan: renombrar proyectos
+- En la pantalla Proyectos, el admin (o empleado con acceso total) ve un botón ✏️ en cada tarjeta para cambiar el nombre.
+- El nombre vive solo en el documento `proyectos/{id}` (campo `nombre`); todas las pantallas lo leen de ahí, así que el cambio llega a todos los empleados sin tocar nada más (se ve al abrir/recargar la pantalla).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
