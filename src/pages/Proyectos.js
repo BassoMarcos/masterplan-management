@@ -19,6 +19,10 @@ export default function Proyectos() {
   const [proyectos, setProyectos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editando, setEditando] = useState(null); // proyecto al que se le está cambiando el nombre
+  const [nombreNuevo, setNombreNuevo] = useState("");
+  const [errorNombre, setErrorNombre] = useState("");
+  const [guardandoNombre, setGuardandoNombre] = useState(false);
   const [nombre, setNombre] = useState("");
   const [icono, setIcono] = useState("🏘️");
   const [fotoPreview, setFotoPreview] = useState(null);
@@ -100,6 +104,31 @@ export default function Proyectos() {
     setGuardando(false);
   }
 
+  function abrirRenombrar(e, p) {
+    e.stopPropagation();
+    setEditando(p);
+    setNombreNuevo(p.nombre || "");
+    setErrorNombre("");
+  }
+
+  async function guardarNombre(e) {
+    e.preventDefault();
+    const limpio = nombreNuevo.trim();
+    if (!limpio) { setErrorNombre("El nombre no puede quedar vacío"); return; }
+    if (limpio === editando.nombre) { setEditando(null); return; }
+    setGuardandoNombre(true);
+    setErrorNombre("");
+    try {
+      // El nombre vive solo en este documento: todas las pantallas lo leen de acá.
+      await updateDoc(doc(db, "proyectos", editando.id), { nombre: limpio });
+      setEditando(null);
+      cargarProyectos();
+    } catch (err) {
+      setErrorNombre("No se pudo guardar el nombre. Intentá de nuevo.");
+    }
+    setGuardandoNombre(false);
+  }
+
   async function eliminarProyecto(e, p) {
     e.stopPropagation();
     if (!window.confirm(`¿Eliminar el proyecto "${p.nombre}"? Esta acción no se puede deshacer.`)) return;
@@ -172,6 +201,15 @@ export default function Proyectos() {
                 onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
                 onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
               >
+                {esAdminEfectivo && (
+                  <button
+                    style={styles.renombrarProyBtn}
+                    title="Cambiar nombre del proyecto"
+                    onClick={e => abrirRenombrar(e, p)}
+                  >
+                    ✏️
+                  </button>
+                )}
                 {esAdminEfectivo && (
                   <button
                     style={styles.eliminarProyBtn}
@@ -263,6 +301,34 @@ export default function Proyectos() {
               {error && <p style={styles.error}>{error}</p>}
               <button type="submit" style={styles.crearBtn} disabled={guardando}>
                 {guardando ? "Creando..." : "Crear Proyecto"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editando && (
+        <div style={styles.overlay} onClick={() => setEditando(null)}>
+          <div style={styles.modal} onClick={e => e.stopPropagation()}>
+            <div style={styles.modalHeader}>
+              <h3 style={styles.modalTitulo}>Cambiar nombre del proyecto</h3>
+              <button style={styles.cerrarBtn} onClick={() => setEditando(null)}>✕</button>
+            </div>
+            <form onSubmit={guardarNombre} style={styles.form}>
+              <div style={styles.field}>
+                <label style={styles.label}>Nombre del proyecto *</label>
+                <input
+                  style={styles.input}
+                  type="text"
+                  value={nombreNuevo}
+                  onChange={e => setNombreNuevo(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <p style={styles.tarjetaSub}>El cambio se ve en todas las pantallas y para todos los empleados.</p>
+              {errorNombre && <p style={styles.error}>{errorNombre}</p>}
+              <button type="submit" style={styles.crearBtn} disabled={guardandoNombre}>
+                {guardandoNombre ? "Guardando..." : "Guardar nombre"}
               </button>
             </form>
           </div>
@@ -427,6 +493,12 @@ const styles = {
     padding: "32px 20px 24px", textAlign: "center", cursor: "pointer",
     transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
     position: "relative"
+  },
+  renombrarProyBtn: {
+    position: "absolute", top: "8px", right: "40px", width: "26px", height: "26px",
+    borderRadius: "50%", border: "none", background: "var(--hov)", color: "var(--text2)",
+    cursor: "pointer", fontSize: "12px", lineHeight: "1",
+    display: "flex", alignItems: "center", justifyContent: "center"
   },
   eliminarProyBtn: {
     position: "absolute", top: "8px", right: "8px", width: "26px", height: "26px",
