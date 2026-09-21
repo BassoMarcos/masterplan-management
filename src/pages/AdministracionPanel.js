@@ -6,10 +6,17 @@ import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import { empleadoNivelPanel, areasVisibles, areasVisiblesEmpleado } from "../config/appConfig";
+import AdministracionConfig from "./AdministracionConfig";
 
 // Descripción de cada sección del pilar Administración.
 // "contenido" es lo que va a tener cada una (hoja de ruta), no funciones que ya existan.
 export const PANELES_ADMINISTRACION = {
+  configuracion: {
+    icono: "⚙️",
+    nombre: "Configuración",
+    desc: "Financiación, mora, transferencias y cajas especiales de este proyecto",
+    contenido: [],
+  },
   gerencia: {
     icono: "📈",
     nombre: "Gerencia",
@@ -48,7 +55,7 @@ export const PANELES_ADMINISTRACION = {
   },
 };
 
-// Portada de una sección de Administración (en construcción).
+// Portada de una sección de Administración (en construcción), o la pantalla de Configuración.
 export default function AdministracionPanel() {
   const { proyectoId, panelId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -110,7 +117,14 @@ export default function AdministracionPanel() {
         </div>
       </header>
 
-      <main style={styles.main}>
+      <main style={panelId === "configuracion" ? styles.mainAncho : styles.main}>
+        {panelId === "configuracion" ? (
+          <AdministracionConfig
+            proyecto={proyecto}
+            puedeEditar={nivel === "editar"}
+            onGuardado={cfg => setProyecto(p => ({ ...p, adminConfig: cfg }))}
+          />
+        ) : (
         <div style={styles.card}>
           <span style={{ fontSize: "44px" }}>🚧</span>
           <h2 style={styles.cardTitulo}>En construcción</h2>
@@ -122,6 +136,7 @@ export default function AdministracionPanel() {
             </ul>
           </div>
         </div>
+        )}
       </main>
     </div>
   );
@@ -137,6 +152,7 @@ const styles = {
   headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "560px", margin: "0 auto", padding: "40px 24px" },
+  mainAncho: { maxWidth: "860px", margin: "0 auto", padding: "32px 24px 60px" },
   card: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "40px 32px", textAlign: "center" },
   cardTitulo: { fontSize: "20px", fontWeight: "700", color: "var(--text)", margin: "12px 0 6px" },
   cardTexto: { fontSize: "14px", color: "var(--text2)", lineHeight: "1.6", margin: "0 0 20px" },
