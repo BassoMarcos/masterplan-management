@@ -122,6 +122,12 @@
 - En la pantalla Proyectos, el admin (o empleado con acceso total) ve un botón ✏️ en cada tarjeta para cambiar el nombre.
 - El nombre vive solo en el documento `proyectos/{id}` (campo `nombre`); todas las pantallas lo leen de ahí, así que el cambio llega a todos los empleados sin tocar nada más (se ve al abrir/recargar la pantalla).
 
+## 2026-09-21 — MasterPlan: Configuración de Administración
+- Decisión de Marcos: NO se migran datos de fyj. Se arma en MasterPlan la base del sistema administrativo **para cualquier empresa** (funcionamiento parecido a fyj, estética MasterPlan, mejor diseño). Gerencia se arma después. Los valores de F&J se cargan al final como configuración de F&J.
+- Nuevo cuarto panel **Configuración** dentro de Administración (`AdministracionConfig.js`), guardado en `proyectos/{id}.adminConfig`: forma de financiación (moneda, cuotas, incremento: sin/ICC/fijo/manual, cada cuántos meses, grupos de aumento con meses y color, USD aumenta o no), mora (activa, % por día, desde qué día), impuesto de transferencias, reparto de caja (A/B) y cajas especiales (agrimensores, escribanos, la empresa…).
+- Todavía NO mueve plata. Pendiente a definir a detalle: cómo se aplica un cambio de configuración a mitad de mes.
+- Esquema completo del administrador de fyj: `ESQUEMA_ADMIN_FYJ.md` (fuera de los repos).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App

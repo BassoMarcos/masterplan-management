@@ -20,11 +20,12 @@
 // vistas lo toman automáticamente, sin tocar más código.
 export const AREAS_DEFAULT = [
   {
-    id: "administracion", nombre: "Administración", icono: "📊", desc: "Gerencia, Administración y Cobranzas",
+    id: "administracion", nombre: "Administración", icono: "📊", desc: "Gerencia, Administración, Cobranzas y Configuración",
     paneles: [
       { id: "gerencia", nombre: "Gerencia" },
       { id: "administracion", nombre: "Administración" },
       { id: "cobranzas", nombre: "Cobranzas" },
+      { id: "configuracion", nombre: "Configuración" },
     ],
   },
   {
