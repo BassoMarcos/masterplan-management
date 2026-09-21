@@ -38,6 +38,12 @@
 - Pizarra colaborativa flotante (`PizarraFlotante`) con sync Firestore en tiempo real, aislada por pantalla.
 - Sistema de 10 temas de color con preferencias por usuario en Firestore (colección `preferencias`).
 
+## Estado actual — Pilar Administración
+
+- Se rehace desde cero (por defecto para todas las empresas) en 3 secciones que comparten los mismos datos: **Gerencia** (rango más alto, ve en vivo lo que hacen las otras dos; se desarrolla más adelante con el gerente), **Administración** (todo lo que hoy hace el admin de fj-app) y **Cobranzas** (todo lo que hoy hace el colaborador de fj-app).
+- Hoy existen las pantallas de entrada (`AdministracionHub.js`) y una portada "en construcción" por sección (`AdministracionPanel.js`, con la lista de lo que va a tener). Los paneles y sus permisos (ninguno/ver/editar) se definen en `AREAS_DEFAULT` de `appConfig.js`.
+- Mientras fj-app siga en uso, lo nuevo se construye acá y en fj-app solo se hacen arreglos críticos y de seguridad.
+
 ## Reglas de Firestore
 
 - La colección **`emails_empresa`** requiere `allow read: if true` para el chequeo de email pre-auth.

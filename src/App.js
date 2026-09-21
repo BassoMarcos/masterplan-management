@@ -9,6 +9,8 @@ import Empleados from "./pages/Empleados";
 import ProyectoPilares from "./pages/ProyectoPilares";
 import AreaSecciones from "./pages/AreaSecciones";
 import DesarrollosSecciones from "./pages/DesarrollosSecciones";
+import AdministracionHub from "./pages/AdministracionHub";
+import AdministracionPanel from "./pages/AdministracionPanel";
 import ComercialHub from "./pages/ComercialHub";
 import ComercialDatos from "./pages/ComercialDatos";
 import ComercialConfigFiltro from "./pages/ComercialConfigFiltro";
@@ -147,6 +149,8 @@ function AppRoutes() {
       <Route path="/proyectos" element={<PrivateRoute><Proyectos /></PrivateRoute>} />
       <Route path="/empleados" element={<PrivateRoute><Empleados /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/administracion" element={<PrivateRoute><AdministracionHub /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/administracion/:panelId" element={<PrivateRoute><AdministracionPanel /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial" element={<PrivateRoute><ComercialHub /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/datos" element={<PrivateRoute><ComercialDatos /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/config_filtro" element={<PrivateRoute><ComercialConfigFiltro /></PrivateRoute>} />

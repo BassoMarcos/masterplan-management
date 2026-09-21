@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "actualizado": "2026-08-17",
+  "actualizado": "2026-09-21",
   "colores": {
     "fj":"#3FA9FF","mp":"#2FE0B0","mig":"#FF8A3C","plan":"#FFC24D","hub":"#C089FF"
   },
   "grupos": [
     {"key":"mp","name":"MasterPlan","ids":["mp","multi","fire","login","perm","aprob","super","temas","piza"]},
-    {"key":"hub","name":"Pilares","ids":["admin","comer","legal","obras"]},
+    {"key":"hub","name":"Pilares","ids":["admin","adm_ger","adm_adm","adm_cob","comer","legal","obras"]},
     {"key":"mig","name":"Migración","ids":["mig"]},
     {"key":"fj","name":"FJ App","ids":["fj","rtdb","clie","agri","lotes","presta","cob","gpagos","caja","cierr","mora","transf","colab","icc","robot","stats","rend","mapa","termin","public"]}
   ],
@@ -21,6 +21,9 @@
     {"id":"temas","col":"mp","s":"done","l":"Temas","d":"10 colores · preferencia por usuario","x":-60,"y":-470,"z":30,"w":3},
     {"id":"piza","col":"mp","s":"done","l":"Pizarra","d":"Whiteboard real-time · notas draggables","x":60,"y":-470,"z":30,"w":4},
     {"id":"admin","col":"hub","s":"wip","l":"Administración","d":"PILAR · acá se absorbe FJ App entera","x":0,"y":-120,"z":60,"w":9,"hub":1},
+    {"id":"adm_ger","col":"plan","s":"plan","l":"Gerencia","d":"Administración · control en vivo (se define con el gerente)","x":-110,"y":-40,"z":30,"w":4},
+    {"id":"adm_adm","col":"plan","s":"plan","l":"Administración (sección)","d":"Clientes, cuotas, mora, cajas, cierres e ICC","x":0,"y":-30,"z":-10,"w":5},
+    {"id":"adm_cob","col":"plan","s":"plan","l":"Cobranzas","d":"El cajero busca al cliente y cobra","x":110,"y":-40,"z":30,"w":4},
     {"id":"comer","col":"plan","s":"plan","l":"Comercial","d":"PILAR · reservas → flujo a Legales","x":-260,"y":-120,"z":-20,"w":6},
     {"id":"legal","col":"plan","s":"plan","l":"Legales","d":"PILAR · activa cliente en Administración","x":260,"y":-120,"z":-20,"w":6},
     {"id":"obras","col":"plan","s":"plan","l":"Desarrollos y Obras","d":"PILAR · archivos vía Cloudinary","x":260,"y":0,"z":-50,"w":6},
@@ -51,6 +54,7 @@
     ["login","perm"],["perm","multi"],["aprob","super"],["fire","multi"],["fire","piza"],["login","fire"],
     ["mp","admin"],["mp","comer"],["mp","legal"],["mp","obras"],["multi","admin"],["multi","comer"],["multi","legal"],["multi","obras"],
     ["comer","legal"],["legal","admin"],["admin","fire"],["comer","fire"],["legal","fire"],["obras","fire"],["admin","perm"],
+    ["admin","adm_ger"],["admin","adm_adm"],["admin","adm_cob"],["adm_ger","adm_adm"],["adm_adm","adm_cob"],["adm_ger","adm_cob"],
     ["admin","mig"],["mig","fj"],
     ["fj","clie"],["fj","cob"],["fj","mora"],["fj","icc"],["fj","stats"],["fj","mapa"],["fj","colab"],["fj","termin"],["fj","public"],["fj","rtdb"],
     ["clie","agri"],["clie","lotes"],["clie","presta"],["clie","cob"],["clie","mapa"],["agri","caja"],["lotes","termin"],["presta","cierr"],["clie","rtdb"],

@@ -111,6 +111,11 @@
 - Las sesiones tipo Cowork/nube quedaron con un **proxy de git nuevo** que bloquea `push` ("not in this session's authorized repository set") y manda a usar `add_repo`, que no existe en estas sesiones. Bug conocido de Anthropic (abierto desde ago-2026, sin fix).
 - Confirmado: leer/clonar funciona; escribir no; el token no es la palanca. Solución: usar **Claude Code** (claude.ai/code), que tiene selector de repos con permiso de escritura → el push/deploy vuelve a funcionar.
 
+## 2026-09-21 — MasterPlan: pilar Administración en 3 secciones
+- Los paneles de Administración pasan de `cobros/mora/caja/cierres` a **`gerencia / administracion / cobranzas`** (`appConfig.js`). Nuevas pantallas `AdministracionHub` y `AdministracionPanel` (portada "en construcción" por sección, con control de permisos por panel) y rutas `/proyecto/:id/administracion` y `/proyecto/:id/administracion/:panelId`.
+- Decisiones: Administración = lo del admin de fj-app; Cobranzas = lo del colaborador; Gerencia = rango más alto, se desarrolla más adelante con el gerente. El cajero puede anular un cobro del mes en curso (queda registrado quién). Portal del cliente con DNI: pendiente para más adelante.
+- `mapa-data.json` actualizado con los 3 nodos nuevos. Regla de trabajo: cada pedido empieza con `Mp-` (MasterPlan) o `fyj-` (fj-app).
+
 ---
 
 ## Pendientes abiertos (backlog al momento de migrar)
