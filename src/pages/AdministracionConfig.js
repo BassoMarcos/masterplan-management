@@ -9,6 +9,10 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 //
 // Layout: lista de secciones a la izquierda, el detalle de la sección elegida a la derecha
 // (como los Ajustes de cualquier app grande) — para no mezclar todo en una sola pantalla larga.
+//
+// Financiación NO es una sola configuración: un proyecto puede tener varios "planes"
+// (ej. lotes en dólares sin incremento + lotes en pesos con ICC). Qué lote usa qué plan
+// se define más adelante, en la sección de Lotes (todavía no existe).
 
 export const MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -23,21 +27,24 @@ const TIPOS_INCREMENTO = [
 
 // Las secciones que aparecen en la lista de la izquierda.
 const SECCIONES = [
-  { id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Moneda, cuotas e incremento" },
+  { id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Planes: moneda, cuotas e incremento" },
   { id: "mora", icono: "⚠️", nombre: "Mora", resumen: "Interés por atraso" },
   { id: "transferencias", icono: "🏦", nombre: "Transferencias", resumen: "Impuesto sobre transferencias" },
   { id: "distribucion", icono: "📊", nombre: "Distribución de ganancias", resumen: "Cómo se reparte la caja" },
   { id: "cajas", icono: "🗃️", nombre: "Cajas especiales", resumen: "Agrimensores, escribanos y otras" },
 ];
 
+const PLAN_DEFAULT = {
+  nombre: "Plan general",
+  moneda: "ARS",
+  cuotas: 60,
+  incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, usdAumenta: false },
+  grupos: [],
+};
+
 // Valores iniciales neutros: la empresa decide todo. (Los de F&J se cargan cuando llegue ese momento.)
 export const CONFIG_ADMIN_DEFAULT = {
-  financiacion: {
-    moneda: "ARS",
-    cuotas: 60,
-    incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, usdAumenta: false },
-    grupos: [],
-  },
+  financiacion: { planes: [PLAN_DEFAULT] },
   cobranza: {
     mora: { activa: false, porcentajeDia: 0, desdeDia: 11 },
     transferencia: { impuestoPct: 0 },
@@ -46,17 +53,38 @@ export const CONFIG_ADMIN_DEFAULT = {
   cajasEspeciales: [],
 };
 
+function nuevoId() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+// Completa un plan guardado (o parcial) con los valores por defecto, y le asegura un id.
+function completarPlan(guardado) {
+  const p = guardado || {};
+  return {
+    id: p.id || nuevoId(),
+    nombre: p.nombre !== undefined ? p.nombre : PLAN_DEFAULT.nombre,
+    moneda: p.moneda || PLAN_DEFAULT.moneda,
+    cuotas: p.cuotas !== undefined ? p.cuotas : PLAN_DEFAULT.cuotas,
+    incremento: { ...PLAN_DEFAULT.incremento, ...(p.incremento || {}) },
+    grupos: Array.isArray(p.grupos) ? p.grupos : [],
+  };
+}
+
 // Mezcla lo guardado con los valores iniciales, así un campo nuevo nunca rompe una config vieja.
 export function completarConfig(guardada) {
   const g = guardada || {};
   const d = CONFIG_ADMIN_DEFAULT;
+  const fg = g.financiacion || {};
+  // Compatibilidad: una config vieja (antes de los "planes") tenía moneda/cuotas/incremento
+  // directamente en financiacion, como un único plan.
+  let planesGuardados;
+  if (Array.isArray(fg.planes)) planesGuardados = fg.planes;
+  else if (fg.moneda || fg.cuotas || fg.incremento) planesGuardados = [fg];
+  else planesGuardados = null;
+  const planes = (planesGuardados && planesGuardados.length ? planesGuardados : [{}]).map(completarPlan);
+
   return {
-    financiacion: {
-      ...d.financiacion,
-      ...(g.financiacion || {}),
-      incremento: { ...d.financiacion.incremento, ...((g.financiacion || {}).incremento || {}) },
-      grupos: Array.isArray((g.financiacion || {}).grupos) ? g.financiacion.grupos : [],
-    },
+    financiacion: { planes },
     cobranza: {
       mora: { ...d.cobranza.mora, ...((g.cobranza || {}).mora || {}) },
       transferencia: { ...d.cobranza.transferencia, ...((g.cobranza || {}).transferencia || {}) },
@@ -66,10 +94,6 @@ export function completarConfig(guardada) {
   };
 }
 
-function nuevoId() {
-  return Math.random().toString(36).slice(2, 9);
-}
-
 function num(v) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : NaN;
@@ -77,19 +101,24 @@ function num(v) {
 
 // Devuelve {mensaje, seccion} del primer error encontrado (o null si está todo bien).
 function validar(cfg) {
-  const f = cfg.financiacion;
-  const inc = f.incremento;
-  if (!(Number.isInteger(num(f.cuotas)) && num(f.cuotas) >= 1 && num(f.cuotas) <= 600)) return { mensaje: "La cantidad de cuotas tiene que ser un número entero entre 1 y 600.", seccion: "financiacion" };
-  if (inc.tipo !== "no") {
-    if (!(Number.isInteger(num(inc.cadaMeses)) && num(inc.cadaMeses) >= 1 && num(inc.cadaMeses) <= 60)) return { mensaje: "\"Aumenta cada\" tiene que ser un número de meses entre 1 y 60.", seccion: "financiacion" };
-  }
-  if (inc.tipo === "fijo") {
-    if (!(num(inc.porcentaje) > 0 && num(inc.porcentaje) <= 100)) return { mensaje: "El porcentaje por aumento tiene que ser mayor que 0 y no pasar de 100.", seccion: "financiacion" };
-  }
-  if (inc.tipo === "icc" || inc.tipo === "fijo") {
-    for (const g of f.grupos) {
-      if (!String(g.nombre || "").trim()) return { mensaje: "Todos los grupos de aumento necesitan un nombre.", seccion: "financiacion" };
-      if (!Array.isArray(g.meses) || g.meses.length === 0) return { mensaje: `El grupo "${g.nombre}" necesita al menos un mes.`, seccion: "financiacion" };
+  const planes = cfg.financiacion.planes;
+  const varios = planes.length > 1;
+  const pref = (p) => (varios ? `En el plan "${p.nombre || "sin nombre"}": ` : "");
+  for (const p of planes) {
+    if (!String(p.nombre || "").trim()) return { mensaje: "Todos los planes de financiación necesitan un nombre.", seccion: "financiacion" };
+    if (!(Number.isInteger(num(p.cuotas)) && num(p.cuotas) >= 1 && num(p.cuotas) <= 600)) return { mensaje: pref(p) + "la cantidad de cuotas tiene que ser un número entero entre 1 y 600.", seccion: "financiacion" };
+    const inc = p.incremento;
+    if (inc.tipo !== "no") {
+      if (!(Number.isInteger(num(inc.cadaMeses)) && num(inc.cadaMeses) >= 1 && num(inc.cadaMeses) <= 60)) return { mensaje: pref(p) + "\"Aumenta cada\" tiene que ser un número de meses entre 1 y 60.", seccion: "financiacion" };
+    }
+    if (inc.tipo === "fijo") {
+      if (!(num(inc.porcentaje) > 0 && num(inc.porcentaje) <= 100)) return { mensaje: pref(p) + "el porcentaje por aumento tiene que ser mayor que 0 y no pasar de 100.", seccion: "financiacion" };
+    }
+    if (inc.tipo === "icc" || inc.tipo === "fijo") {
+      for (const g of p.grupos) {
+        if (!String(g.nombre || "").trim()) return { mensaje: pref(p) + "todos los grupos de aumento necesitan un nombre.", seccion: "financiacion" };
+        if (!Array.isArray(g.meses) || g.meses.length === 0) return { mensaje: pref(p) + `el grupo "${g.nombre}" necesita al menos un mes.`, seccion: "financiacion" };
+      }
     }
   }
   const m = cfg.cobranza.mora;
@@ -109,19 +138,21 @@ function validar(cfg) {
 
 // Deja los números como números (los inputs los manejan como texto).
 function normalizar(cfg) {
-  const f = cfg.financiacion;
-  const inc = f.incremento;
   return {
     financiacion: {
-      moneda: f.moneda,
-      cuotas: num(f.cuotas),
-      incremento: {
-        tipo: inc.tipo,
-        cadaMeses: num(inc.cadaMeses),
-        porcentaje: inc.tipo === "fijo" ? num(inc.porcentaje) : 0,
-        usdAumenta: !!inc.usdAumenta,
-      },
-      grupos: f.grupos.map(g => ({ id: g.id, nombre: String(g.nombre).trim(), color: g.color, meses: [...g.meses].sort((x, y) => x - y) })),
+      planes: cfg.financiacion.planes.map(p => ({
+        id: p.id,
+        nombre: String(p.nombre).trim(),
+        moneda: p.moneda,
+        cuotas: num(p.cuotas),
+        incremento: {
+          tipo: p.incremento.tipo,
+          cadaMeses: num(p.incremento.cadaMeses),
+          porcentaje: p.incremento.tipo === "fijo" ? num(p.incremento.porcentaje) : 0,
+          usdAumenta: !!p.incremento.usdAumenta,
+        },
+        grupos: p.grupos.map(g => ({ id: g.id, nombre: String(g.nombre).trim(), color: g.color, meses: [...g.meses].sort((x, y) => x - y) })),
+      })),
     },
     cobranza: {
       mora: {
@@ -243,51 +274,93 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
 }
 
 function SeccionFinanciacion({ cfg, editar, dis }) {
-  const f = cfg.financiacion;
-  const inc = f.incremento;
-  const tipoInfo = TIPOS_INCREMENTO.find(t => t.id === inc.tipo) || TIPOS_INCREMENTO[0];
-  const usaGrupos = inc.tipo === "icc" || inc.tipo === "fijo";
+  const planes = cfg.financiacion.planes;
 
-  function agregarGrupo() {
+  function agregarPlan() {
     editar(c => {
-      c.financiacion.grupos.push({ id: nuevoId(), nombre: "", color: COLORES[c.financiacion.grupos.length % COLORES.length], meses: [] });
+      c.financiacion.planes.push({
+        id: nuevoId(),
+        nombre: `Plan ${c.financiacion.planes.length + 1}`,
+        moneda: "ARS",
+        cuotas: 60,
+        incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, usdAumenta: false },
+        grupos: [],
+      });
     });
   }
 
   return (
     <div>
-      <SeccionTitulo icono="💳" nombre="Financiación" desc="Cómo se cobra y cómo se actualiza la cuota de los lotes." />
+      <SeccionTitulo
+        icono="💳"
+        nombre="Financiación"
+        desc={'Un proyecto puede tener más de una forma de financiar. Por ejemplo: la mitad de los lotes en dólares sin incremento, y la otra mitad en pesos con ICC. Armá un plan para cada caso. Qué lote usa cada plan se elige más adelante, en Lotes.'}
+      />
+      {planes.map((p, i) => (
+        <PlanCard key={p.id} plan={p} indice={i} totalPlanes={planes.length} editar={editar} dis={dis} />
+      ))}
+      {!dis && <button type="button" style={s.btnSec} onClick={agregarPlan}>+ Agregar plan de financiación</button>}
+    </div>
+  );
+}
+
+function PlanCard({ plan, indice, totalPlanes, editar, dis }) {
+  const inc = plan.incremento;
+  const tipoInfo = TIPOS_INCREMENTO.find(t => t.id === inc.tipo) || TIPOS_INCREMENTO[0];
+  const usaGrupos = inc.tipo === "icc" || inc.tipo === "fijo";
+
+  function agregarGrupo() {
+    editar(c => {
+      const gs = c.financiacion.planes[indice].grupos;
+      gs.push({ id: nuevoId(), nombre: "", color: COLORES[gs.length % COLORES.length], meses: [] });
+    });
+  }
+
+  return (
+    <div style={s.plan}>
+      <div style={s.planTop}>
+        <input
+          style={{ ...s.input, ...s.planNombre }}
+          disabled={dis}
+          placeholder="Nombre del plan (ej. Pesos con ICC)"
+          value={plan.nombre}
+          onChange={e => editar(c => { c.financiacion.planes[indice].nombre = e.target.value; })}
+        />
+        {!dis && totalPlanes > 1 && (
+          <button type="button" style={s.quitar} onClick={() => editar(c => { c.financiacion.planes.splice(indice, 1); })}>Quitar plan</button>
+        )}
+      </div>
+
       <div style={s.grid}>
         <Campo label="Moneda del plan">
-          <select style={s.input} disabled={dis} value={f.moneda} onChange={e => editar(c => { c.financiacion.moneda = e.target.value; })}>
+          <select style={s.input} disabled={dis} value={plan.moneda} onChange={e => editar(c => { c.financiacion.planes[indice].moneda = e.target.value; })}>
             <option value="ARS">Pesos</option>
             <option value="USD">Dólares</option>
-            <option value="AMBAS">Pesos y dólares</option>
           </select>
         </Campo>
         <Campo label="Cantidad de cuotas">
-          <input style={s.input} disabled={dis} type="number" min="1" value={f.cuotas} onChange={e => editar(c => { c.financiacion.cuotas = e.target.value; })} />
+          <input style={s.input} disabled={dis} type="number" min="1" value={plan.cuotas} onChange={e => editar(c => { c.financiacion.planes[indice].cuotas = e.target.value; })} />
         </Campo>
         <Campo label="Tipo de incremento">
-          <select style={s.input} disabled={dis} value={inc.tipo} onChange={e => editar(c => { c.financiacion.incremento.tipo = e.target.value; })}>
+          <select style={s.input} disabled={dis} value={inc.tipo} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.tipo = e.target.value; })}>
             {TIPOS_INCREMENTO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </Campo>
         {inc.tipo !== "no" && (
           <Campo label="Aumenta cada (meses)">
-            <input style={s.input} disabled={dis} type="number" min="1" value={inc.cadaMeses} onChange={e => editar(c => { c.financiacion.incremento.cadaMeses = e.target.value; })} />
+            <input style={s.input} disabled={dis} type="number" min="1" value={inc.cadaMeses} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.cadaMeses = e.target.value; })} />
           </Campo>
         )}
         {inc.tipo === "fijo" && (
           <Campo label="Porcentaje por aumento (%)">
-            <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={inc.porcentaje} onChange={e => editar(c => { c.financiacion.incremento.porcentaje = e.target.value; })} />
+            <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={inc.porcentaje} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.porcentaje = e.target.value; })} />
           </Campo>
         )}
-        {inc.tipo !== "no" && (f.moneda === "USD" || f.moneda === "AMBAS") && (
-          <Campo label="Los lotes en dólares aumentan">
-            <select style={s.input} disabled={dis} value={inc.usdAumenta ? "si" : "no"} onChange={e => editar(c => { c.financiacion.incremento.usdAumenta = e.target.value === "si"; })}>
+        {inc.tipo !== "no" && plan.moneda === "USD" && (
+          <Campo label="Este plan en dólares, ¿aumenta?">
+            <select style={s.input} disabled={dis} value={inc.usdAumenta ? "si" : "no"} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.usdAumenta = e.target.value === "si"; })}>
               <option value="no">No</option>
-              <option value="si">Sí, igual que los pesos</option>
+              <option value="si">Sí</option>
             </select>
           </Campo>
         )}
@@ -295,14 +368,14 @@ function SeccionFinanciacion({ cfg, editar, dis }) {
       <p style={s.nota}>{tipoInfo.ayuda}</p>
 
       {usaGrupos && (
-        <div style={{ marginTop: 22 }}>
+        <div style={{ marginTop: 18 }}>
           <div style={s.h3}>Grupos de aumento</div>
           <p style={s.sub}>
             Cada grupo (por ejemplo una "planilla" de un color) aumenta en los meses que marques.
-            Si todos los lotes aumentan el mismo mes, alcanza con un solo grupo.
+            Si todos los lotes de este plan aumentan el mismo mes, alcanza con un solo grupo.
           </p>
-          {f.grupos.length === 0 && <p style={s.vacio}>Todavía no hay grupos.</p>}
-          {f.grupos.map((g, i) => (
+          {plan.grupos.length === 0 && <p style={s.vacio}>Todavía no hay grupos.</p>}
+          {plan.grupos.map((g, gi) => (
             <div key={g.id} style={s.grupo}>
               <div style={s.grupoTop}>
                 <input
@@ -310,7 +383,7 @@ function SeccionFinanciacion({ cfg, editar, dis }) {
                   disabled={dis}
                   placeholder="Nombre del grupo (ej. Verde)"
                   value={g.nombre}
-                  onChange={e => editar(c => { c.financiacion.grupos[i].nombre = e.target.value; })}
+                  onChange={e => editar(c => { c.financiacion.planes[indice].grupos[gi].nombre = e.target.value; })}
                 />
                 <div style={s.colores}>
                   {COLORES.map(col => (
@@ -319,13 +392,13 @@ function SeccionFinanciacion({ cfg, editar, dis }) {
                       type="button"
                       disabled={dis}
                       aria-label={`Color ${col}`}
-                      onClick={() => editar(c => { c.financiacion.grupos[i].color = col; })}
+                      onClick={() => editar(c => { c.financiacion.planes[indice].grupos[gi].color = col; })}
                       style={{ ...s.colorDot, background: col, outline: g.color === col ? "2px solid var(--text)" : "none" }}
                     />
                   ))}
                 </div>
                 {!dis && (
-                  <button type="button" style={s.quitar} onClick={() => editar(c => { c.financiacion.grupos.splice(i, 1); })}>Quitar</button>
+                  <button type="button" style={s.quitar} onClick={() => editar(c => { c.financiacion.planes[indice].grupos.splice(gi, 1); })}>Quitar</button>
                 )}
               </div>
               <div style={s.meses}>
@@ -337,7 +410,7 @@ function SeccionFinanciacion({ cfg, editar, dis }) {
                       type="button"
                       disabled={dis}
                       onClick={() => editar(c => {
-                        const arr = c.financiacion.grupos[i].meses;
+                        const arr = c.financiacion.planes[indice].grupos[gi].meses;
                         const pos = arr.indexOf(mi + 1);
                         if (pos >= 0) arr.splice(pos, 1); else arr.push(mi + 1);
                       })}
@@ -496,7 +569,10 @@ const s = {
   campo: { display: "flex", flexDirection: "column", gap: "5px" },
   label: { fontSize: "12px", color: "var(--text2)" },
   input: { padding: "9px 11px", border: "1.5px solid var(--border)", borderRadius: "8px", fontSize: "14px", background: "var(--bg)", color: "var(--text)", boxSizing: "border-box", width: "100%" },
-  grupo: { border: "1px solid var(--border)", borderRadius: "12px", padding: "12px", marginBottom: "10px", background: "var(--surface)" },
+  plan: { border: "1.5px solid var(--border)", borderRadius: "14px", padding: "16px", marginBottom: "14px", background: "var(--surface)" },
+  planTop: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "14px" },
+  planNombre: { flex: 1, minWidth: 180, fontWeight: "700" },
+  grupo: { border: "1px solid var(--border)", borderRadius: "12px", padding: "12px", marginBottom: "10px", background: "var(--card)" },
   grupoTop: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "10px" },
   colores: { display: "flex", gap: "6px", alignItems: "center" },
   colorDot: { width: "20px", height: "20px", borderRadius: "50%", border: "none", cursor: "pointer", outlineOffset: "2px", padding: 0 },

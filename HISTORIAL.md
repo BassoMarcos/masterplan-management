@@ -134,6 +134,13 @@
 - Si al guardar hay un error, el panel salta directo a la sección con el problema.
 - Mismos datos y misma validación que la versión anterior (probado en Node: config por defecto, config vieja sin romper, caso tipo F&J con ICC/3 grupos/mora/transferencia/reparto, y 8 errores con su sección correcta).
 
+## 2026-09-22 — MasterPlan: Financiación pasa a ser "planes" (varios por proyecto)
+- Marcos: en un mismo proyecto puede haber, por ejemplo, 10 lotes donde la mitad paga en dólares y la otra mitad en pesos con ICC. Una sola Financiación por proyecto no alcanza.
+- Financiación ahora es una lista de **planes de financiación**: cada uno con su propio nombre, moneda, cantidad de cuotas, tipo de incremento y grupos de aumento. Se pueden agregar y quitar planes libremente (mínimo 1).
+- Qué lote usa cada plan se define más adelante, en la sección de Lotes (todavía no existe) — cada lote va a apuntar a un `planId`.
+- Compatibilidad: la config vieja de ayer (una sola financiación sin "planes") se migra sola al abrir el panel, como un único plan. No hace falta tocar nada a mano.
+- Probado en Node: 1 plan por defecto, migración desde la config vieja, el caso de Marcos (USD sin incremento + ARS con ICC), y que un error en el 2do plan lo identifique por nombre.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
