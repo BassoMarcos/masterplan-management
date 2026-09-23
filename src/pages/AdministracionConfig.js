@@ -6,6 +6,9 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 // Cada empresa/proyecto define SUS reglas (financiación, mora, transferencias, cajas especiales).
 // Se guarda en proyectos/{id}.adminConfig. Todavía no mueve plata: es la base sobre la que
 // después se arman clientes, cobros, cajas y cierres.
+//
+// Layout: lista de secciones a la izquierda, el detalle de la sección elegida a la derecha
+// (como los Ajustes de cualquier app grande) — para no mezclar todo en una sola pantalla larga.
 
 export const MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -16,6 +19,15 @@ const TIPOS_INCREMENTO = [
   { id: "icc", label: "Índice ICC (automático)", ayuda: "El robot busca el porcentaje del INDEC y lo propone. Lo confirmás antes de aplicar." },
   { id: "fijo", label: "Porcentaje fijo", ayuda: "En cada aumento se aplica siempre el mismo porcentaje." },
   { id: "manual", label: "Manual", ayuda: "Cada aumento lo cargás a mano, con el porcentaje que quieras." },
+];
+
+// Las secciones que aparecen en la lista de la izquierda.
+const SECCIONES = [
+  { id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Moneda, cuotas e incremento" },
+  { id: "mora", icono: "⚠️", nombre: "Mora", resumen: "Interés por atraso" },
+  { id: "transferencias", icono: "🏦", nombre: "Transferencias", resumen: "Impuesto sobre transferencias" },
+  { id: "distribucion", icono: "📊", nombre: "Distribución de ganancias", resumen: "Cómo se reparte la caja" },
+  { id: "cajas", icono: "🗃️", nombre: "Cajas especiales", resumen: "Agrimensores, escribanos y otras" },
 ];
 
 // Valores iniciales neutros: la empresa decide todo. (Los de F&J se cargan cuando llegue ese momento.)
@@ -63,36 +75,36 @@ function num(v) {
   return Number.isFinite(n) ? n : NaN;
 }
 
-// Devuelve un texto de error (o "" si está todo bien).
+// Devuelve {mensaje, seccion} del primer error encontrado (o null si está todo bien).
 function validar(cfg) {
   const f = cfg.financiacion;
   const inc = f.incremento;
-  if (!(Number.isInteger(num(f.cuotas)) && num(f.cuotas) >= 1 && num(f.cuotas) <= 600)) return "La cantidad de cuotas tiene que ser un número entero entre 1 y 600.";
+  if (!(Number.isInteger(num(f.cuotas)) && num(f.cuotas) >= 1 && num(f.cuotas) <= 600)) return { mensaje: "La cantidad de cuotas tiene que ser un número entero entre 1 y 600.", seccion: "financiacion" };
   if (inc.tipo !== "no") {
-    if (!(Number.isInteger(num(inc.cadaMeses)) && num(inc.cadaMeses) >= 1 && num(inc.cadaMeses) <= 60)) return "\"Aumenta cada\" tiene que ser un número de meses entre 1 y 60.";
+    if (!(Number.isInteger(num(inc.cadaMeses)) && num(inc.cadaMeses) >= 1 && num(inc.cadaMeses) <= 60)) return { mensaje: "\"Aumenta cada\" tiene que ser un número de meses entre 1 y 60.", seccion: "financiacion" };
   }
   if (inc.tipo === "fijo") {
-    if (!(num(inc.porcentaje) > 0 && num(inc.porcentaje) <= 100)) return "El porcentaje por aumento tiene que ser mayor que 0 y no pasar de 100.";
+    if (!(num(inc.porcentaje) > 0 && num(inc.porcentaje) <= 100)) return { mensaje: "El porcentaje por aumento tiene que ser mayor que 0 y no pasar de 100.", seccion: "financiacion" };
   }
   if (inc.tipo === "icc" || inc.tipo === "fijo") {
     for (const g of f.grupos) {
-      if (!String(g.nombre || "").trim()) return "Todos los grupos de aumento necesitan un nombre.";
-      if (!Array.isArray(g.meses) || g.meses.length === 0) return `El grupo "${g.nombre}" necesita al menos un mes.`;
+      if (!String(g.nombre || "").trim()) return { mensaje: "Todos los grupos de aumento necesitan un nombre.", seccion: "financiacion" };
+      if (!Array.isArray(g.meses) || g.meses.length === 0) return { mensaje: `El grupo "${g.nombre}" necesita al menos un mes.`, seccion: "financiacion" };
     }
   }
   const m = cfg.cobranza.mora;
   if (m.activa) {
-    if (!(num(m.porcentajeDia) > 0 && num(m.porcentajeDia) <= 100)) return "El porcentaje de mora por día tiene que ser mayor que 0 y no pasar de 100.";
-    if (!(Number.isInteger(num(m.desdeDia)) && num(m.desdeDia) >= 1 && num(m.desdeDia) <= 31)) return "El día desde el que corre la mora tiene que estar entre 1 y 31.";
+    if (!(num(m.porcentajeDia) > 0 && num(m.porcentajeDia) <= 100)) return { mensaje: "El porcentaje de mora por día tiene que ser mayor que 0 y no pasar de 100.", seccion: "mora" };
+    if (!(Number.isInteger(num(m.desdeDia)) && num(m.desdeDia) >= 1 && num(m.desdeDia) <= 31)) return { mensaje: "El día desde el que corre la mora tiene que estar entre 1 y 31.", seccion: "mora" };
   }
   const t = num(cfg.cobranza.transferencia.impuestoPct);
-  if (!(t >= 0 && t <= 100)) return "El impuesto de transferencias tiene que estar entre 0 y 100.";
+  if (!(t >= 0 && t <= 100)) return { mensaje: "El impuesto de transferencias tiene que estar entre 0 y 100.", seccion: "transferencias" };
   const a = num(cfg.cobranza.reparto.parteA);
-  if (!(a >= 0 && a <= 100)) return "La parte A del reparto tiene que estar entre 0 y 100.";
+  if (!(a >= 0 && a <= 100)) return { mensaje: "La parte A del reparto tiene que estar entre 0 y 100.", seccion: "distribucion" };
   for (const c of cfg.cajasEspeciales) {
-    if (!String(c.nombre || "").trim()) return "Todas las cajas especiales necesitan un nombre.";
+    if (!String(c.nombre || "").trim()) return { mensaje: "Todas las cajas especiales necesitan un nombre.", seccion: "cajas" };
   }
-  return "";
+  return null;
 }
 
 // Deja los números como números (los inputs los manejan como texto).
@@ -131,17 +143,13 @@ function normalizar(cfg) {
 export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado }) {
   const [inicial, setInicial] = useState(() => completarConfig(proyecto?.adminConfig));
   const [cfg, setCfg] = useState(() => completarConfig(proyecto?.adminConfig));
+  const [activa, setActiva] = useState("financiacion");
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
   const cambio = JSON.stringify(cfg) !== JSON.stringify(inicial);
-  const f = cfg.financiacion;
-  const inc = f.incremento;
-  const tipoInfo = TIPOS_INCREMENTO.find(t => t.id === inc.tipo) || TIPOS_INCREMENTO[0];
-  const usaGrupos = inc.tipo === "icc" || inc.tipo === "fijo";
-  const parteA = num(cfg.cobranza.reparto.parteA);
-  const parteB = Number.isFinite(parteA) ? Math.round((100 - parteA) * 100) / 100 : "";
+  const dis = !puedeEditar;
 
   function editar(fn) {
     setOk(false);
@@ -155,7 +163,7 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
 
   async function guardar() {
     const err = validar(cfg);
-    if (err) { setError(err); return; }
+    if (err) { setError(err.mensaje); setActiva(err.seccion); return; }
     setGuardando(true);
     setError("");
     try {
@@ -178,18 +186,6 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
     setOk(false);
   }
 
-  function agregarGrupo() {
-    editar(c => {
-      c.financiacion.grupos.push({ id: nuevoId(), nombre: "", color: COLORES[c.financiacion.grupos.length % COLORES.length], meses: [] });
-    });
-  }
-
-  function agregarCaja() {
-    editar(c => { c.cajasEspeciales.push({ id: nuevoId(), nombre: "", nota: "" }); });
-  }
-
-  const dis = !puedeEditar;
-
   return (
     <div style={s.wrap}>
       <div style={s.intro}>
@@ -197,186 +193,32 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
         {!puedeEditar && <b> Solo lectura: no tenés permiso para cambiar estas opciones.</b>}
       </div>
 
-      {/* 1. Forma de financiación */}
-      <section style={s.card}>
-        <h2 style={s.h2}>1. Forma de financiación</h2>
-        <p style={s.sub}>Cómo se cobra y cómo se actualiza la cuota de los lotes.</p>
-        <div style={s.grid}>
-          <Campo label="Moneda del plan">
-            <select style={s.input} disabled={dis} value={f.moneda} onChange={e => editar(c => { c.financiacion.moneda = e.target.value; })}>
-              <option value="ARS">Pesos</option>
-              <option value="USD">Dólares</option>
-              <option value="AMBAS">Pesos y dólares</option>
-            </select>
-          </Campo>
-          <Campo label="Cantidad de cuotas">
-            <input style={s.input} disabled={dis} type="number" min="1" value={f.cuotas} onChange={e => editar(c => { c.financiacion.cuotas = e.target.value; })} />
-          </Campo>
-          <Campo label="Tipo de incremento">
-            <select style={s.input} disabled={dis} value={inc.tipo} onChange={e => editar(c => { c.financiacion.incremento.tipo = e.target.value; })}>
-              {TIPOS_INCREMENTO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
-            </select>
-          </Campo>
-          {inc.tipo !== "no" && (
-            <Campo label="Aumenta cada (meses)">
-              <input style={s.input} disabled={dis} type="number" min="1" value={inc.cadaMeses} onChange={e => editar(c => { c.financiacion.incremento.cadaMeses = e.target.value; })} />
-            </Campo>
-          )}
-          {inc.tipo === "fijo" && (
-            <Campo label="Porcentaje por aumento (%)">
-              <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={inc.porcentaje} onChange={e => editar(c => { c.financiacion.incremento.porcentaje = e.target.value; })} />
-            </Campo>
-          )}
-          {inc.tipo !== "no" && (f.moneda === "USD" || f.moneda === "AMBAS") && (
-            <Campo label="Los lotes en dólares aumentan">
-              <select style={s.input} disabled={dis} value={inc.usdAumenta ? "si" : "no"} onChange={e => editar(c => { c.financiacion.incremento.usdAumenta = e.target.value === "si"; })}>
-                <option value="no">No</option>
-                <option value="si">Sí, igual que los pesos</option>
-              </select>
-            </Campo>
-          )}
+      <div style={s.layout}>
+        <nav style={s.lista}>
+          {SECCIONES.map(sec => (
+            <button
+              key={sec.id}
+              type="button"
+              onClick={() => setActiva(sec.id)}
+              style={{ ...s.item, ...(activa === sec.id ? s.itemActivo : {}) }}
+            >
+              <span style={s.itemIcono}>{sec.icono}</span>
+              <span style={{ minWidth: 0 }}>
+                <div style={s.itemNombre}>{sec.nombre}</div>
+                <div style={s.itemResumen}>{sec.resumen}</div>
+              </span>
+            </button>
+          ))}
+        </nav>
+
+        <div style={s.detalle}>
+          {activa === "financiacion" && <SeccionFinanciacion cfg={cfg} editar={editar} dis={dis} />}
+          {activa === "mora" && <SeccionMora cfg={cfg} editar={editar} dis={dis} />}
+          {activa === "transferencias" && <SeccionTransferencias cfg={cfg} editar={editar} dis={dis} />}
+          {activa === "distribucion" && <SeccionDistribucion cfg={cfg} editar={editar} dis={dis} />}
+          {activa === "cajas" && <SeccionCajas cfg={cfg} editar={editar} dis={dis} />}
         </div>
-        <p style={s.nota}>{tipoInfo.ayuda}</p>
-
-        {usaGrupos && (
-          <div style={{ marginTop: 18 }}>
-            <div style={s.h3}>Grupos de aumento</div>
-            <p style={s.sub}>
-              Cada grupo (por ejemplo una "planilla" de un color) aumenta en los meses que marques.
-              Si todos los lotes aumentan el mismo mes, alcanza con un solo grupo.
-            </p>
-            {f.grupos.length === 0 && <p style={s.vacio}>Todavía no hay grupos.</p>}
-            {f.grupos.map((g, i) => (
-              <div key={g.id} style={s.grupo}>
-                <div style={s.grupoTop}>
-                  <input
-                    style={{ ...s.input, flex: 1, minWidth: 140 }}
-                    disabled={dis}
-                    placeholder="Nombre del grupo (ej. Verde)"
-                    value={g.nombre}
-                    onChange={e => editar(c => { c.financiacion.grupos[i].nombre = e.target.value; })}
-                  />
-                  <div style={s.colores}>
-                    {COLORES.map(col => (
-                      <button
-                        key={col}
-                        type="button"
-                        disabled={dis}
-                        aria-label={`Color ${col}`}
-                        onClick={() => editar(c => { c.financiacion.grupos[i].color = col; })}
-                        style={{ ...s.colorDot, background: col, outline: g.color === col ? "2px solid var(--text)" : "none" }}
-                      />
-                    ))}
-                  </div>
-                  {!dis && (
-                    <button type="button" style={s.quitar} onClick={() => editar(c => { c.financiacion.grupos.splice(i, 1); })}>Quitar</button>
-                  )}
-                </div>
-                <div style={s.meses}>
-                  {MESES_CORTO.map((mes, mi) => {
-                    const on = g.meses.includes(mi + 1);
-                    return (
-                      <button
-                        key={mes}
-                        type="button"
-                        disabled={dis}
-                        onClick={() => editar(c => {
-                          const arr = c.financiacion.grupos[i].meses;
-                          const pos = arr.indexOf(mi + 1);
-                          if (pos >= 0) arr.splice(pos, 1); else arr.push(mi + 1);
-                        })}
-                        style={{ ...s.mes, ...(on ? { background: g.color, color: "#fff", borderColor: g.color } : {}) }}
-                      >
-                        {mes}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-            {!dis && <button type="button" style={s.btnSec} onClick={agregarGrupo}>+ Agregar grupo</button>}
-          </div>
-        )}
-      </section>
-
-      {/* 2. Mora y transferencias */}
-      <section style={s.card}>
-        <h2 style={s.h2}>2. Mora, transferencias y reparto</h2>
-        <p style={s.sub}>Los porcentajes y los días los define cada empresa.</p>
-        <div style={s.grid}>
-          <Campo label="Interés por mora">
-            <select style={s.input} disabled={dis} value={cfg.cobranza.mora.activa ? "si" : "no"} onChange={e => editar(c => { c.cobranza.mora.activa = e.target.value === "si"; })}>
-              <option value="no">Sin mora</option>
-              <option value="si">Activo</option>
-            </select>
-          </Campo>
-          {cfg.cobranza.mora.activa && (
-            <>
-              <Campo label="Porcentaje por día (%)">
-                <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={cfg.cobranza.mora.porcentajeDia} onChange={e => editar(c => { c.cobranza.mora.porcentajeDia = e.target.value; })} />
-              </Campo>
-              <Campo label="Empieza a correr desde el día">
-                <input style={s.input} disabled={dis} type="number" min="1" max="31" value={cfg.cobranza.mora.desdeDia} onChange={e => editar(c => { c.cobranza.mora.desdeDia = e.target.value; })} />
-              </Campo>
-            </>
-          )}
-          <Campo label="Impuesto en transferencias (%)">
-            <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={cfg.cobranza.transferencia.impuestoPct} onChange={e => editar(c => { c.cobranza.transferencia.impuestoPct = e.target.value; })} />
-          </Campo>
-        </div>
-        <p style={s.nota}>
-          Si el impuesto es 0, las transferencias se cobran sin recargo.
-        </p>
-
-        <div style={{ marginTop: 18 }}>
-          <div style={s.h3}>Reparto de la caja</div>
-          <div style={s.grid}>
-            <Campo label="Nombre de la parte A">
-              <input style={s.input} disabled={dis} value={cfg.cobranza.reparto.nombreA} onChange={e => editar(c => { c.cobranza.reparto.nombreA = e.target.value; })} />
-            </Campo>
-            <Campo label="Porcentaje de la parte A (%)">
-              <input style={s.input} disabled={dis} type="number" min="0" max="100" step="1" value={cfg.cobranza.reparto.parteA} onChange={e => editar(c => { c.cobranza.reparto.parteA = e.target.value; })} />
-            </Campo>
-            <Campo label="Nombre de la parte B">
-              <input style={s.input} disabled={dis} value={cfg.cobranza.reparto.nombreB} onChange={e => editar(c => { c.cobranza.reparto.nombreB = e.target.value; })} />
-            </Campo>
-            <Campo label="Porcentaje de la parte B (%)">
-              <div style={{ ...s.input, background: "var(--surface)", color: "var(--text2)" }}>{parteB === "" ? "—" : parteB}</div>
-            </Campo>
-          </div>
-          <p style={s.nota}>La parte B es lo que queda: siempre suman 100.</p>
-        </div>
-      </section>
-
-      {/* 3. Cajas especiales */}
-      <section style={s.card}>
-        <h2 style={s.h2}>3. Cajas especiales</h2>
-        <p style={s.sub}>
-          Grupos de lotes cuya plata no entra a la caja principal (por ejemplo agrimensores, escribanos o la propia empresa).
-          Cada uno tiene su caja. Los lotes y sus dueños se asignan cuando esté lista la sección de Lotes.
-        </p>
-        {cfg.cajasEspeciales.length === 0 && <p style={s.vacio}>Todavía no hay cajas especiales.</p>}
-        {cfg.cajasEspeciales.map((c, i) => (
-          <div key={c.id} style={s.caja}>
-            <input
-              style={{ ...s.input, flex: 1, minWidth: 160 }}
-              disabled={dis}
-              placeholder="Nombre de la caja (ej. Agrimensores)"
-              value={c.nombre}
-              onChange={e => editar(x => { x.cajasEspeciales[i].nombre = e.target.value; })}
-            />
-            <input
-              style={{ ...s.input, flex: 2, minWidth: 200 }}
-              disabled={dis}
-              placeholder="Nota (opcional)"
-              value={c.nota}
-              onChange={e => editar(x => { x.cajasEspeciales[i].nota = e.target.value; })}
-            />
-            {!dis && <button type="button" style={s.quitar} onClick={() => editar(x => { x.cajasEspeciales.splice(i, 1); })}>Quitar</button>}
-          </div>
-        ))}
-        {!dis && <button type="button" style={s.btnSec} onClick={agregarCaja}>+ Nueva caja especial</button>}
-      </section>
+      </div>
 
       <p style={s.nota}>
         Todavía esta configuración no mueve plata: es la base sobre la que se van a armar clientes, cobros y cierres.
@@ -400,6 +242,231 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
   );
 }
 
+function SeccionFinanciacion({ cfg, editar, dis }) {
+  const f = cfg.financiacion;
+  const inc = f.incremento;
+  const tipoInfo = TIPOS_INCREMENTO.find(t => t.id === inc.tipo) || TIPOS_INCREMENTO[0];
+  const usaGrupos = inc.tipo === "icc" || inc.tipo === "fijo";
+
+  function agregarGrupo() {
+    editar(c => {
+      c.financiacion.grupos.push({ id: nuevoId(), nombre: "", color: COLORES[c.financiacion.grupos.length % COLORES.length], meses: [] });
+    });
+  }
+
+  return (
+    <div>
+      <SeccionTitulo icono="💳" nombre="Financiación" desc="Cómo se cobra y cómo se actualiza la cuota de los lotes." />
+      <div style={s.grid}>
+        <Campo label="Moneda del plan">
+          <select style={s.input} disabled={dis} value={f.moneda} onChange={e => editar(c => { c.financiacion.moneda = e.target.value; })}>
+            <option value="ARS">Pesos</option>
+            <option value="USD">Dólares</option>
+            <option value="AMBAS">Pesos y dólares</option>
+          </select>
+        </Campo>
+        <Campo label="Cantidad de cuotas">
+          <input style={s.input} disabled={dis} type="number" min="1" value={f.cuotas} onChange={e => editar(c => { c.financiacion.cuotas = e.target.value; })} />
+        </Campo>
+        <Campo label="Tipo de incremento">
+          <select style={s.input} disabled={dis} value={inc.tipo} onChange={e => editar(c => { c.financiacion.incremento.tipo = e.target.value; })}>
+            {TIPOS_INCREMENTO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
+          </select>
+        </Campo>
+        {inc.tipo !== "no" && (
+          <Campo label="Aumenta cada (meses)">
+            <input style={s.input} disabled={dis} type="number" min="1" value={inc.cadaMeses} onChange={e => editar(c => { c.financiacion.incremento.cadaMeses = e.target.value; })} />
+          </Campo>
+        )}
+        {inc.tipo === "fijo" && (
+          <Campo label="Porcentaje por aumento (%)">
+            <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={inc.porcentaje} onChange={e => editar(c => { c.financiacion.incremento.porcentaje = e.target.value; })} />
+          </Campo>
+        )}
+        {inc.tipo !== "no" && (f.moneda === "USD" || f.moneda === "AMBAS") && (
+          <Campo label="Los lotes en dólares aumentan">
+            <select style={s.input} disabled={dis} value={inc.usdAumenta ? "si" : "no"} onChange={e => editar(c => { c.financiacion.incremento.usdAumenta = e.target.value === "si"; })}>
+              <option value="no">No</option>
+              <option value="si">Sí, igual que los pesos</option>
+            </select>
+          </Campo>
+        )}
+      </div>
+      <p style={s.nota}>{tipoInfo.ayuda}</p>
+
+      {usaGrupos && (
+        <div style={{ marginTop: 22 }}>
+          <div style={s.h3}>Grupos de aumento</div>
+          <p style={s.sub}>
+            Cada grupo (por ejemplo una "planilla" de un color) aumenta en los meses que marques.
+            Si todos los lotes aumentan el mismo mes, alcanza con un solo grupo.
+          </p>
+          {f.grupos.length === 0 && <p style={s.vacio}>Todavía no hay grupos.</p>}
+          {f.grupos.map((g, i) => (
+            <div key={g.id} style={s.grupo}>
+              <div style={s.grupoTop}>
+                <input
+                  style={{ ...s.input, flex: 1, minWidth: 140 }}
+                  disabled={dis}
+                  placeholder="Nombre del grupo (ej. Verde)"
+                  value={g.nombre}
+                  onChange={e => editar(c => { c.financiacion.grupos[i].nombre = e.target.value; })}
+                />
+                <div style={s.colores}>
+                  {COLORES.map(col => (
+                    <button
+                      key={col}
+                      type="button"
+                      disabled={dis}
+                      aria-label={`Color ${col}`}
+                      onClick={() => editar(c => { c.financiacion.grupos[i].color = col; })}
+                      style={{ ...s.colorDot, background: col, outline: g.color === col ? "2px solid var(--text)" : "none" }}
+                    />
+                  ))}
+                </div>
+                {!dis && (
+                  <button type="button" style={s.quitar} onClick={() => editar(c => { c.financiacion.grupos.splice(i, 1); })}>Quitar</button>
+                )}
+              </div>
+              <div style={s.meses}>
+                {MESES_CORTO.map((mes, mi) => {
+                  const on = g.meses.includes(mi + 1);
+                  return (
+                    <button
+                      key={mes}
+                      type="button"
+                      disabled={dis}
+                      onClick={() => editar(c => {
+                        const arr = c.financiacion.grupos[i].meses;
+                        const pos = arr.indexOf(mi + 1);
+                        if (pos >= 0) arr.splice(pos, 1); else arr.push(mi + 1);
+                      })}
+                      style={{ ...s.mes, ...(on ? { background: g.color, color: "#fff", borderColor: g.color } : {}) }}
+                    >
+                      {mes}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {!dis && <button type="button" style={s.btnSec} onClick={agregarGrupo}>+ Agregar grupo</button>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SeccionMora({ cfg, editar, dis }) {
+  const m = cfg.cobranza.mora;
+  return (
+    <div>
+      <SeccionTitulo icono="⚠️" nombre="Mora" desc="El interés por atraso lo define cada empresa: si hay, cuánto y desde qué día." />
+      <div style={s.grid}>
+        <Campo label="Interés por mora">
+          <select style={s.input} disabled={dis} value={m.activa ? "si" : "no"} onChange={e => editar(c => { c.cobranza.mora.activa = e.target.value === "si"; })}>
+            <option value="no">Sin mora</option>
+            <option value="si">Activo</option>
+          </select>
+        </Campo>
+        {m.activa && (
+          <>
+            <Campo label="Porcentaje por día (%)">
+              <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={m.porcentajeDia} onChange={e => editar(c => { c.cobranza.mora.porcentajeDia = e.target.value; })} />
+            </Campo>
+            <Campo label="Empieza a correr desde el día">
+              <input style={s.input} disabled={dis} type="number" min="1" max="31" value={m.desdeDia} onChange={e => editar(c => { c.cobranza.mora.desdeDia = e.target.value; })} />
+            </Campo>
+          </>
+        )}
+      </div>
+      <p style={s.nota}>{m.activa ? "El interés se suma cada día de atraso, desde el día que elegiste." : "Los clientes que no pagan a tiempo no generan interés."}</p>
+    </div>
+  );
+}
+
+function SeccionTransferencias({ cfg, editar, dis }) {
+  const t = cfg.cobranza.transferencia;
+  return (
+    <div>
+      <SeccionTitulo icono="🏦" nombre="Transferencias" desc="El impuesto que se suma cuando el cliente paga por transferencia." />
+      <div style={s.grid}>
+        <Campo label="Impuesto en transferencias (%)">
+          <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={t.impuestoPct} onChange={e => editar(c => { c.cobranza.transferencia.impuestoPct = e.target.value; })} />
+        </Campo>
+      </div>
+      <p style={s.nota}>Si el impuesto es 0, las transferencias se cobran sin recargo.</p>
+    </div>
+  );
+}
+
+function SeccionDistribucion({ cfg, editar, dis }) {
+  const r = cfg.cobranza.reparto;
+  const parteA = num(r.parteA);
+  const parteB = Number.isFinite(parteA) ? Math.round((100 - parteA) * 100) / 100 : "";
+  return (
+    <div>
+      <SeccionTitulo icono="📊" nombre="Distribución de ganancias" desc="Cómo se reparte lo cobrado, entre dos partes." />
+      <div style={s.grid}>
+        <Campo label="Nombre de la parte A">
+          <input style={s.input} disabled={dis} value={r.nombreA} onChange={e => editar(c => { c.cobranza.reparto.nombreA = e.target.value; })} />
+        </Campo>
+        <Campo label="Porcentaje de la parte A (%)">
+          <input style={s.input} disabled={dis} type="number" min="0" max="100" step="1" value={r.parteA} onChange={e => editar(c => { c.cobranza.reparto.parteA = e.target.value; })} />
+        </Campo>
+        <Campo label="Nombre de la parte B">
+          <input style={s.input} disabled={dis} value={r.nombreB} onChange={e => editar(c => { c.cobranza.reparto.nombreB = e.target.value; })} />
+        </Campo>
+        <Campo label="Porcentaje de la parte B (%)">
+          <div style={{ ...s.input, background: "var(--surface)", color: "var(--text2)" }}>{parteB === "" ? "—" : parteB}</div>
+        </Campo>
+      </div>
+      <p style={s.nota}>La parte B es lo que queda: siempre suman 100.</p>
+    </div>
+  );
+}
+
+function SeccionCajas({ cfg, editar, dis }) {
+  function agregarCaja() {
+    editar(c => { c.cajasEspeciales.push({ id: nuevoId(), nombre: "", nota: "" }); });
+  }
+  return (
+    <div>
+      <SeccionTitulo icono="🗃️" nombre="Cajas especiales" desc={'Grupos de lotes cuya plata no entra a la caja principal (por ejemplo agrimensores, escribanos o la propia empresa). Cada uno tiene su caja. Los lotes y sus dueños se asignan cuando esté lista la sección de Lotes.'} />
+      {cfg.cajasEspeciales.length === 0 && <p style={s.vacio}>Todavía no hay cajas especiales.</p>}
+      {cfg.cajasEspeciales.map((c, i) => (
+        <div key={c.id} style={s.caja}>
+          <input
+            style={{ ...s.input, flex: 1, minWidth: 160 }}
+            disabled={dis}
+            placeholder="Nombre de la caja (ej. Agrimensores)"
+            value={c.nombre}
+            onChange={e => editar(x => { x.cajasEspeciales[i].nombre = e.target.value; })}
+          />
+          <input
+            style={{ ...s.input, flex: 2, minWidth: 200 }}
+            disabled={dis}
+            placeholder="Nota (opcional)"
+            value={c.nota}
+            onChange={e => editar(x => { x.cajasEspeciales[i].nota = e.target.value; })}
+          />
+          {!dis && <button type="button" style={s.quitar} onClick={() => editar(x => { x.cajasEspeciales.splice(i, 1); })}>Quitar</button>}
+        </div>
+      ))}
+      {!dis && <button type="button" style={s.btnSec} onClick={agregarCaja}>+ Nueva caja especial</button>}
+    </div>
+  );
+}
+
+function SeccionTitulo({ icono, nombre, desc }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <h2 style={s.h2}>{icono} {nombre}</h2>
+      <p style={s.sub}>{desc}</p>
+    </div>
+  );
+}
+
 function Campo({ label, children }) {
   return (
     <label style={s.campo}>
@@ -412,10 +479,17 @@ function Campo({ label, children }) {
 const s = {
   wrap: { display: "flex", flexDirection: "column", gap: "16px" },
   intro: { fontSize: "14px", color: "var(--text2)", lineHeight: 1.5 },
-  card: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "20px 22px" },
-  h2: { margin: "0 0 2px", fontSize: "17px", fontWeight: "700", color: "var(--text)" },
+  layout: { display: "flex", gap: "16px", alignItems: "flex-start", flexWrap: "wrap" },
+  lista: { flex: "0 0 240px", minWidth: "220px", display: "flex", flexDirection: "column", gap: "6px", background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "8px" },
+  item: { display: "flex", alignItems: "center", gap: "10px", textAlign: "left", background: "transparent", border: "none", borderRadius: "10px", padding: "10px 10px", cursor: "pointer", color: "var(--text)" },
+  itemActivo: { background: "var(--surface)" },
+  itemIcono: { fontSize: "18px", flexShrink: 0 },
+  itemNombre: { fontSize: "13.5px", fontWeight: "700" },
+  itemResumen: { fontSize: "11.5px", color: "var(--text2)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  detalle: { flex: "1 1 420px", minWidth: "280px", background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "22px 24px" },
+  h2: { margin: "0 0 4px", fontSize: "18px", fontWeight: "700", color: "var(--text)" },
   h3: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "2px" },
-  sub: { margin: "0 0 14px", fontSize: "13px", color: "var(--text2)", lineHeight: 1.5 },
+  sub: { margin: 0, fontSize: "13px", color: "var(--text2)", lineHeight: 1.5 },
   nota: { margin: "10px 0 0", fontSize: "12.5px", color: "var(--text2)", lineHeight: 1.5 },
   vacio: { margin: "0 0 10px", fontSize: "13px", color: "var(--text2)", fontStyle: "italic" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px" },
