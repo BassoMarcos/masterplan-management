@@ -128,6 +128,12 @@
 - Todavía NO mueve plata. Pendiente a definir a detalle: cómo se aplica un cambio de configuración a mitad de mes.
 - Esquema completo del administrador de fyj: `ESQUEMA_ADMIN_FYJ.md` (fuera de los repos).
 
+## 2026-09-22 — MasterPlan: Configuración con lista de secciones
+- Marcos: el panel anterior se sentía "limitado y mezclado". Rediseño a **lista de izquierda + detalle a la derecha** (como los Ajustes de cualquier app): Financiación, Mora, Transferencias, Distribución de ganancias y Cajas especiales, cada una como una sección aparte con todas sus opciones ampliadas.
+- Se separaron mora / transferencias / distribución (antes una sola tarjeta) en 3 secciones independientes de la lista.
+- Si al guardar hay un error, el panel salta directo a la sección con el problema.
+- Mismos datos y misma validación que la versión anterior (probado en Node: config por defecto, config vieja sin romper, caso tipo F&J con ICC/3 grupos/mora/transferencia/reparto, y 8 errores con su sección correcta).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
