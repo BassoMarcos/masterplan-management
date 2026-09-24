@@ -14,8 +14,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: npm ci && npm run build
+      # Sin "repoToken": se sigue armando la copia de prueba, pero el robot ya no comenta el link
+      # en el cambio (ese comentario le llegaba por mail a Marcos). El link queda en el registro de Actions.
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_MASTERPLANPROYECTS }}
           projectId: masterplanproyects
