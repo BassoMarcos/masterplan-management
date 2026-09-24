@@ -141,6 +141,15 @@
 - Compatibilidad: la config vieja de ayer (una sola financiación sin "planes") se migra sola al abrir el panel, como un único plan. No hace falta tocar nada a mano.
 - Probado en Node: 1 plan por defecto, migración desde la config vieja, el caso de Marcos (USD sin incremento + ARS con ICC), y que un error en el 2do plan lo identifique por nombre.
 
+## 2026-09-24 — MasterPlan: sección Lotes (inventario del proyecto)
+- Marcos: los planes de financiación y las cajas especiales hay que asignarlos a lotes concretos, sobre el total de lotes y manzanas del proyecto. Hasta ahora MasterPlan no tenía lotes uno por uno (Desarrollos solo guarda manzanas con una cantidad).
+- Nueva sección **🧩 Lotes** en Administración → Configuración. Guarda un documento por lote en `proyectos/{id}/lotes` con `{etapa, manzana, numero, planId, cajaId}`. Es la **lista única de lotes del proyecto**: más adelante Comercial (plano de lotes, reservas), Legales y Desarrollos van a usar esta misma colección.
+- Alta en bloque ("Etapa 1, M1, del 1 al 20") o suelta ("4B"); la manzana es opcional (hay etapas sin manzanas). No deja crear repetidos.
+- Grilla por etapa → manzana, cada lote con el color de su plan (punteado = sin plan) y ★ si está en una caja especial. Filtro (sin plan / por plan / por caja), selección por manzana o de todo lo visible, asignar plan, pasar a caja, editar o eliminar.
+- Se guarda con el mismo botón que la configuración y en la misma tanda (hasta ~450 lotes todo junto o nada). No deja guardar si quedan lotes apuntando a un plan o caja que se quitó.
+- Probado en Node: lotes con y sin manzana, orden 1-2-4B-10, repetidos, lote sin número, plan/caja quitados, y que al guardar solo se escribe lo que cambió.
+- Riesgo conocido: si las reglas de Firestore (se pegan a mano en la consola) no permiten la subcolección `lotes`, al guardar aparece "falta permiso en las reglas".
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App

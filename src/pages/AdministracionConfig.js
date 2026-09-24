@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { db } from "../firebase/config";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { doc, collection, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
 
 // Configuración de la parte administrativa de un proyecto.
 // Cada empresa/proyecto define SUS reglas (financiación, mora, transferencias, cajas especiales).
@@ -12,7 +12,12 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 //
 // Financiación NO es una sola configuración: un proyecto puede tener varios "planes"
 // (ej. lotes en dólares sin incremento + lotes en pesos con ICC). Qué lote usa qué plan
-// se define más adelante, en la sección de Lotes (todavía no existe).
+// se define en la sección Lotes.
+//
+// Lotes: inventario del proyecto, un documento por lote en proyectos/{id}/lotes
+// ({etapa, manzana, numero, planId, cajaId}). Es la lista única de lotes del proyecto:
+// más adelante Comercial, Legales y Desarrollos van a usar esta misma colección.
+// Los cambios de lotes se guardan junto con la configuración (mismo botón, misma tanda).
 
 export const MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
@@ -32,6 +37,7 @@ const SECCIONES = [
   { id: "transferencias", icono: "🏦", nombre: "Transferencias", resumen: "Impuesto sobre transferencias" },
   { id: "distribucion", icono: "📊", nombre: "Distribución de ganancias", resumen: "Cómo se reparte la caja" },
   { id: "cajas", icono: "🗃️", nombre: "Cajas especiales", resumen: "Agrimensores, escribanos y otras" },
+  { id: "lotes", icono: "🧩", nombre: "Lotes", resumen: "Etapas, manzanas y plan de cada lote" },
 ];
 
 const PLAN_DEFAULT = {
@@ -136,6 +142,73 @@ function validar(cfg) {
   return null;
 }
 
+// ── Lotes ─────────────────────────────────────────────────────
+
+// Forma única de un lote (la misma al leer de la base, al comparar y al guardar).
+function loteLimpio(id, d) {
+  return {
+    id,
+    etapa: String(d.etapa || "").trim(),
+    manzana: String(d.manzana || "").trim(),
+    numero: String(d.numero || "").trim(),
+    planId: d.planId || null,
+    cajaId: d.cajaId || null,
+  };
+}
+
+function nuevoIdLote() {
+  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+}
+
+// Dos lotes con la misma etapa + manzana + número son el mismo lote.
+function claveLote(l) {
+  return [l.etapa, l.manzana, l.numero].map(x => String(x || "").trim().toLowerCase()).join("|");
+}
+
+function etiquetaLote(l) {
+  return `${l.etapa}${l.manzana ? " · " + l.manzana : ""} · Lote ${l.numero}`;
+}
+
+// Orden "humano": 2 antes que 10, y 4A antes que 4B.
+function cmpNatural(a, b) {
+  return String(a).localeCompare(String(b), "es", { numeric: true, sensitivity: "base" });
+}
+
+function validarLotes(lotes, cfg) {
+  const planIds = new Set(cfg.financiacion.planes.map(p => p.id));
+  const cajaIds = new Set(cfg.cajasEspeciales.map(c => c.id));
+  const vistos = new Set();
+  let planPerdido = 0;
+  let cajaPerdida = 0;
+  for (const l of lotes) {
+    if (!String(l.etapa || "").trim() || !String(l.numero || "").trim()) return { mensaje: "Todos los lotes necesitan etapa y número.", seccion: "lotes" };
+    const k = claveLote(l);
+    if (vistos.has(k)) return { mensaje: `El lote ${etiquetaLote(l)} está repetido.`, seccion: "lotes" };
+    vistos.add(k);
+    if (l.planId && !planIds.has(l.planId)) planPerdido++;
+    if (l.cajaId && !cajaIds.has(l.cajaId)) cajaPerdida++;
+  }
+  if (planPerdido) return { mensaje: `Hay ${planPerdido} lote(s) asignados a un plan de financiación que quitaste. Asignales otro plan antes de guardar.`, seccion: "lotes" };
+  if (cajaPerdida) return { mensaje: `Hay ${cajaPerdida} lote(s) en una caja especial que quitaste. Pasalos a otra caja antes de guardar.`, seccion: "lotes" };
+  return null;
+}
+
+// Qué hay que escribir en la base: lotes nuevos o cambiados ("set") y lotes borrados ("del").
+function diffLotes(ini, act) {
+  const previos = new Map(ini.map(l => [l.id, loteLimpio(l.id, l)]));
+  const siguen = new Set(act.map(l => l.id));
+  const ops = [];
+  act.forEach(l => {
+    const nuevo = loteLimpio(l.id, l);
+    const antes = previos.get(l.id);
+    if (!antes || JSON.stringify(antes) !== JSON.stringify(nuevo)) {
+      ops.push({ tipo: "set", id: l.id, data: { etapa: nuevo.etapa, manzana: nuevo.manzana, numero: nuevo.numero, planId: nuevo.planId, cajaId: nuevo.cajaId } });
+    }
+  });
+  ini.forEach(l => { if (!siguen.has(l.id)) ops.push({ tipo: "del", id: l.id }); });
+  return ops;
+}
+
 // Deja los números como números (los inputs los manejan como texto).
 function normalizar(cfg) {
   return {
@@ -178,8 +251,36 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
   const [guardando, setGuardando] = useState(false);
+  const [lotesIni, setLotesIni] = useState([]);
+  const [lotes, setLotes] = useState([]);
+  const [lotesCargando, setLotesCargando] = useState(true);
+  const [lotesErrorCarga, setLotesErrorCarga] = useState("");
 
-  const cambio = JSON.stringify(cfg) !== JSON.stringify(inicial);
+  const proyectoId = proyecto.id;
+
+  useEffect(() => {
+    let vivo = true;
+    async function cargarLotes() {
+      try {
+        const snap = await getDocs(collection(db, "proyectos", proyectoId, "lotes"));
+        const arr = snap.docs.map(d => loteLimpio(d.id, d.data()));
+        if (vivo) { setLotesIni(arr); setLotes(arr); }
+      } catch (e) {
+        if (vivo) {
+          setLotesErrorCarga(e && e.code === "permission-denied"
+            ? "No hay permiso para leer los lotes de este proyecto (revisar las reglas de Firebase)."
+            : "No se pudieron cargar los lotes. Recargá la página.");
+        }
+      }
+      if (vivo) setLotesCargando(false);
+    }
+    cargarLotes();
+    return () => { vivo = false; };
+  }, [proyectoId]);
+
+  const cambioCfg = JSON.stringify(cfg) !== JSON.stringify(inicial);
+  const cambioLotes = JSON.stringify(lotes) !== JSON.stringify(lotesIni);
+  const cambio = cambioCfg || cambioLotes;
   const dis = !puedeEditar;
 
   function editar(fn) {
@@ -192,27 +293,62 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
     });
   }
 
+  function editarLotes(fn) {
+    setOk(false);
+    setError("");
+    setLotes(prev => {
+      const copia = prev.map(l => ({ ...l }));
+      const r = fn(copia);
+      return r || copia;
+    });
+  }
+
   async function guardar() {
-    const err = validar(cfg);
+    const err = validar(cfg) || validarLotes(lotes, cfg);
     if (err) { setError(err.mensaje); setActiva(err.seccion); return; }
     setGuardando(true);
     setError("");
     try {
       const limpia = normalizar(cfg);
-      await updateDoc(doc(db, "proyectos", proyecto.id), { adminConfig: limpia, adminConfigActualizado: serverTimestamp() });
+      const ops = diffLotes(lotesIni, lotes);
+      const col = collection(db, "proyectos", proyectoId, "lotes");
+      // Firestore acepta hasta 500 escrituras por tanda. Si entra todo en una, se guarda
+      // todo junto (o nada); si son muchos lotes, se parte y la configuración va en la última.
+      const LIM = 450;
+      const tandas = [];
+      for (let i = 0; i < ops.length; i += LIM) tandas.push(ops.slice(i, i + LIM));
+      if (tandas.length === 0) tandas.push([]);
+      for (let t = 0; t < tandas.length; t++) {
+        const b = writeBatch(db);
+        tandas[t].forEach(op => {
+          const ref = doc(col, op.id);
+          if (op.tipo === "del") b.delete(ref);
+          else b.set(ref, { ...op.data, actualizado: serverTimestamp() });
+        });
+        if (t === tandas.length - 1 && cambioCfg) {
+          b.update(doc(db, "proyectos", proyectoId), { adminConfig: limpia, adminConfigActualizado: serverTimestamp() });
+        }
+        await b.commit();
+      }
       const completa = completarConfig(limpia);
+      const lotesGuardados = lotes.map(l => loteLimpio(l.id, l));
       setInicial(completa);
       setCfg(completa);
+      setLotesIni(lotesGuardados);
+      setLotes(lotesGuardados);
       setOk(true);
-      if (onGuardado) onGuardado(limpia);
+      if (onGuardado && cambioCfg) onGuardado(limpia);
     } catch (e) {
-      setError("No se pudo guardar. Revisá tu conexión e intentá de nuevo.");
+      setError(e && e.code === "permission-denied"
+        ? "No se pudo guardar: falta permiso en las reglas de Firebase. Avisale a Mark."
+        : "No se pudo guardar. Revisá tu conexión e intentá de nuevo.");
     }
     setGuardando(false);
   }
 
   function descartar() {
     setCfg(inicial);
+    setLotes(lotesIni);
     setError("");
     setOk(false);
   }
@@ -248,6 +384,16 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
           {activa === "transferencias" && <SeccionTransferencias cfg={cfg} editar={editar} dis={dis} />}
           {activa === "distribucion" && <SeccionDistribucion cfg={cfg} editar={editar} dis={dis} />}
           {activa === "cajas" && <SeccionCajas cfg={cfg} editar={editar} dis={dis} />}
+          {activa === "lotes" && (
+            <SeccionLotes
+              cfg={cfg}
+              lotes={lotes}
+              editarLotes={editarLotes}
+              dis={dis}
+              cargando={lotesCargando}
+              errorCarga={lotesErrorCarga}
+            />
+          )}
         </div>
       </div>
 
@@ -531,6 +677,313 @@ function SeccionCajas({ cfg, editar, dis }) {
   );
 }
 
+function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
+  const planes = cfg.financiacion.planes;
+  const cajas = cfg.cajasEspeciales;
+
+  // Formulario de alta
+  const [modo, setModo] = useState("rango");
+  const [etapa, setEtapa] = useState("");
+  const [manzana, setManzana] = useState("");
+  const [desde, setDesde] = useState("1");
+  const [hasta, setHasta] = useState("");
+  const [numero, setNumero] = useState("");
+  const [planNuevo, setPlanNuevo] = useState(planes.length === 1 ? planes[0].id : "");
+  const [cajaNueva, setCajaNueva] = useState("");
+  const [msgAlta, setMsgAlta] = useState("");
+
+  // Selección, filtro y acciones sobre los seleccionados
+  const [sel, setSel] = useState(() => new Set());
+  const [filtro, setFiltro] = useState("todos");
+  const [planAsignar, setPlanAsignar] = useState("");
+  const [cajaAsignar, setCajaAsignar] = useState("");
+
+  if (cargando) {
+    return (
+      <div>
+        <SeccionTitulo icono="🧩" nombre="Lotes" desc="Cargando lotes…" />
+      </div>
+    );
+  }
+
+  const colorPlan = {};
+  planes.forEach((p, i) => { colorPlan[p.id] = COLORES[i % COLORES.length]; });
+  const nombrePlan = (id) => { const p = planes.find(x => x.id === id); return p ? (p.nombre || "Plan sin nombre") : "Plan que quitaste"; };
+  const nombreCaja = (id) => { const c = cajas.find(x => x.id === id); return c ? (c.nombre || "Caja sin nombre") : "Caja que quitaste"; };
+
+  const etapasExistentes = [...new Set(lotes.map(l => l.etapa).filter(Boolean))].sort(cmpNatural);
+  const manzanasExistentes = [...new Set(lotes.filter(l => !etapa.trim() || l.etapa.toLowerCase() === etapa.trim().toLowerCase()).map(l => l.manzana).filter(Boolean))].sort(cmpNatural);
+
+  function crear() {
+    const et = etapa.trim();
+    const mz = manzana.trim();
+    if (!et) { setMsgAlta("Escribí la etapa (por ejemplo: Etapa 1)."); return; }
+    let numeros = [];
+    if (modo === "rango") {
+      const d = Number(desde);
+      const h = Number(hasta);
+      if (!Number.isInteger(d) || !Number.isInteger(h) || d < 1 || h < d) { setMsgAlta("Revisá los números: \"del\" tiene que ser 1 o más, y \"al\" igual o mayor."); return; }
+      if (h - d + 1 > 500) { setMsgAlta("Se pueden crear hasta 500 lotes por vez."); return; }
+      for (let n = d; n <= h; n++) numeros.push(String(n));
+    } else {
+      if (!numero.trim()) { setMsgAlta("Escribí el número del lote (por ejemplo: 4B)."); return; }
+      numeros = [numero.trim()];
+    }
+    const existentes = new Set(lotes.map(claveLote));
+    const nuevos = [];
+    let repetidos = 0;
+    numeros.forEach(n => {
+      const l = { id: nuevoIdLote(), etapa: et, manzana: mz, numero: n, planId: planNuevo || null, cajaId: cajaNueva || null };
+      const k = claveLote(l);
+      if (existentes.has(k)) repetidos++;
+      else { nuevos.push(l); existentes.add(k); }
+    });
+    if (nuevos.length) editarLotes(c => c.concat(nuevos));
+    const donde = `${et}${mz ? " · " + mz : ""}`;
+    if (nuevos.length && repetidos) setMsgAlta(`✓ ${nuevos.length} lote(s) agregados en ${donde}. ${repetidos} ya existían y no se repitieron.`);
+    else if (nuevos.length) setMsgAlta(`✓ ${nuevos.length} lote(s) agregados en ${donde}. Acordate de guardar.`);
+    else setMsgAlta(`Esos lotes ya existían en ${donde}: no se agregó nada.`);
+    if (modo === "uno") setNumero("");
+  }
+
+  const pasaFiltro = (l) => {
+    if (filtro === "todos") return true;
+    if (filtro === "sinplan") return !l.planId;
+    if (filtro === "principal") return !l.cajaId;
+    if (filtro.startsWith("plan:")) return l.planId === filtro.slice(5);
+    if (filtro.startsWith("caja:")) return l.cajaId === filtro.slice(5);
+    return true;
+  };
+  const visibles = lotes.filter(pasaFiltro);
+
+  // Agrupar: etapa → manzana → lotes
+  const porEtapa = new Map();
+  visibles.forEach(l => {
+    if (!porEtapa.has(l.etapa)) porEtapa.set(l.etapa, new Map());
+    const mzs = porEtapa.get(l.etapa);
+    if (!mzs.has(l.manzana)) mzs.set(l.manzana, []);
+    mzs.get(l.manzana).push(l);
+  });
+  const etapasOrden = [...porEtapa.keys()].sort(cmpNatural);
+
+  function toggle(id) {
+    setSel(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+  function toggleGrupo(ids) {
+    setSel(prev => {
+      const n = new Set(prev);
+      const todos = ids.every(id => n.has(id));
+      ids.forEach(id => { if (todos) n.delete(id); else n.add(id); });
+      return n;
+    });
+  }
+  const selIds = lotes.filter(l => sel.has(l.id)).map(l => l.id);
+  const unico = selIds.length === 1 ? lotes.find(l => l.id === selIds[0]) : null;
+
+  function aplicarPlan() {
+    if (!planAsignar) return;
+    const valor = planAsignar === "__ninguno" ? null : planAsignar;
+    editarLotes(c => { c.forEach(l => { if (sel.has(l.id)) l.planId = valor; }); });
+  }
+  function aplicarCaja() {
+    if (!cajaAsignar) return;
+    const valor = cajaAsignar === "__principal" ? null : cajaAsignar;
+    editarLotes(c => { c.forEach(l => { if (sel.has(l.id)) l.cajaId = valor; }); });
+  }
+  function eliminarSeleccionados() {
+    if (!window.confirm(`¿Eliminar ${selIds.length} lote(s)? Se borran al guardar los cambios.`)) return;
+    editarLotes(c => c.filter(l => !sel.has(l.id)));
+    setSel(new Set());
+  }
+  function editarUnico(campo, valor) {
+    editarLotes(c => { c.forEach(l => { if (l.id === unico.id) l[campo] = valor; }); });
+  }
+
+  const sinPlan = lotes.filter(l => !l.planId).length;
+
+  return (
+    <div>
+      <SeccionTitulo
+        icono="🧩"
+        nombre="Lotes"
+        desc="Todos los lotes del proyecto, por etapa y manzana. A cada lote le asignás su plan de financiación y, si corresponde, una caja especial."
+      />
+
+      {errorCarga && <p style={{ ...s.nota, color: "var(--red, #dc2626)", marginTop: 0 }}>{errorCarga}</p>}
+
+      {!dis && !errorCarga && (
+        <div style={s.bloque}>
+          <div style={s.h3}>Agregar lotes</div>
+          <div style={s.modoFila}>
+            <button type="button" onClick={() => setModo("rango")} style={{ ...s.modoBtn, ...(modo === "rango" ? s.modoBtnOn : {}) }}>Varios (del … al …)</button>
+            <button type="button" onClick={() => setModo("uno")} style={{ ...s.modoBtn, ...(modo === "uno" ? s.modoBtnOn : {}) }}>Uno suelto (ej. 4B)</button>
+          </div>
+          <div style={s.grid}>
+            <Campo label="Etapa *">
+              <input style={s.input} list="mp-etapas" placeholder="Ej: Etapa 1" value={etapa} onChange={e => setEtapa(e.target.value)} />
+            </Campo>
+            <Campo label="Manzana (si tiene)">
+              <input style={s.input} list="mp-manzanas" placeholder="Ej: M1" value={manzana} onChange={e => setManzana(e.target.value)} />
+            </Campo>
+            {modo === "rango" ? (
+              <>
+                <Campo label="Del lote">
+                  <input style={s.input} type="number" min="1" value={desde} onChange={e => setDesde(e.target.value)} />
+                </Campo>
+                <Campo label="Al lote">
+                  <input style={s.input} type="number" min="1" placeholder="Ej: 20" value={hasta} onChange={e => setHasta(e.target.value)} />
+                </Campo>
+              </>
+            ) : (
+              <Campo label="Número de lote">
+                <input style={s.input} placeholder="Ej: 4B" value={numero} onChange={e => setNumero(e.target.value)} />
+              </Campo>
+            )}
+            <Campo label="Plan de financiación">
+              <select style={s.input} value={planNuevo} onChange={e => setPlanNuevo(e.target.value)}>
+                <option value="">Sin plan por ahora</option>
+                {planes.map(p => <option key={p.id} value={p.id}>{p.nombre || "Plan sin nombre"}</option>)}
+              </select>
+            </Campo>
+            <Campo label="Caja">
+              <select style={s.input} value={cajaNueva} onChange={e => setCajaNueva(e.target.value)}>
+                <option value="">Caja principal</option>
+                {cajas.map(c => <option key={c.id} value={c.id}>{c.nombre || "Caja sin nombre"}</option>)}
+              </select>
+            </Campo>
+          </div>
+          <datalist id="mp-etapas">{etapasExistentes.map(e => <option key={e} value={e} />)}</datalist>
+          <datalist id="mp-manzanas">{manzanasExistentes.map(m => <option key={m} value={m} />)}</datalist>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+            <button type="button" style={s.btnSec} onClick={crear}>+ Agregar</button>
+            {msgAlta && <span style={{ fontSize: 13, color: "var(--text2)" }}>{msgAlta}</span>}
+          </div>
+        </div>
+      )}
+
+      {lotes.length > 0 && (
+        <div style={s.leyenda}>
+          <span style={s.resumenLotes}>{lotes.length} lote(s){sinPlan ? ` · ${sinPlan} sin plan` : ""}</span>
+          {planes.map(p => (
+            <span key={p.id} style={s.leyItem}>
+              <span style={{ ...s.leyDot, background: colorPlan[p.id] }} />
+              {p.nombre || "Plan sin nombre"} ({lotes.filter(l => l.planId === p.id).length})
+            </span>
+          ))}
+          {sinPlan > 0 && <span style={s.leyItem}><span style={{ ...s.leyDot, background: "transparent", border: "1.5px dashed var(--text2)" }} />Sin plan ({sinPlan})</span>}
+          {cajas.length > 0 && <span style={s.leyItem}><span style={s.marcaCaja}>★</span> en caja especial</span>}
+        </div>
+      )}
+
+      {lotes.length > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "12px 0" }}>
+          <select style={{ ...s.input, width: "auto" }} value={filtro} onChange={e => setFiltro(e.target.value)}>
+            <option value="todos">Mostrar todos</option>
+            <option value="sinplan">Solo sin plan</option>
+            {planes.map(p => <option key={p.id} value={"plan:" + p.id}>Plan: {p.nombre || "sin nombre"}</option>)}
+            <option value="principal">Caja principal</option>
+            {cajas.map(c => <option key={c.id} value={"caja:" + c.id}>Caja: {c.nombre || "sin nombre"}</option>)}
+          </select>
+          {!dis && visibles.length > 0 && (
+            <button type="button" style={s.quitar} onClick={() => toggleGrupo(visibles.map(l => l.id))}>Seleccionar / quitar todos los que se ven</button>
+          )}
+        </div>
+      )}
+
+      {!dis && selIds.length > 0 && (
+        <div style={s.barraSel}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <b style={{ fontSize: 13 }}>{selIds.length} seleccionado(s)</b>
+            <button type="button" style={s.quitar} onClick={() => setSel(new Set())}>Quitar selección</button>
+            <button type="button" style={{ ...s.quitar, color: "var(--red, #dc2626)" }} onClick={eliminarSeleccionados}>Eliminar</button>
+          </div>
+          <div style={s.selAcciones}>
+            <select style={{ ...s.input, width: "auto" }} value={planAsignar} onChange={e => setPlanAsignar(e.target.value)}>
+              <option value="">Asignar plan…</option>
+              {planes.map(p => <option key={p.id} value={p.id}>{p.nombre || "Plan sin nombre"}</option>)}
+              <option value="__ninguno">Sin plan</option>
+            </select>
+            <button type="button" style={s.btnSec} onClick={aplicarPlan} disabled={!planAsignar}>Aplicar</button>
+            <select style={{ ...s.input, width: "auto" }} value={cajaAsignar} onChange={e => setCajaAsignar(e.target.value)}>
+              <option value="">Pasar a caja…</option>
+              <option value="__principal">Caja principal</option>
+              {cajas.map(c => <option key={c.id} value={c.id}>{c.nombre || "Caja sin nombre"}</option>)}
+            </select>
+            <button type="button" style={s.btnSec} onClick={aplicarCaja} disabled={!cajaAsignar}>Aplicar</button>
+          </div>
+          {unico && (
+            <div style={{ ...s.grid, marginTop: 10 }}>
+              <Campo label="Etapa">
+                <input style={s.input} value={unico.etapa} onChange={e => editarUnico("etapa", e.target.value)} />
+              </Campo>
+              <Campo label="Manzana">
+                <input style={s.input} value={unico.manzana} onChange={e => editarUnico("manzana", e.target.value)} />
+              </Campo>
+              <Campo label="Número">
+                <input style={s.input} value={unico.numero} onChange={e => editarUnico("numero", e.target.value)} />
+              </Campo>
+            </div>
+          )}
+        </div>
+      )}
+
+      {!errorCarga && lotes.length === 0 && <p style={s.vacio}>Todavía no hay lotes. Agregá los primeros con el formulario de arriba.</p>}
+      {lotes.length > 0 && visibles.length === 0 && <p style={s.vacio}>Ningún lote coincide con el filtro.</p>}
+
+      {etapasOrden.map(et => {
+        const mzs = porEtapa.get(et);
+        const mzOrden = [...mzs.keys()].sort(cmpNatural);
+        return (
+          <div key={et} style={{ marginTop: 16 }}>
+            <div style={s.etapaTitulo}>{et}</div>
+            {mzOrden.map(mz => {
+              const grupo = mzs.get(mz).slice().sort((a, b) => cmpNatural(a.numero, b.numero));
+              const ids = grupo.map(l => l.id);
+              return (
+                <div key={mz || "_sin"} style={s.mzBloque}>
+                  <div style={s.mzTop}>
+                    <span style={{ fontSize: 13, fontWeight: 700 }}>{mz || "Sin manzana"}</span>
+                    <span style={{ fontSize: 12, color: "var(--text2)" }}>{grupo.length} lote(s)</span>
+                    {!dis && <button type="button" style={s.linkBtn} onClick={() => toggleGrupo(ids)}>Seleccionar {mz ? "manzana" : "grupo"}</button>}
+                  </div>
+                  <div style={s.chips}>
+                    {grupo.map(l => {
+                      const on = sel.has(l.id);
+                      const col = l.planId ? (colorPlan[l.planId] || "#888780") : null;
+                      const titulo = `${etiquetaLote(l)}\nPlan: ${l.planId ? nombrePlan(l.planId) : "sin plan"}\nCaja: ${l.cajaId ? nombreCaja(l.cajaId) : "principal"}`;
+                      return (
+                        <button
+                          key={l.id}
+                          type="button"
+                          title={titulo}
+                          onClick={() => { if (!dis) toggle(l.id); }}
+                          style={{
+                            ...s.chip,
+                            border: col ? `2px solid ${col}` : "2px dashed var(--border2)",
+                            ...(on ? { background: "var(--acc)", color: "#fff" } : {}),
+                            cursor: dis ? "default" : "pointer",
+                          }}
+                        >
+                          {l.numero}
+                          {l.cajaId && <span style={s.marcaChip}>★</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function SeccionTitulo({ icono, nombre, desc }) {
   return (
     <div style={{ marginBottom: 18 }}>
@@ -582,5 +1035,23 @@ const s = {
   quitar: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "7px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "12px" },
   btnSec: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text)", padding: "9px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
   btnPri: { background: "var(--acc)", border: "none", color: "#fff", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
+  bloque: { border: "1px solid var(--border)", borderRadius: "12px", padding: "14px", background: "var(--surface)", marginBottom: "14px" },
+  modoFila: { display: "flex", gap: "6px", flexWrap: "wrap", margin: "8px 0 12px" },
+  modoBtn: { padding: "6px 12px", borderRadius: "20px", border: "1px solid var(--border2)", background: "transparent", color: "var(--text2)", fontSize: "12.5px", cursor: "pointer" },
+  modoBtnOn: { background: "var(--acc)", color: "#fff", borderColor: "var(--acc)" },
+  leyenda: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px 14px", fontSize: "12.5px", color: "var(--text2)" },
+  resumenLotes: { fontWeight: "700", color: "var(--text)" },
+  leyItem: { display: "inline-flex", alignItems: "center", gap: "6px" },
+  leyDot: { width: "12px", height: "12px", borderRadius: "4px", display: "inline-block", boxSizing: "border-box" },
+  marcaCaja: { color: "#BA7517", fontSize: "12px" },
+  barraSel: { position: "sticky", top: "8px", zIndex: 2, border: "1.5px solid var(--acc)", borderRadius: "12px", padding: "12px", background: "var(--card)", marginBottom: "12px" },
+  selAcciones: { display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", marginTop: "10px" },
+  etapaTitulo: { fontSize: "14px", fontWeight: "800", color: "var(--text)", marginBottom: "8px" },
+  mzBloque: { border: "1px solid var(--border)", borderRadius: "12px", padding: "10px 12px", marginBottom: "10px" },
+  mzTop: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", marginBottom: "8px" },
+  linkBtn: { background: "none", border: "none", color: "var(--acc2, var(--acc))", fontSize: "12px", cursor: "pointer", padding: 0, marginLeft: "auto" },
+  chips: { display: "flex", flexWrap: "wrap", gap: "6px" },
+  chip: { position: "relative", minWidth: "44px", padding: "7px 8px", borderRadius: "8px", background: "var(--bg)", color: "var(--text)", fontSize: "13px", fontWeight: "600", textAlign: "center" },
+  marcaChip: { position: "absolute", top: "-7px", right: "-5px", fontSize: "11px", color: "#BA7517" },
   barra: { position: "sticky", bottom: "12px", display: "flex", alignItems: "center", gap: "10px", background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "12px 16px" },
 };
