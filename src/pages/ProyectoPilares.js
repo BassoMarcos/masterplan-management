@@ -6,13 +6,14 @@ import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import PizarraFlotante from "../components/PizarraFlotante";
-import { areasVisibles, areasVisiblesEmpleado } from "../config/appConfig";
+import { areasVisibles, areasVisiblesEmpleado, areasDelProyecto } from "../config/appConfig";
 
 
 export default function ProyectoPilares() {
   const { proyectoId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
+  const esAdminEfectivo = !esEmpleado || !!empleadoData?.accesoTotal;
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -56,6 +57,9 @@ export default function ProyectoPilares() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          {esAdminEfectivo && (
+            <button style={styles.logoutBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configurar`)}>⚙️ Configuración del proyecto</button>
+          )}
           <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>
@@ -65,8 +69,20 @@ export default function ProyectoPilares() {
       </header>
 
       <main style={styles.main}>
+        {esAdminEfectivo && proyecto?.asistente && !proyecto.asistente.completo && (
+          <div style={styles.aviso}>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: "15px" }}>⚠️ Falta terminar la configuración de este proyecto</div>
+              <div style={{ fontSize: "13px", color: "var(--text2)", marginTop: "2px" }}>Son unas preguntas cortas; seguís desde donde la dejaste.</div>
+            </div>
+            <button style={styles.avisoBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configurar`)}>Continuar configuración →</button>
+          </div>
+        )}
+        {areasDelProyecto(PILARES, proyecto).length === 0 && (
+          <p style={{ color: "var(--text2)", fontSize: "14px" }}>Este proyecto no tiene áreas activas.{esAdminEfectivo ? " Activalas desde ⚙️ Configuración del proyecto." : ""}</p>
+        )}
         <div style={styles.grid}>
-          {PILARES.map(p => (
+          {areasDelProyecto(PILARES, proyecto).map(p => (
             <div
               key={p.id}
               style={{ ...styles.card, ...styles.cardActivo }}
@@ -107,6 +123,11 @@ const styles = {
     padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px"
   },
   main: { maxWidth: "1100px", margin: "0 auto", padding: "48px 24px" },
+  aviso: {
+    display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap",
+    background: "var(--card)", border: "1.5px solid #BA7517", borderRadius: "14px", padding: "14px 18px", marginBottom: "24px"
+  },
+  avisoBtn: { background: "var(--acc)", color: "#fff", border: "none", borderRadius: "8px", padding: "10px 16px", fontSize: "14px", fontWeight: "600", cursor: "pointer" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px" },
   card: {
     borderRadius: "12px", padding: "32px 24px", cursor: "pointer",

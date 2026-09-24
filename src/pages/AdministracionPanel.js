@@ -5,7 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { empleadoNivelPanel, areasVisibles, areasVisiblesEmpleado } from "../config/appConfig";
+import { empleadoNivelPanel, areasVisibles, areasVisiblesEmpleado, panelActivoEnProyecto } from "../config/appConfig";
 import AdministracionConfig from "./AdministracionConfig";
 
 // Descripción de cada sección del pilar Administración.
@@ -89,7 +89,7 @@ export default function AdministracionPanel() {
   const areaPermitida = visibles.some(a => a.id === "administracion");
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "administracion", panelId) : "editar";
 
-  if (!info || !areaPermitida || nivel === "ninguno") {
+  if (!info || !areaPermitida || nivel === "ninguno" || !panelActivoEnProyecto(proyecto, "administracion", panelId)) {
     return (
       <div style={styles.container}>
         <div style={styles.emptyWrap}>

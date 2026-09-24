@@ -86,18 +86,20 @@ export default function Proyectos() {
     setGuardando(true);
     setError("");
     try {
-      await addDoc(collection(db, "proyectos"), {
+      const ref = await addDoc(collection(db, "proyectos"), {
         nombre: nombre.trim(),
         icono: fotoPreview ? null : icono,
         logo: fotoPreview || null,
         empresaId: empresaUid,
-        creadoEn: serverTimestamp()
+        creadoEn: serverTimestamp(),
+        asistente: { completo: false },
       });
       setNombre("");
       setIcono("🏘️");
       setFotoPreview(null);
       setShowModal(false);
-      cargarProyectos();
+      // Proyecto nuevo: antes de usarlo, el asistente hace las preguntas de configuración.
+      navigate(`/proyecto/${ref.id}/configurar`);
     } catch (e) {
       setError("Error al crear el proyecto. Intentá de nuevo.");
     }
