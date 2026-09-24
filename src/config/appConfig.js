@@ -148,6 +148,53 @@ export function areasVisiblesEmpleado(empresaData, empleadoData, proyectoId) {
   return base.filter(a => empleadoNivelArea(empleadoData, proyectoId, a.id) !== "ninguno");
 }
 
+// ───────────────────────────────────────────────────────────────
+// ÁREAS Y PANELES POR PROYECTO
+// Cada proyecto elige qué áreas y qué paneles usa (se elige en el asistente de proyecto nuevo):
+//   proyectos/{id}.estructura = { areas: { "<areaId>": { activa: true|false, paneles: ["<panelId>", ...] } } }
+// Siempre DENTRO de lo que el SuperAdmin habilitó para la empresa (areasVisibles): un proyecto
+// no puede usar un área que la empresa no tiene. Ej.: una empresa que solo vende apaga Administración.
+// Proyectos sin "estructura" (los creados antes del asistente) ven todo, como hasta ahora.
+// ───────────────────────────────────────────────────────────────
+
+// Paneles que no se pueden apagar mientras el área esté activa.
+export const PANELES_SIEMPRE = { administracion: ["configuracion"] };
+
+export function areaActivaEnProyecto(proyecto, areaId) {
+  const areas = proyecto?.estructura?.areas;
+  if (!areas) return true;
+  return !!(areas[areaId] && areas[areaId].activa);
+}
+
+export function panelActivoEnProyecto(proyecto, areaId, panelId) {
+  if (!areaActivaEnProyecto(proyecto, areaId)) return false;
+  if ((PANELES_SIEMPRE[areaId] || []).includes(panelId)) return true;
+  const a = proyecto?.estructura?.areas?.[areaId];
+  if (!a || !Array.isArray(a.paneles)) return true;
+  return a.paneles.includes(panelId);
+}
+
+export function areasDelProyecto(areas, proyecto) {
+  return areas.filter(a => areaActivaEnProyecto(proyecto, a.id));
+}
+
+export function panelesDelProyecto(paneles, proyecto, areaId) {
+  return paneles.filter(p => panelActivoEnProyecto(proyecto, areaId, p.id));
+}
+
+// Punto de partida del asistente: lo que ya tenga el proyecto o, si es nuevo,
+// todas las áreas que la empresa tiene habilitadas, con todos sus paneles.
+export function estructuraInicial(proyecto, areasHabilitadas) {
+  const areas = {};
+  areasHabilitadas.forEach(a => {
+    const guardada = proyecto?.estructura?.areas?.[a.id];
+    areas[a.id] = guardada
+      ? { activa: !!guardada.activa, paneles: Array.isArray(guardada.paneles) ? guardada.paneles.slice() : a.paneles.map(p => p.id) }
+      : { activa: !proyecto?.estructura, paneles: a.paneles.map(p => p.id) };
+  });
+  return { areas };
+}
+
 // Sub-paneles visibles para un empleado dentro de un área/proyecto
 export function panelesVisiblesEmpleado(empleadoData, proyectoId, areaId) {
   const todos = panelesDeArea(areaId);

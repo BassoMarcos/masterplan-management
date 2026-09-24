@@ -160,6 +160,16 @@
 - Arreglo: al abrir Configuración de un proyecto nuevo podía decir "Tenés cambios sin guardar" sin haber tocado nada (la config inicial se armaba dos veces con ids distintos).
 - Pendiente (próximos pasos): áreas y paneles por proyecto (Administración es opcional: una empresa puede solo vender), y el asistente en sí. El asistente tiene que preguntar cuántas manzanas y lotes por manzana.
 
+## 2026-09-24 — MasterPlan: asistente de proyecto nuevo + áreas por proyecto
+- Idea de Marcos: al crear un proyecto, el sistema hace las preguntas y la empresa configura todo desde el inicio (después se puede cambiar).
+- **Asistente** (`AsistenteProyecto.js`, ruta `/proyecto/:id/configurar`): se abre solo al crear un proyecto (queda `asistente: {completo: false}`). Paso a paso con barra de progreso: Bienvenida → Áreas y paneles → Lotes (etapas, cuántas manzanas, lotes por manzana del … al …, letras) → Financiación (¿en qué moneda?, planes, qué lotes van con cada uno) → Mora → Transferencias → Dueños → Cajas separadas (con sus lotes) → Resumen → guardar todo junto.
+- Si el proyecto **no usa Administración** (ej. solo vende), se saltean financiación, mora, transferencias, dueños y cajas. Lotes va si usa Administración, Comercial o Desarrollos.
+- Se puede **pausar** ("Salir y seguir después"): guarda un borrador en `asistente.borrador` en cada paso. La pantalla del proyecto muestra "Falta terminar la configuración" con botón para continuar. Botón "⚙️ Configuración del proyecto" (dueño / acceso total) para volver a abrirlo y cambiar respuestas.
+- **Áreas y paneles por proyecto** (`proyectos/{id}.estructura`, helpers en `appConfig.js`: `areaActivaEnProyecto`, `panelActivoEnProyecto`, `areasDelProyecto`, `panelesDelProyecto`): siempre dentro de lo que el SuperAdmin habilitó para la empresa. Proyectos viejos sin `estructura` ven todo como antes. Configuración de Administración no se puede apagar si el área está activa.
+- Reglas de configuración separadas en `src/config/adminConfigLogica.js` (sin pantallas): las usan Configuración y el asistente, así validan y guardan igual. El guardado de config + lotes quedó en `guardarConfigYLotes` (una tanda).
+- Probado: build estricto; lógica en Node (loteo con/sin manzanas y letras, errores, conservar asignaciones al volver atrás); y una **simulación de navegador** (base de datos en memoria) que recorre el asistente completo, el caso "solo vende" y la pantalla de Configuración.
+- Pendiente: el editor de permisos de Empleados todavía muestra todas las áreas (no filtra por las del proyecto); regla "no se cobra hasta terminar la configuración" cuando existan los cobros.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App

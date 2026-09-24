@@ -1,12 +1,12 @@
 {
   "version": 1,
-  "actualizado": "2026-09-21",
+  "actualizado": "2026-09-24",
   "colores": {
     "fj":"#3FA9FF","mp":"#2FE0B0","mig":"#FF8A3C","plan":"#FFC24D","hub":"#C089FF"
   },
   "grupos": [
-    {"key":"mp","name":"MasterPlan","ids":["mp","multi","fire","login","perm","aprob","super","temas","piza"]},
-    {"key":"hub","name":"Pilares","ids":["admin","adm_ger","adm_adm","adm_cob","comer","legal","obras"]},
+    {"key":"mp","name":"MasterPlan","ids":["mp","multi","fire","login","perm","aprob","super","temas","piza","asist","mp_lotes"]},
+    {"key":"hub","name":"Pilares","ids":["admin","adm_ger","adm_adm","adm_cob","adm_cfg","comer","legal","obras"]},
     {"key":"mig","name":"Migración","ids":["mig"]},
     {"key":"fj","name":"FJ App","ids":["fj","rtdb","clie","agri","lotes","presta","cob","gpagos","caja","cierr","mora","transf","colab","icc","robot","stats","rend","mapa","termin","public"]}
   ],
@@ -24,6 +24,9 @@
     {"id":"adm_ger","col":"plan","s":"plan","l":"Gerencia","d":"Administración · control en vivo (se define con el gerente)","x":-110,"y":-40,"z":30,"w":4},
     {"id":"adm_adm","col":"plan","s":"plan","l":"Administración (sección)","d":"Clientes, cuotas, mora, cajas, cierres e ICC","x":0,"y":-30,"z":-10,"w":5},
     {"id":"adm_cob","col":"plan","s":"plan","l":"Cobranzas","d":"El cajero busca al cliente y cobra","x":110,"y":-40,"z":30,"w":4},
+    {"id":"adm_cfg","col":"hub","s":"done","l":"Configuración","d":"Administración · planes de financiación, mora, transferencias, dueños, cajas separadas y lotes","x":-40,"y":-60,"z":-60,"w":4},
+    {"id":"asist","col":"mp","s":"done","l":"Asistente de proyecto","d":"Al crear un proyecto: áreas y paneles, lotes, financiación, mora, transferencias, dueños y cajas, paso a paso","x":-150,"y":-300,"z":40,"w":5},
+    {"id":"mp_lotes","col":"mp","s":"done","l":"Lotes del proyecto","d":"Lista única de lotes (etapa, manzana, número con letras) con su plan y su caja · la van a usar todas las áreas","x":-160,"y":-60,"z":90,"w":4},
     {"id":"comer","col":"plan","s":"plan","l":"Comercial","d":"PILAR · reservas → flujo a Legales","x":-260,"y":-120,"z":-20,"w":6},
     {"id":"legal","col":"plan","s":"plan","l":"Legales","d":"PILAR · activa cliente en Administración","x":260,"y":-120,"z":-20,"w":6},
     {"id":"obras","col":"plan","s":"plan","l":"Desarrollos y Obras","d":"PILAR · archivos vía Cloudinary","x":260,"y":0,"z":-50,"w":6},
@@ -61,6 +64,7 @@
     ["cob","gpagos"],["cob","caja"],["cob","mora"],["cob","colab"],["cob","termin"],["gpagos","caja"],["caja","cierr"],["caja","rend"],["caja","stats"],
     ["mora","caja"],["mora","cierr"],["transf","caja"],["transf","mora"],["colab","cob"],
     ["cierr","icc"],["icc","robot"],["icc","clie"],
-    ["stats","rend"],["stats","caja"],["mapa","clie"],["termin","clie"],["rend","caja"],["public","clie"],["rtdb","caja"]
+    ["stats","rend"],["stats","caja"],["mapa","clie"],["termin","clie"],["rend","caja"],["public","clie"],["rtdb","caja"],
+    ["mp","asist"],["asist","admin"],["admin","adm_cfg"],["adm_cfg","mp_lotes"],["asist","mp_lotes"],["mp_lotes","comer"],["lotes","mp_lotes"]
   ]
 }

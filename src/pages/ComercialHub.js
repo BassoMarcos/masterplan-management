@@ -5,7 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { panelesVisiblesEmpleado, empleadoNivelPanel } from "../config/appConfig";
+import { panelesVisiblesEmpleado, empleadoNivelPanel, panelesDelProyecto } from "../config/appConfig";
 
 const PANEL_INFO = {
   datos: { icono: "📇", desc: "Cargar contactos y ver su situación" },
@@ -53,6 +53,9 @@ export default function ComercialHub() {
     const tieneVentas = empleadoNivelPanel(empleadoData, proyectoId, "comercial", "ventas") !== "ninguno";
     if (tieneVentas) paneles = paneles.filter(p => p.id !== "filtrado");
   }
+
+  // Solo los paneles que este proyecto usa (si el proyecto no usa Comercial, no queda ninguno).
+  paneles = panelesDelProyecto(paneles, proyecto, "comercial");
 
   const tieneEstrategia = paneles.length > 0;
 

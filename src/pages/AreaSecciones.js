@@ -5,7 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
-import { areasVisibles, areasVisiblesEmpleado, empleadoNivelArea } from "../config/appConfig";
+import { areasVisibles, areasVisiblesEmpleado, empleadoNivelArea, areaActivaEnProyecto, panelActivoEnProyecto } from "../config/appConfig";
 
 // Definición de cada área y sus secciones
 const AREAS = {
@@ -79,7 +79,7 @@ export default function AreaSecciones() {
 
   if (loading) return <div style={{ padding: 40, fontFamily: "sans-serif", background: "var(--bg)", color: "var(--text)", minHeight: "100vh" }}>Cargando...</div>;
 
-  if (!area || !areaPermitida) {
+  if (!area || !areaPermitida || !areaActivaEnProyecto(proyecto, pilarId)) {
     return (
       <div style={styles.container}>
         <div style={styles.emptyWrap}>
@@ -120,7 +120,7 @@ export default function AreaSecciones() {
           </div>
         ) : (
           <div style={styles.grid}>
-            {area.secciones.map(s => (
+            {area.secciones.filter(sec => panelActivoEnProyecto(proyecto, pilarId, sec.id)).map(s => (
               <div
                 key={s.id}
                 style={styles.card}

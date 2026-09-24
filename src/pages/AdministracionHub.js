@@ -5,7 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, panelesVisiblesEmpleado, empleadoNivelPanel } from "../config/appConfig";
+import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, panelesVisiblesEmpleado, empleadoNivelPanel, areaActivaEnProyecto, panelesDelProyecto } from "../config/appConfig";
 import { PANELES_ADMINISTRACION } from "./AdministracionPanel";
 
 // Entrada del pilar Administración: 3 secciones que comparten los mismos datos.
@@ -39,7 +39,7 @@ export default function AdministracionHub() {
   const visibles = esEmpleado
     ? areasVisiblesEmpleado(empresaData, empleadoData, proyectoId)
     : areasVisibles(empresaData);
-  const areaPermitida = visibles.some(a => a.id === "administracion");
+  const areaPermitida = visibles.some(a => a.id === "administracion") && areaActivaEnProyecto(proyecto, "administracion");
   if (!areaPermitida) {
     return (
       <div style={styles.container}>
@@ -52,9 +52,9 @@ export default function AdministracionHub() {
   }
 
   const area = AREAS_DEFAULT.find(a => a.id === "administracion");
-  const paneles = esEmpleado
+  const paneles = panelesDelProyecto(esEmpleado
     ? panelesVisiblesEmpleado(empleadoData, proyectoId, "administracion")
-    : area.paneles;
+    : area.paneles, proyecto, "administracion");
 
   return (
     <div style={styles.container}>
