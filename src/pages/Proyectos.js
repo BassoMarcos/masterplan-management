@@ -8,6 +8,7 @@ import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import { conectarDrive, estadoDrive, desconectarDrive, subirArchivo } from "../utils/drive";
 import PizarraFlotante from "../components/PizarraFlotante";
+import { comprimirImagen } from "../utils/imagen";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
 
@@ -72,12 +73,17 @@ export default function Proyectos() {
     return () => { vivo = false; };
   }, [empresaUid]);
 
-  function handleFoto(e) {
+  // El logo se achica antes de guardarlo: una foto de celular superaba el límite de
+  // Firestore (1 MB) y no dejaba crear el proyecto.
+  async function handleFoto(e) {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = ev => setFotoPreview(ev.target.result);
-    reader.readAsDataURL(file);
+    try {
+      setError("");
+      setFotoPreview(await comprimirImagen(file));
+    } catch (err) {
+      setError(err.message || "No se pudo usar esa imagen.");
+    }
   }
 
   async function handleCrear(e) {

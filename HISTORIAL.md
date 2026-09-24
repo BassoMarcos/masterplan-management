@@ -170,6 +170,12 @@
 - Probado: build estricto; lógica en Node (loteo con/sin manzanas y letras, errores, conservar asignaciones al volver atrás); y una **simulación de navegador** (base de datos en memoria) que recorre el asistente completo, el caso "solo vende" y la pantalla de Configuración.
 - Pendiente: el editor de permisos de Empleados todavía muestra todas las áreas (no filtra por las del proyecto); regla "no se cobra hasta terminar la configuración" cuando existan los cobros.
 
+## 2026-09-24 — MasterPlan: logo del proyecto comprimido
+- El logo se guardaba con el tamaño original adentro del proyecto (Firestore). Una foto de celular superaba el límite de 1 MB por registro y no dejaba crear el proyecto.
+- Ahora se achica al subirlo (`src/utils/imagen.js`): 256 px de lado, WebP (con transparencia; PNG si el navegador no soporta WebP). Probado en navegador: foto de 6.214 KB → 18 KB.
+- Decisión con Marcos: el logo va en Firestore (no como link al Drive: se rompe si borran la foto o desconectan el Drive). El Drive queda para archivos pesados (boletos, PDFs, fotos de obra).
+- Estimación de costo charlada (500 empresas × 3 proyectos × 500 clientes, 4 años): ~27 GB, ~US$ 70-260/mes en total (lo que más pesa son las lecturas). Guardar las 48 cuotas de un lote juntas en un solo registro.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
