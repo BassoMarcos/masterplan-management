@@ -150,6 +150,16 @@
 - Probado en Node: lotes con y sin manzana, orden 1-2-4B-10, repetidos, lote sin número, plan/caja quitados, y que al guardar solo se escribe lo que cambió.
 - Riesgo conocido: si las reglas de Firestore (se pegan a mano en la consola) no permiten la subcolección `lotes`, al guardar aparece "falta permiso en las reglas".
 
+## 2026-09-24 — MasterPlan: Configuración ajustada (paso 1 del asistente)
+- Marcos propuso un **asistente paso a paso** al crear un proyecto (diseño en `ESQUEMA_ADMIN_FYJ.md` §11, fuera del repo). Paso 1: ajustar la Configuración a lo que va a preguntar el asistente.
+- **Mora**: en vez de "desde qué día corre", se pregunta el **último día del mes para pagar sin interés** (`mora.ultimoDia`; 10 → quien paga el 11 tiene 1 día de atraso). Las configs viejas con `desdeDia` se convierten solas (desdeDia − 1).
+- **Dueños** (`duenos: [{nombre, porcentaje}]`): reemplaza el reparto fijo parte A / parte B. Varios dueños con su %, tienen que sumar 100 (acepta 33,33 + 33,33 + 33,34). El reparto viejo se convierte solo.
+- **Transferencias**: se muestra como "recargo sobre el valor base" con un ejemplo en pesos.
+- **Cajas separadas**: cada caja muestra cuántos lotes tiene y un botón "Elegir lotes" con la grilla del proyecto (los que están en otra caja se marcan con ★; tocarlos los pasa a esta). Quitar una caja con lotes avisa y los devuelve a la caja principal.
+- **Lotes con letras**: "del 1 al 4" + letras "A, B" crea 1A,1B,2A,2B,3A,3B,4A,4B (acepta "A-D"). Además, con un lote seleccionado, "Desplegar en letras" parte un número en las letras que quieran (el 2 → 2A,2B,2C, conservando plan y caja; si ya estaba partido, suma las letras que falten).
+- Arreglo: al abrir Configuración de un proyecto nuevo podía decir "Tenés cambios sin guardar" sin haber tocado nada (la config inicial se armaba dos veces con ids distintos).
+- Pendiente (próximos pasos): áreas y paneles por proyecto (Administración es opcional: una empresa puede solo vender), y el asistente en sí. El asistente tiene que preguntar cuántas manzanas y lotes por manzana.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App

@@ -35,8 +35,8 @@ const SECCIONES = [
   { id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Planes: moneda, cuotas e incremento" },
   { id: "mora", icono: "⚠️", nombre: "Mora", resumen: "Interés por atraso" },
   { id: "transferencias", icono: "🏦", nombre: "Transferencias", resumen: "Impuesto sobre transferencias" },
-  { id: "distribucion", icono: "📊", nombre: "Distribución de ganancias", resumen: "Cómo se reparte la caja" },
-  { id: "cajas", icono: "🗃️", nombre: "Cajas especiales", resumen: "Agrimensores, escribanos y otras" },
+  { id: "distribucion", icono: "📊", nombre: "Dueños", resumen: "Distribución de ganancias" },
+  { id: "cajas", icono: "🗃️", nombre: "Cajas separadas", resumen: "Lotes que no van a la caja central" },
   { id: "lotes", icono: "🧩", nombre: "Lotes", resumen: "Etapas, manzanas y plan de cada lote" },
 ];
 
@@ -52,12 +52,24 @@ const PLAN_DEFAULT = {
 export const CONFIG_ADMIN_DEFAULT = {
   financiacion: { planes: [PLAN_DEFAULT] },
   cobranza: {
-    mora: { activa: false, porcentajeDia: 0, desdeDia: 11 },
+    // ultimoDia: último día del mes para pagar sin interés (10 → quien paga el 11 tiene 1 día de atraso).
+    mora: { activa: false, porcentajeDia: 0, ultimoDia: 10 },
     transferencia: { impuestoPct: 0 },
-    reparto: { parteA: 100, nombreA: "Parte A", nombreB: "Parte B" },
   },
+  // Dueños del proyecto y su parte de lo que entra (tienen que sumar 100).
+  duenos: [{ id: "empresa", nombre: "Empresa", porcentaje: 100 }],
   cajasEspeciales: [],
 };
+
+// Pasa el reparto viejo (parte A / parte B) a la lista de dueños.
+function duenosDesdeRepartoViejo(r) {
+  const a = Number(r.parteA);
+  if (!Number.isFinite(a)) return null;
+  const lista = [];
+  if (a > 0) lista.push({ id: nuevoId(), nombre: r.nombreA || "Parte A", porcentaje: a });
+  if (a < 100) lista.push({ id: nuevoId(), nombre: r.nombreB || "Parte B", porcentaje: Math.round((100 - a) * 100) / 100 });
+  return lista.length ? lista : null;
+}
 
 function nuevoId() {
   return Math.random().toString(36).slice(2, 9);
@@ -89,13 +101,24 @@ export function completarConfig(guardada) {
   else planesGuardados = null;
   const planes = (planesGuardados && planesGuardados.length ? planesGuardados : [{}]).map(completarPlan);
 
+  // Compatibilidad: la mora vieja guardaba "desde qué día corre" (desdeDia); ahora es el último día para pagar.
+  const moraG = (g.cobranza || {}).mora || {};
+  const mora = { ...d.cobranza.mora, ...moraG };
+  if (moraG.ultimoDia === undefined && moraG.desdeDia !== undefined) mora.ultimoDia = Math.max(1, Number(moraG.desdeDia) - 1);
+  delete mora.desdeDia;
+
+  // Compatibilidad: el reparto viejo (parte A / parte B) pasa a ser la lista de dueños.
+  let duenos;
+  if (Array.isArray(g.duenos) && g.duenos.length) duenos = g.duenos.map(x => ({ id: x.id || nuevoId(), nombre: x.nombre || "", porcentaje: x.porcentaje !== undefined ? x.porcentaje : 0 }));
+  else duenos = duenosDesdeRepartoViejo((g.cobranza || {}).reparto || {}) || d.duenos.map(x => ({ ...x }));
+
   return {
     financiacion: { planes },
     cobranza: {
-      mora: { ...d.cobranza.mora, ...((g.cobranza || {}).mora || {}) },
+      mora,
       transferencia: { ...d.cobranza.transferencia, ...((g.cobranza || {}).transferencia || {}) },
-      reparto: { ...d.cobranza.reparto, ...((g.cobranza || {}).reparto || {}) },
     },
+    duenos,
     cajasEspeciales: Array.isArray(g.cajasEspeciales) ? g.cajasEspeciales : [],
   };
 }
@@ -130,12 +153,19 @@ function validar(cfg) {
   const m = cfg.cobranza.mora;
   if (m.activa) {
     if (!(num(m.porcentajeDia) > 0 && num(m.porcentajeDia) <= 100)) return { mensaje: "El porcentaje de mora por día tiene que ser mayor que 0 y no pasar de 100.", seccion: "mora" };
-    if (!(Number.isInteger(num(m.desdeDia)) && num(m.desdeDia) >= 1 && num(m.desdeDia) <= 31)) return { mensaje: "El día desde el que corre la mora tiene que estar entre 1 y 31.", seccion: "mora" };
+    if (!(Number.isInteger(num(m.ultimoDia)) && num(m.ultimoDia) >= 1 && num(m.ultimoDia) <= 31)) return { mensaje: "El último día para pagar tiene que estar entre 1 y 31.", seccion: "mora" };
   }
   const t = num(cfg.cobranza.transferencia.impuestoPct);
-  if (!(t >= 0 && t <= 100)) return { mensaje: "El impuesto de transferencias tiene que estar entre 0 y 100.", seccion: "transferencias" };
-  const a = num(cfg.cobranza.reparto.parteA);
-  if (!(a >= 0 && a <= 100)) return { mensaje: "La parte A del reparto tiene que estar entre 0 y 100.", seccion: "distribucion" };
+  if (!(t >= 0 && t <= 100)) return { mensaje: "El recargo por transferencia tiene que estar entre 0 y 100.", seccion: "transferencias" };
+  if (!cfg.duenos.length) return { mensaje: "Tiene que haber al menos un dueño.", seccion: "distribucion" };
+  let suma = 0;
+  for (const du of cfg.duenos) {
+    if (!String(du.nombre || "").trim()) return { mensaje: "Todos los dueños necesitan un nombre.", seccion: "distribucion" };
+    const p = num(du.porcentaje);
+    if (!(p > 0 && p <= 100)) return { mensaje: `El porcentaje de "${du.nombre}" tiene que ser mayor que 0 y no pasar de 100.`, seccion: "distribucion" };
+    suma += p;
+  }
+  if (Math.abs(suma - 100) > 0.01) return { mensaje: `Los porcentajes de los dueños suman ${Math.round(suma * 100) / 100}: tienen que sumar 100.`, seccion: "distribucion" };
   for (const c of cfg.cajasEspeciales) {
     if (!String(c.nombre || "").trim()) return { mensaje: "Todas las cajas especiales necesitan un nombre.", seccion: "cajas" };
   }
@@ -193,6 +223,59 @@ function validarLotes(lotes, cfg) {
   return null;
 }
 
+// Letras de lotes partidos. Acepta "A,B", "A B", "a, b" o rangos "A-D". Devuelve {letras, error}.
+function parseLetras(txt) {
+  const t = String(txt || "").trim();
+  if (!t) return { letras: [], error: "" };
+  const letras = [];
+  for (const tok of t.split(/[\s,;]+/).filter(Boolean)) {
+    const rango = tok.match(/^([A-Za-z])-([A-Za-z])$/);
+    if (rango) {
+      const a = rango[1].toUpperCase().charCodeAt(0);
+      const b = rango[2].toUpperCase().charCodeAt(0);
+      if (b < a) return { letras: [], error: `El rango "${tok}" está al revés.` };
+      for (let c = a; c <= b; c++) letras.push(String.fromCharCode(c));
+    } else if (/^[A-Za-z]{1,3}$/.test(tok)) {
+      letras.push(tok.toUpperCase());
+    } else {
+      return { letras: [], error: `"${tok}" no es una letra válida. Usá letras separadas por coma (A, B) o un rango (A-D).` };
+    }
+  }
+  const unicas = [...new Set(letras)];
+  if (unicas.length > 26) return { letras: [], error: "Como máximo 26 letras." };
+  return { letras: unicas, error: "" };
+}
+
+// Números de lote para un alta "del N al M", con letras opcionales: 1..4 + [A,B] → 1A,1B,2A,2B,3A,3B,4A,4B.
+function numerosDeRango(desde, hasta, letras) {
+  const out = [];
+  for (let n = desde; n <= hasta; n++) {
+    if (letras.length) letras.forEach(L => out.push(`${n}${L}`));
+    else out.push(String(n));
+  }
+  return out;
+}
+
+// Despliega un lote en letras: el 2 (o el 2A) + [A,B,C] → 2A, 2B, 2C en la misma etapa/manzana,
+// con el mismo plan y caja. Si el lote original era el número solo (sin letra), se reemplaza.
+// Devuelve {lotes, creados, reemplazado}.
+function partirLote(lotes, id, letras) {
+  const orig = lotes.find(l => l.id === id);
+  if (!orig || !letras.length) return { lotes, creados: 0, reemplazado: false };
+  const m = String(orig.numero).match(/^\d+/);
+  const base = m ? m[0] : String(orig.numero);
+  const existentes = new Set(lotes.map(claveLote));
+  const nuevos = [];
+  letras.forEach(L => {
+    const l = { id: nuevoIdLote(), etapa: orig.etapa, manzana: orig.manzana, numero: `${base}${L}`, planId: orig.planId, cajaId: orig.cajaId };
+    const k = claveLote(l);
+    if (!existentes.has(k)) { nuevos.push(l); existentes.add(k); }
+  });
+  const reemplazado = String(orig.numero) === base && nuevos.length > 0;
+  const resto = reemplazado ? lotes.filter(l => l.id !== id) : lotes;
+  return { lotes: resto.concat(nuevos), creados: nuevos.length, reemplazado };
+}
+
 // Qué hay que escribir en la base: lotes nuevos o cambiados ("set") y lotes borrados ("del").
 function diffLotes(ini, act) {
   const previos = new Map(ini.map(l => [l.id, loteLimpio(l.id, l)]));
@@ -231,22 +314,20 @@ function normalizar(cfg) {
       mora: {
         activa: !!cfg.cobranza.mora.activa,
         porcentajeDia: cfg.cobranza.mora.activa ? num(cfg.cobranza.mora.porcentajeDia) : 0,
-        desdeDia: num(cfg.cobranza.mora.desdeDia),
+        ultimoDia: num(cfg.cobranza.mora.ultimoDia),
       },
       transferencia: { impuestoPct: num(cfg.cobranza.transferencia.impuestoPct) },
-      reparto: {
-        parteA: num(cfg.cobranza.reparto.parteA),
-        nombreA: String(cfg.cobranza.reparto.nombreA || "Parte A").trim() || "Parte A",
-        nombreB: String(cfg.cobranza.reparto.nombreB || "Parte B").trim() || "Parte B",
-      },
     },
+    duenos: cfg.duenos.map(du => ({ id: du.id, nombre: String(du.nombre).trim(), porcentaje: Math.round(num(du.porcentaje) * 100) / 100 })),
     cajasEspeciales: cfg.cajasEspeciales.map(c => ({ id: c.id, nombre: String(c.nombre).trim(), nota: String(c.nota || "").trim() })),
   };
 }
 
 export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado }) {
   const [inicial, setInicial] = useState(() => completarConfig(proyecto?.adminConfig));
-  const [cfg, setCfg] = useState(() => completarConfig(proyecto?.adminConfig));
+  // Arranca desde el MISMO objeto que "inicial": si se armara dos veces, los ids nuevos
+  // saldrían distintos y aparecería "cambios sin guardar" sin haber tocado nada.
+  const [cfg, setCfg] = useState(inicial);
   const [activa, setActiva] = useState("financiacion");
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
@@ -383,7 +464,9 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
           {activa === "mora" && <SeccionMora cfg={cfg} editar={editar} dis={dis} />}
           {activa === "transferencias" && <SeccionTransferencias cfg={cfg} editar={editar} dis={dis} />}
           {activa === "distribucion" && <SeccionDistribucion cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "cajas" && <SeccionCajas cfg={cfg} editar={editar} dis={dis} />}
+          {activa === "cajas" && (
+            <SeccionCajas cfg={cfg} editar={editar} dis={dis} lotes={lotes} editarLotes={editarLotes} lotesCargando={lotesCargando} />
+          )}
           {activa === "lotes" && (
             <SeccionLotes
               cfg={cfg}
@@ -580,7 +663,7 @@ function SeccionMora({ cfg, editar, dis }) {
   const m = cfg.cobranza.mora;
   return (
     <div>
-      <SeccionTitulo icono="⚠️" nombre="Mora" desc="El interés por atraso lo define cada empresa: si hay, cuánto y desde qué día." />
+      <SeccionTitulo icono="⚠️" nombre="Mora" desc="Hasta qué día del mes el cliente puede pagar la cuota sin interés, y cuánto interés se cobra por cada día de atraso." />
       <div style={s.grid}>
         <Campo label="Interés por mora">
           <select style={s.input} disabled={dis} value={m.activa ? "si" : "no"} onChange={e => editar(c => { c.cobranza.mora.activa = e.target.value === "si"; })}>
@@ -590,16 +673,22 @@ function SeccionMora({ cfg, editar, dis }) {
         </Campo>
         {m.activa && (
           <>
-            <Campo label="Porcentaje por día (%)">
-              <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={m.porcentajeDia} onChange={e => editar(c => { c.cobranza.mora.porcentajeDia = e.target.value; })} />
+            <Campo label="Último día del mes para pagar sin interés">
+              <input style={s.input} disabled={dis} type="number" min="1" max="31" value={m.ultimoDia} onChange={e => editar(c => { c.cobranza.mora.ultimoDia = e.target.value; })} />
             </Campo>
-            <Campo label="Empieza a correr desde el día">
-              <input style={s.input} disabled={dis} type="number" min="1" max="31" value={m.desdeDia} onChange={e => editar(c => { c.cobranza.mora.desdeDia = e.target.value; })} />
+            <Campo label="Interés por día de atraso (%)">
+              <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={m.porcentajeDia} onChange={e => editar(c => { c.cobranza.mora.porcentajeDia = e.target.value; })} />
             </Campo>
           </>
         )}
       </div>
-      <p style={s.nota}>{m.activa ? "El interés se suma cada día de atraso, desde el día que elegiste." : "Los clientes que no pagan a tiempo no generan interés."}</p>
+      <p style={s.nota}>
+        {m.activa
+          ? (Number.isInteger(num(m.ultimoDia)) && num(m.ultimoDia) >= 1 && num(m.ultimoDia) < 31
+            ? `Ejemplo: quien paga el día ${num(m.ultimoDia) + 1} tiene 1 día de atraso${num(m.porcentajeDia) > 0 ? ` (${num(m.porcentajeDia)}% de interés)` : ""}. Si el mes tiene menos días, vale el último día del mes.`
+            : "Si el mes tiene menos días, vale el último día del mes.")
+          : "Los clientes que no pagan a tiempo no generan interés."}
+      </p>
     </div>
   );
 }
@@ -608,71 +697,233 @@ function SeccionTransferencias({ cfg, editar, dis }) {
   const t = cfg.cobranza.transferencia;
   return (
     <div>
-      <SeccionTitulo icono="🏦" nombre="Transferencias" desc="El impuesto que se suma cuando el cliente paga por transferencia." />
+      <SeccionTitulo icono="🏦" nombre="Transferencias" desc="Cuánto se suma sobre el valor de la cuota cuando el cliente paga por transferencia." />
       <div style={s.grid}>
-        <Campo label="Impuesto en transferencias (%)">
+        <Campo label="Recargo sobre el valor base (%)">
           <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={t.impuestoPct} onChange={e => editar(c => { c.cobranza.transferencia.impuestoPct = e.target.value; })} />
         </Campo>
       </div>
-      <p style={s.nota}>Si el impuesto es 0, las transferencias se cobran sin recargo.</p>
+      <p style={s.nota}>
+        {num(t.impuestoPct) > 0
+          ? `Ejemplo: una cuota de $100.000 pagada por transferencia se cobra $${Math.round(100000 * (1 + num(t.impuestoPct) / 100)).toLocaleString("es-AR")}.`
+          : "Con 0, las transferencias se cobran sin recargo."}
+      </p>
     </div>
   );
 }
 
 function SeccionDistribucion({ cfg, editar, dis }) {
-  const r = cfg.cobranza.reparto;
-  const parteA = num(r.parteA);
-  const parteB = Number.isFinite(parteA) ? Math.round((100 - parteA) * 100) / 100 : "";
+  const suma = cfg.duenos.reduce((acc, du) => acc + (Number.isFinite(num(du.porcentaje)) ? num(du.porcentaje) : 0), 0);
+  const sumaR = Math.round(suma * 100) / 100;
+  const ok = Math.abs(suma - 100) <= 0.01;
   return (
     <div>
-      <SeccionTitulo icono="📊" nombre="Distribución de ganancias" desc="Cómo se reparte lo cobrado, entre dos partes." />
-      <div style={s.grid}>
-        <Campo label="Nombre de la parte A">
-          <input style={s.input} disabled={dis} value={r.nombreA} onChange={e => editar(c => { c.cobranza.reparto.nombreA = e.target.value; })} />
-        </Campo>
-        <Campo label="Porcentaje de la parte A (%)">
-          <input style={s.input} disabled={dis} type="number" min="0" max="100" step="1" value={r.parteA} onChange={e => editar(c => { c.cobranza.reparto.parteA = e.target.value; })} />
-        </Campo>
-        <Campo label="Nombre de la parte B">
-          <input style={s.input} disabled={dis} value={r.nombreB} onChange={e => editar(c => { c.cobranza.reparto.nombreB = e.target.value; })} />
-        </Campo>
-        <Campo label="Porcentaje de la parte B (%)">
-          <div style={{ ...s.input, background: "var(--surface)", color: "var(--text2)" }}>{parteB === "" ? "—" : parteB}</div>
-        </Campo>
-      </div>
-      <p style={s.nota}>La parte B es lo que queda: siempre suman 100.</p>
+      <SeccionTitulo
+        icono="📊"
+        nombre="Dueños y distribución de ganancias"
+        desc="Si el proyecto se divide entre varios dueños, cargá cada uno con su porcentaje. Lo que entra queda separado según esos porcentajes, listo para repartir las ganancias. Si hay un solo dueño, dejalo con 100%."
+      />
+      {cfg.duenos.map((du, i) => (
+        <div key={du.id} style={s.caja}>
+          <input
+            style={{ ...s.input, flex: 2, minWidth: 180 }}
+            disabled={dis}
+            placeholder="Nombre del dueño (ej. Socio A)"
+            value={du.nombre}
+            onChange={e => editar(c => { c.duenos[i].nombre = e.target.value; })}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, minWidth: 120 }}>
+            <input
+              style={s.input}
+              disabled={dis}
+              type="number"
+              min="0"
+              max="100"
+              step="0.01"
+              value={du.porcentaje}
+              onChange={e => editar(c => { c.duenos[i].porcentaje = e.target.value; })}
+            />
+            <span style={{ color: "var(--text2)" }}>%</span>
+          </div>
+          {!dis && cfg.duenos.length > 1 && (
+            <button type="button" style={s.quitar} onClick={() => editar(c => { c.duenos.splice(i, 1); })}>Quitar</button>
+          )}
+        </div>
+      ))}
+      <p style={{ ...s.nota, color: ok ? "var(--green, #16a34a)" : "var(--red, #dc2626)", fontWeight: 600 }}>
+        {ok ? "✓ Suman 100%" : `Suman ${sumaR}%: tienen que sumar 100%.`}
+      </p>
+      {!dis && (
+        <button
+          type="button"
+          style={{ ...s.btnSec, marginTop: 10 }}
+          onClick={() => editar(c => {
+            const resto = Math.max(0, Math.round((100 - suma) * 100) / 100);
+            c.duenos.push({ id: nuevoId(), nombre: "", porcentaje: resto });
+          })}
+        >
+          + Agregar dueño
+        </button>
+      )}
     </div>
   );
 }
 
-function SeccionCajas({ cfg, editar, dis }) {
-  function agregarCaja() {
-    editar(c => { c.cajasEspeciales.push({ id: nuevoId(), nombre: "", nota: "" }); });
-  }
+// Agrupa lotes por etapa → manzana, en orden "humano". Devuelve [{etapa, manzanas: [{manzana, lotes}]}].
+function agruparLotes(lotes) {
+  const porEtapa = new Map();
+  lotes.forEach(l => {
+    if (!porEtapa.has(l.etapa)) porEtapa.set(l.etapa, new Map());
+    const mzs = porEtapa.get(l.etapa);
+    if (!mzs.has(l.manzana)) mzs.set(l.manzana, []);
+    mzs.get(l.manzana).push(l);
+  });
+  return [...porEtapa.keys()].sort(cmpNatural).map(etapa => {
+    const mzs = porEtapa.get(etapa);
+    return {
+      etapa,
+      manzanas: [...mzs.keys()].sort(cmpNatural).map(manzana => ({
+        manzana,
+        lotes: mzs.get(manzana).slice().sort((a, b) => cmpNatural(a.numero, b.numero)),
+      })),
+    };
+  });
+}
+
+// Grilla para marcar lotes (se usa en Cajas especiales; más adelante también en el asistente).
+// estado(l) → "on" (marcado), "otro" (tomado por otra cosa; se muestra con aviso) u "off".
+function SelectorLotes({ lotes, estado, textoOtro, onCambiar, dis }) {
+  const grupos = agruparLotes(lotes);
   return (
     <div>
-      <SeccionTitulo icono="🗃️" nombre="Cajas especiales" desc={'Grupos de lotes cuya plata no entra a la caja principal (por ejemplo agrimensores, escribanos o la propia empresa). Cada uno tiene su caja. Los lotes y sus dueños se asignan cuando esté lista la sección de Lotes.'} />
-      {cfg.cajasEspeciales.length === 0 && <p style={s.vacio}>Todavía no hay cajas especiales.</p>}
-      {cfg.cajasEspeciales.map((c, i) => (
-        <div key={c.id} style={s.caja}>
-          <input
-            style={{ ...s.input, flex: 1, minWidth: 160 }}
-            disabled={dis}
-            placeholder="Nombre de la caja (ej. Agrimensores)"
-            value={c.nombre}
-            onChange={e => editar(x => { x.cajasEspeciales[i].nombre = e.target.value; })}
-          />
-          <input
-            style={{ ...s.input, flex: 2, minWidth: 200 }}
-            disabled={dis}
-            placeholder="Nota (opcional)"
-            value={c.nota}
-            onChange={e => editar(x => { x.cajasEspeciales[i].nota = e.target.value; })}
-          />
-          {!dis && <button type="button" style={s.quitar} onClick={() => editar(x => { x.cajasEspeciales.splice(i, 1); })}>Quitar</button>}
+      {grupos.map(g => (
+        <div key={g.etapa} style={{ marginTop: 10 }}>
+          <div style={{ ...s.etapaTitulo, fontSize: 13 }}>{g.etapa}</div>
+          {g.manzanas.map(mz => {
+            const todosOn = mz.lotes.every(l => estado(l) === "on");
+            return (
+              <div key={mz.manzana || "_sin"} style={s.mzBloque}>
+                <div style={s.mzTop}>
+                  <span style={{ fontSize: 12.5, fontWeight: 700 }}>{mz.manzana || "Sin manzana"}</span>
+                  {!dis && (
+                    <button type="button" style={s.linkBtn} onClick={() => onCambiar(mz.lotes.map(l => l.id), !todosOn)}>
+                      {todosOn ? "Quitar todos" : "Marcar todos"}
+                    </button>
+                  )}
+                </div>
+                <div style={s.chips}>
+                  {mz.lotes.map(l => {
+                    const e = estado(l);
+                    return (
+                      <button
+                        key={l.id}
+                        type="button"
+                        title={e === "otro" ? `${etiquetaLote(l)} — ${textoOtro(l)}` : etiquetaLote(l)}
+                        onClick={() => { if (!dis) onCambiar([l.id], e !== "on"); }}
+                        style={{
+                          ...s.chip,
+                          border: e === "on" ? "2px solid #BA7517" : "2px dashed var(--border2)",
+                          background: e === "on" ? "#BA751722" : "var(--bg)",
+                          color: e === "otro" ? "var(--text2)" : "var(--text)",
+                          cursor: dis ? "default" : "pointer",
+                        }}
+                      >
+                        {l.numero}
+                        {e === "otro" && <span style={s.marcaChip}>★</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       ))}
-      {!dis && <button type="button" style={s.btnSec} onClick={agregarCaja}>+ Nueva caja especial</button>}
+    </div>
+  );
+}
+
+function SeccionCajas({ cfg, editar, dis, lotes, editarLotes, lotesCargando }) {
+  const [abierta, setAbierta] = useState(null);
+
+  function agregarCaja() {
+    const id = nuevoId();
+    editar(c => { c.cajasEspeciales.push({ id, nombre: "", nota: "" }); });
+    setAbierta(id);
+  }
+
+  function quitarCaja(i, caja) {
+    const n = lotes.filter(l => l.cajaId === caja.id).length;
+    if (n > 0 && !window.confirm(`La caja "${caja.nombre || "sin nombre"}" tiene ${n} lote(s). Si la quitás, esos lotes vuelven a la caja principal. ¿Seguir?`)) return;
+    if (n > 0) editarLotes(c => { c.forEach(l => { if (l.cajaId === caja.id) l.cajaId = null; }); });
+    editar(x => { x.cajasEspeciales.splice(i, 1); });
+    if (abierta === caja.id) setAbierta(null);
+  }
+
+  const nombreCaja = (id) => { const c = cfg.cajasEspeciales.find(x => x.id === id); return c ? (c.nombre || "otra caja") : "otra caja"; };
+
+  return (
+    <div>
+      <SeccionTitulo
+        icono="🗃️"
+        nombre="Cajas separadas de la caja central"
+        desc={'Por ejemplo: si a un participante del desarrollo se le pagó con lotes, su caja separa esos lotes y los pagos de esos lotes van solo ahí, sin mezclarse con la caja central. Creá las cajas que necesites y elegí qué lotes le corresponden a cada una.'}
+      />
+      {cfg.cajasEspeciales.length === 0 && <p style={s.vacio}>Todavía no hay cajas separadas.</p>}
+      {cfg.cajasEspeciales.map((c, i) => {
+        const cant = lotes.filter(l => l.cajaId === c.id).length;
+        const open = abierta === c.id;
+        return (
+          <div key={c.id} style={s.plan}>
+            <div style={s.caja}>
+              <input
+                style={{ ...s.input, flex: 1, minWidth: 160, fontWeight: 700 }}
+                disabled={dis}
+                placeholder="Nombre de la caja (ej. Agrimensores)"
+                value={c.nombre}
+                onChange={e => editar(x => { x.cajasEspeciales[i].nombre = e.target.value; })}
+              />
+              <input
+                style={{ ...s.input, flex: 2, minWidth: 200 }}
+                disabled={dis}
+                placeholder="Nota (opcional)"
+                value={c.nota}
+                onChange={e => editar(x => { x.cajasEspeciales[i].nota = e.target.value; })}
+              />
+              {!dis && <button type="button" style={s.quitar} onClick={() => quitarCaja(i, c)}>Quitar</button>}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 13, color: "var(--text2)" }}>{cant} lote(s) en esta caja</span>
+              {lotes.length > 0 && (
+                <button type="button" style={s.btnSec} onClick={() => setAbierta(open ? null : c.id)}>
+                  {open ? "Listo" : (dis ? "Ver lotes" : "Elegir lotes")}
+                </button>
+              )}
+            </div>
+            {open && (
+              <div style={{ marginTop: 8 }}>
+                <p style={{ ...s.nota, marginTop: 0 }}>
+                  Tocá los lotes que le corresponden a esta caja. Los que tienen ★ están en otra caja: si los tocás, pasan a esta.
+                </p>
+                <SelectorLotes
+                  lotes={lotes}
+                  dis={dis}
+                  estado={l => (l.cajaId === c.id ? "on" : (l.cajaId ? "otro" : "off"))}
+                  textoOtro={l => `está en ${nombreCaja(l.cajaId)}`}
+                  onCambiar={(ids, marcar) => editarLotes(arr => {
+                    const set = new Set(ids);
+                    arr.forEach(l => { if (set.has(l.id)) l.cajaId = marcar ? c.id : null; });
+                  })}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
+      {!lotesCargando && lotes.length === 0 && cfg.cajasEspeciales.length > 0 && (
+        <p style={s.nota}>Para elegir los lotes de cada caja, primero cargalos en la sección Lotes.</p>
+      )}
+      {!dis && <button type="button" style={{ ...s.btnSec, marginTop: 6 }} onClick={agregarCaja}>+ Nueva caja</button>}
     </div>
   );
 }
@@ -687,7 +938,10 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
   const [manzana, setManzana] = useState("");
   const [desde, setDesde] = useState("1");
   const [hasta, setHasta] = useState("");
+  const [letrasAlta, setLetrasAlta] = useState("");
   const [numero, setNumero] = useState("");
+  const [letrasPartir, setLetrasPartir] = useState("");
+  const [msgPartir, setMsgPartir] = useState("");
   const [planNuevo, setPlanNuevo] = useState(planes.length === 1 ? planes[0].id : "");
   const [cajaNueva, setCajaNueva] = useState("");
   const [msgAlta, setMsgAlta] = useState("");
@@ -723,8 +977,10 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
       const d = Number(desde);
       const h = Number(hasta);
       if (!Number.isInteger(d) || !Number.isInteger(h) || d < 1 || h < d) { setMsgAlta("Revisá los números: \"del\" tiene que ser 1 o más, y \"al\" igual o mayor."); return; }
-      if (h - d + 1 > 500) { setMsgAlta("Se pueden crear hasta 500 lotes por vez."); return; }
-      for (let n = d; n <= h; n++) numeros.push(String(n));
+      const pl = parseLetras(letrasAlta);
+      if (pl.error) { setMsgAlta(pl.error); return; }
+      if ((h - d + 1) * Math.max(1, pl.letras.length) > 500) { setMsgAlta("Se pueden crear hasta 500 lotes por vez."); return; }
+      numeros = numerosDeRango(d, h, pl.letras);
     } else {
       if (!numero.trim()) { setMsgAlta("Escribí el número del lote (por ejemplo: 4B)."); return; }
       numeros = [numero.trim()];
@@ -755,16 +1011,7 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
     return true;
   };
   const visibles = lotes.filter(pasaFiltro);
-
-  // Agrupar: etapa → manzana → lotes
-  const porEtapa = new Map();
-  visibles.forEach(l => {
-    if (!porEtapa.has(l.etapa)) porEtapa.set(l.etapa, new Map());
-    const mzs = porEtapa.get(l.etapa);
-    if (!mzs.has(l.manzana)) mzs.set(l.manzana, []);
-    mzs.get(l.manzana).push(l);
-  });
-  const etapasOrden = [...porEtapa.keys()].sort(cmpNatural);
+  const grupos = agruparLotes(visibles);
 
   function toggle(id) {
     setSel(prev => {
@@ -802,6 +1049,17 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
   function editarUnico(campo, valor) {
     editarLotes(c => { c.forEach(l => { if (l.id === unico.id) l[campo] = valor; }); });
   }
+  function partir() {
+    const pl = parseLetras(letrasPartir);
+    if (pl.error) { setMsgPartir(pl.error); return; }
+    if (!pl.letras.length) { setMsgPartir("Escribí las letras (ej. A, B, C)."); return; }
+    const r = partirLote(lotes, unico.id, pl.letras);
+    if (!r.creados) { setMsgPartir("Esas letras ya existían: no se agregó nada."); return; }
+    editarLotes(() => r.lotes);
+    if (r.reemplazado) setSel(new Set());
+    setLetrasPartir("");
+    setMsgPartir(`✓ ${r.creados} lote(s) nuevos${r.reemplazado ? " (el lote sin letra se reemplazó)" : ""}. Acordate de guardar.`);
+  }
 
   const sinPlan = lotes.filter(l => !l.planId).length;
 
@@ -837,6 +1095,9 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
                 <Campo label="Al lote">
                   <input style={s.input} type="number" min="1" placeholder="Ej: 20" value={hasta} onChange={e => setHasta(e.target.value)} />
                 </Campo>
+                <Campo label="Letras (si están partidos)">
+                  <input style={s.input} placeholder="Ej: A, B" value={letrasAlta} onChange={e => setLetrasAlta(e.target.value)} />
+                </Campo>
               </>
             ) : (
               <Campo label="Número de lote">
@@ -858,6 +1119,15 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
           </div>
           <datalist id="mp-etapas">{etapasExistentes.map(e => <option key={e} value={e} />)}</datalist>
           <datalist id="mp-manzanas">{manzanasExistentes.map(m => <option key={m} value={m} />)}</datalist>
+          {modo === "rango" && (() => {
+            const d = Number(desde);
+            const h = Number(hasta);
+            const pl = parseLetras(letrasAlta);
+            if (!Number.isInteger(d) || !Number.isInteger(h) || d < 1 || h < d || pl.error) return null;
+            const nums = numerosDeRango(d, h, pl.letras);
+            const muestra = nums.length > 10 ? nums.slice(0, 8).join(", ") + ` … ${nums[nums.length - 1]}` : nums.join(", ");
+            return <p style={s.nota}>Se van a crear {nums.length} lote(s): {muestra}</p>;
+          })()}
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
             <button type="button" style={s.btnSec} onClick={crear}>+ Agregar</button>
             {msgAlta && <span style={{ fontSize: 13, color: "var(--text2)" }}>{msgAlta}</span>}
@@ -928,20 +1198,26 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
               </Campo>
             </div>
           )}
+          {unico && (
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+              <Campo label={`Desplegar el lote ${(String(unico.numero).match(/^\d+/) || [unico.numero])[0]} en letras`}>
+                <input style={s.input} placeholder="Ej: A, B, C" value={letrasPartir} onChange={e => { setLetrasPartir(e.target.value); setMsgPartir(""); }} />
+              </Campo>
+              <button type="button" style={s.btnSec} onClick={partir}>Desplegar</button>
+              {msgPartir && <span style={{ fontSize: 13, color: "var(--text2)" }}>{msgPartir}</span>}
+            </div>
+          )}
         </div>
       )}
 
       {!errorCarga && lotes.length === 0 && <p style={s.vacio}>Todavía no hay lotes. Agregá los primeros con el formulario de arriba.</p>}
       {lotes.length > 0 && visibles.length === 0 && <p style={s.vacio}>Ningún lote coincide con el filtro.</p>}
 
-      {etapasOrden.map(et => {
-        const mzs = porEtapa.get(et);
-        const mzOrden = [...mzs.keys()].sort(cmpNatural);
+      {grupos.map(g => {
         return (
-          <div key={et} style={{ marginTop: 16 }}>
-            <div style={s.etapaTitulo}>{et}</div>
-            {mzOrden.map(mz => {
-              const grupo = mzs.get(mz).slice().sort((a, b) => cmpNatural(a.numero, b.numero));
+          <div key={g.etapa} style={{ marginTop: 16 }}>
+            <div style={s.etapaTitulo}>{g.etapa}</div>
+            {g.manzanas.map(({ manzana: mz, lotes: grupo }) => {
               const ids = grupo.map(l => l.id);
               return (
                 <div key={mz || "_sin"} style={s.mzBloque}>
