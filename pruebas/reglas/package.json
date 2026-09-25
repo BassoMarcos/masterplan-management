@@ -1,0 +1,9 @@
+{
+  "name": "pruebas-reglas",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.10.0"
+  }
+}
