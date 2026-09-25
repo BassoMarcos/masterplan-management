@@ -181,6 +181,14 @@
 - Nueva regla general (`firestore.rules`, guardado en el repo): todo lo que está dentro de un proyecto lo pueden usar el dueño de la empresa, sus empleados aprobados y el SuperAdmin. Probado en el emulador de Firebase: 18 casos (dueño, empleado aprobado/pendiente, otra empresa, sin sesión, SuperAdmin, tanda de 200 lotes + proyecto, reglas viejas intactas).
 - El asistente ahora dice si el error es de permisos.
 
+## 2026-09-25 — MasterPlan: financiación por moneda, grupos automáticos y letras en lista
+- Pedido de Marcos tras probar el asistente:
+  - **Financiación del proyecto = reglas por moneda** (pesos / dólares): ¿se usa?, ¿aumenta?, ¿cómo (ICC / % fijo / manual / fija)? y ¿cada cuántos meses? **Sin cantidad de cuotas**: eso, el valor de la cuota y el grupo de cada cliente se ponen **al firmar cada lote** (contrato). Datos: `adminConfig.financiacion = { ARS: {habilitada, incremento, grupos}, USD: {...} }`. Lo guardado con "planes" se convierte solo (primer plan de cada moneda).
+  - **Grupos de aumento automáticos**: aumenta cada N meses → N grupos; el grupo k arranca en el mes k (cada 3: G1 Ene-Abr-Jul-Oct, G2 Feb-May-Ago-Nov, G3 Mar-Jun-Sep-Dic). Si N no divide a 12, los meses cambian por año. Solo se editan nombre y color (se conservan si cambia N).
+  - **Se sacó el plan de los lotes** ("¿Qué lotes van con cada financiación?" y asignar plan en Lotes): se define al comprar el lote.
+  - **Letras en lista**: "¿Están partidos?" → No / 2 partes (A,B) / 3 partes (A,B,C) … hasta 6. En Configuración → Lotes: "Partir el lote N en…".
+- Probado: reglas en Node y simulación de navegador (asistente completo, solo vende, Configuración con config vieja).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App

@@ -7,24 +7,31 @@ export const MESES_CORTO = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ag
 export const COLORES = ["#639922", "#D4537E", "#378ADD", "#BA7517", "#7F77DD", "#1D9E75", "#D85A30", "#888780"];
 
 export const TIPOS_INCREMENTO = [
-  { id: "no", label: "Sin incremento", ayuda: "La cuota no cambia durante todo el plan." },
+  { id: "no", label: "Sin incremento (cuota fija)", ayuda: "La cuota no cambia nunca." },
   { id: "icc", label: "Índice ICC (automático)", ayuda: "El robot busca el porcentaje del INDEC y lo propone. Lo confirmás antes de aplicar." },
   { id: "fijo", label: "Porcentaje fijo", ayuda: "En cada aumento se aplica siempre el mismo porcentaje." },
   { id: "manual", label: "Manual", ayuda: "Cada aumento lo cargás a mano, con el porcentaje que quieras." },
 ];
 
 
-export const PLAN_DEFAULT = {
-  nombre: "Plan general",
-  moneda: "ARS",
-  cuotas: 60,
-  incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, usdAumenta: false },
-  grupos: [],
-};
+// Monedas en las que se pueden pagar las cuotas del proyecto.
+export const MONEDAS = [
+  { id: "ARS", nombre: "Pesos" },
+  { id: "USD", nombre: "Dólares" },
+];
+
+// Como máximo se aumenta una vez por año (cada 12 meses): más grupos no tienen sentido.
+export const CADA_MESES_MAX = 12;
+
+// Financiación del PROYECTO: una regla por moneda (¿se usa? ¿aumenta? ¿cómo y cada cuánto?).
+// La cantidad de cuotas y el valor de la cuota NO van acá: se ponen al firmar cada lote.
+function monedaDefault(id) {
+  return { habilitada: id === "ARS", incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0 }, grupos: [] };
+}
 
 // Valores iniciales neutros: la empresa decide todo. (Los de F&J se cargan cuando llegue ese momento.)
 export const CONFIG_ADMIN_DEFAULT = {
-  financiacion: { planes: [PLAN_DEFAULT] },
+  financiacion: { ARS: monedaDefault("ARS"), USD: monedaDefault("USD") },
   cobranza: {
     // ultimoDia: último día del mes para pagar sin interés (10 → quien paga el 11 tiene 1 día de atraso).
     mora: { activa: false, porcentajeDia: 0, ultimoDia: 10 },
@@ -34,6 +41,68 @@ export const CONFIG_ADMIN_DEFAULT = {
   duenos: [{ id: "empresa", nombre: "Empresa", porcentaje: 100 }],
   cajasEspeciales: [],
 };
+
+// ── Grupos de aumento ──────────────────────────────────────────
+// Si las cuotas aumentan cada N meses, los clientes se reparten en N grupos: el grupo k arranca en el
+// mes k y aumenta cada N meses. Así todos los meses aumenta un grupo distinto y cada cliente aumenta
+// cada N meses. Ej. cada 3: G1 Ene-Abr-Jul-Oct, G2 Feb-May-Ago-Nov, G3 Mar-Jun-Sep-Dic.
+// A qué grupo va cada cliente se decide al firmar su lote (según el mes de la primera cuota).
+export function ajustarGrupos(grupos, n) {
+  const cant = Number.isInteger(num(n)) && num(n) >= 1 && num(n) <= CADA_MESES_MAX ? num(n) : 0;
+  const out = [];
+  for (let k = 0; k < cant; k++) {
+    const prev = (grupos || [])[k];
+    out.push({
+      id: prev && prev.id ? prev.id : nuevoId(),
+      nombre: prev && prev.nombre !== undefined ? prev.nombre : `Grupo ${k + 1}`,
+      color: prev && prev.color ? prev.color : COLORES[k % COLORES.length],
+    });
+  }
+  return out;
+}
+
+// Meses (1-12) en que aumenta el grupo k (1..N). Si N no divide a 12 (ej. cada 5), los meses cambian
+// de un año a otro: devuelve null y se muestra "arranca en tal mes y sigue cada N meses".
+export function mesesDelGrupo(k, n) {
+  if (!(n >= 1 && n <= 12) || 12 % n !== 0) return null;
+  const out = [];
+  for (let m = k; m <= 12; m += n) out.push(m);
+  return out;
+}
+
+export function textoGrupo(k, n) {
+  const meses = mesesDelGrupo(k, n);
+  if (meses) return meses.map(m => MESES_CORTO[m - 1]).join(" · ");
+  return `Arranca en ${MESES_CORTO[(k - 1) % 12]} y sigue cada ${n} meses (los meses cambian de un año a otro)`;
+}
+
+function completarMoneda(id, guardada) {
+  const d = monedaDefault(id);
+  const x = guardada || {};
+  const incremento = { ...d.incremento, ...(x.incremento || {}) };
+  delete incremento.usdAumenta;
+  const tipo = incremento.tipo;
+  return {
+    habilitada: x.habilitada !== undefined ? !!x.habilitada : d.habilitada,
+    incremento,
+    grupos: tipo === "no" ? [] : ajustarGrupos(Array.isArray(x.grupos) ? x.grupos : [], incremento.cadaMeses),
+  };
+}
+
+// Compatibilidad: antes la financiación eran "planes" (o un único plan con moneda/cuotas/incremento).
+// Se toma, de cada moneda, el primer plan como la regla de esa moneda.
+export function completarFinanciacion(fg) {
+  const f = fg || {};
+  if (f.ARS || f.USD) return { ARS: completarMoneda("ARS", f.ARS), USD: completarMoneda("USD", f.USD) };
+  const planes = Array.isArray(f.planes) ? f.planes : ((f.moneda || f.cuotas || f.incremento) ? [f] : []);
+  const out = {};
+  MONEDAS.forEach(({ id }) => {
+    const p = planes.find(x => (x.moneda || "ARS") === id);
+    if (p) out[id] = completarMoneda(id, { habilitada: true, incremento: p.incremento, grupos: p.grupos });
+    else out[id] = completarMoneda(id, planes.length ? { habilitada: false } : undefined);
+  });
+  return out;
+}
 
 // Pasa el reparto viejo (parte A / parte B) a la lista de dueños.
 export function duenosDesdeRepartoViejo(r) {
@@ -49,31 +118,10 @@ export function nuevoId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
-// Completa un plan guardado (o parcial) con los valores por defecto, y le asegura un id.
-export function completarPlan(guardado) {
-  const p = guardado || {};
-  return {
-    id: p.id || nuevoId(),
-    nombre: p.nombre !== undefined ? p.nombre : PLAN_DEFAULT.nombre,
-    moneda: p.moneda || PLAN_DEFAULT.moneda,
-    cuotas: p.cuotas !== undefined ? p.cuotas : PLAN_DEFAULT.cuotas,
-    incremento: { ...PLAN_DEFAULT.incremento, ...(p.incremento || {}) },
-    grupos: Array.isArray(p.grupos) ? p.grupos : [],
-  };
-}
-
 // Mezcla lo guardado con los valores iniciales, así un campo nuevo nunca rompe una config vieja.
 export function completarConfig(guardada) {
   const g = guardada || {};
   const d = CONFIG_ADMIN_DEFAULT;
-  const fg = g.financiacion || {};
-  // Compatibilidad: una config vieja (antes de los "planes") tenía moneda/cuotas/incremento
-  // directamente en financiacion, como un único plan.
-  let planesGuardados;
-  if (Array.isArray(fg.planes)) planesGuardados = fg.planes;
-  else if (fg.moneda || fg.cuotas || fg.incremento) planesGuardados = [fg];
-  else planesGuardados = null;
-  const planes = (planesGuardados && planesGuardados.length ? planesGuardados : [{}]).map(completarPlan);
 
   // Compatibilidad: la mora vieja guardaba "desde qué día corre" (desdeDia); ahora es el último día para pagar.
   const moraG = (g.cobranza || {}).mora || {};
@@ -87,7 +135,7 @@ export function completarConfig(guardada) {
   else duenos = duenosDesdeRepartoViejo((g.cobranza || {}).reparto || {}) || d.duenos.map(x => ({ ...x }));
 
   return {
-    financiacion: { planes },
+    financiacion: completarFinanciacion(g.financiacion),
     cobranza: {
       mora,
       transferencia: { ...d.cobranza.transferencia, ...((g.cobranza || {}).transferencia || {}) },
@@ -104,23 +152,19 @@ export function num(v) {
 
 // Devuelve {mensaje, seccion} del primer error encontrado (o null si está todo bien).
 export function validar(cfg) {
-  const planes = cfg.financiacion.planes;
-  const varios = planes.length > 1;
-  const pref = (p) => (varios ? `En el plan "${p.nombre || "sin nombre"}": ` : "");
-  for (const p of planes) {
-    if (!String(p.nombre || "").trim()) return { mensaje: "Todos los planes de financiación necesitan un nombre.", seccion: "financiacion" };
-    if (!(Number.isInteger(num(p.cuotas)) && num(p.cuotas) >= 1 && num(p.cuotas) <= 600)) return { mensaje: pref(p) + "la cantidad de cuotas tiene que ser un número entero entre 1 y 600.", seccion: "financiacion" };
-    const inc = p.incremento;
+  const encendidas = MONEDAS.filter(({ id }) => cfg.financiacion[id] && cfg.financiacion[id].habilitada);
+  if (!encendidas.length) return { mensaje: "Elegí al menos una moneda para las cuotas.", seccion: "financiacion" };
+  for (const mon of encendidas) {
+    const f = cfg.financiacion[mon.id];
+    const inc = f.incremento;
+    const pref = `Cuotas en ${mon.nombre.toLowerCase()}: `;
     if (inc.tipo !== "no") {
-      if (!(Number.isInteger(num(inc.cadaMeses)) && num(inc.cadaMeses) >= 1 && num(inc.cadaMeses) <= 60)) return { mensaje: pref(p) + "\"Aumenta cada\" tiene que ser un número de meses entre 1 y 60.", seccion: "financiacion" };
-    }
-    if (inc.tipo === "fijo") {
-      if (!(num(inc.porcentaje) > 0 && num(inc.porcentaje) <= 100)) return { mensaje: pref(p) + "el porcentaje por aumento tiene que ser mayor que 0 y no pasar de 100.", seccion: "financiacion" };
-    }
-    if (inc.tipo === "icc" || inc.tipo === "fijo") {
-      for (const g of p.grupos) {
-        if (!String(g.nombre || "").trim()) return { mensaje: pref(p) + "todos los grupos de aumento necesitan un nombre.", seccion: "financiacion" };
-        if (!Array.isArray(g.meses) || g.meses.length === 0) return { mensaje: pref(p) + `el grupo "${g.nombre}" necesita al menos un mes.`, seccion: "financiacion" };
+      const n = num(inc.cadaMeses);
+      if (!(Number.isInteger(n) && n >= 1 && n <= CADA_MESES_MAX)) return { mensaje: pref + `"aumenta cada" tiene que ser entre 1 y ${CADA_MESES_MAX} meses.`, seccion: "financiacion" };
+      if (inc.tipo === "fijo" && !(num(inc.porcentaje) > 0 && num(inc.porcentaje) <= 100)) return { mensaje: pref + "el porcentaje por aumento tiene que ser mayor que 0 y no pasar de 100.", seccion: "financiacion" };
+      if (f.grupos.length !== n) return { mensaje: pref + "los grupos de aumento no coinciden con cada cuántos meses aumenta.", seccion: "financiacion" };
+      for (const g of f.grupos) {
+        if (!String(g.nombre || "").trim()) return { mensaje: pref + "todos los grupos de aumento necesitan un nombre.", seccion: "financiacion" };
       }
     }
   }
@@ -155,7 +199,6 @@ export function loteLimpio(id, d) {
     etapa: String(d.etapa || "").trim(),
     manzana: String(d.manzana || "").trim(),
     numero: String(d.numero || "").trim(),
-    planId: d.planId || null,
     cajaId: d.cajaId || null,
   };
 }
@@ -179,20 +222,16 @@ export function cmpNatural(a, b) {
 }
 
 export function validarLotes(lotes, cfg) {
-  const planIds = new Set(cfg.financiacion.planes.map(p => p.id));
   const cajaIds = new Set(cfg.cajasEspeciales.map(c => c.id));
   const vistos = new Set();
-  let planPerdido = 0;
   let cajaPerdida = 0;
   for (const l of lotes) {
     if (!String(l.etapa || "").trim() || !String(l.numero || "").trim()) return { mensaje: "Todos los lotes necesitan etapa y número.", seccion: "lotes" };
     const k = claveLote(l);
     if (vistos.has(k)) return { mensaje: `El lote ${etiquetaLote(l)} está repetido.`, seccion: "lotes" };
     vistos.add(k);
-    if (l.planId && !planIds.has(l.planId)) planPerdido++;
     if (l.cajaId && !cajaIds.has(l.cajaId)) cajaPerdida++;
   }
-  if (planPerdido) return { mensaje: `Hay ${planPerdido} lote(s) asignados a un plan de financiación que quitaste. Asignales otro plan antes de guardar.`, seccion: "lotes" };
   if (cajaPerdida) return { mensaje: `Hay ${cajaPerdida} lote(s) en una caja especial que quitaste. Pasalos a otra caja antes de guardar.`, seccion: "lotes" };
   return null;
 }
@@ -220,6 +259,16 @@ export function parseLetras(txt) {
   return { letras: unicas, error: "" };
 }
 
+// Opciones de "¿en cuántas partes está partido cada lote?" (se guardan como rango de letras).
+export const OPCIONES_PARTES = [
+  { v: "", label: "No, lote entero" },
+  { v: "A-B", label: "2 partes (A, B)" },
+  { v: "A-C", label: "3 partes (A, B, C)" },
+  { v: "A-D", label: "4 partes (A a D)" },
+  { v: "A-E", label: "5 partes (A a E)" },
+  { v: "A-F", label: "6 partes (A a F)" },
+];
+
 // Números de lote para un alta "del N al M", con letras opcionales: 1..4 + [A,B] → 1A,1B,2A,2B,3A,3B,4A,4B.
 export function numerosDeRango(desde, hasta, letras) {
   const out = [];
@@ -231,7 +280,7 @@ export function numerosDeRango(desde, hasta, letras) {
 }
 
 // Despliega un lote en letras: el 2 (o el 2A) + [A,B,C] → 2A, 2B, 2C en la misma etapa/manzana,
-// con el mismo plan y caja. Si el lote original era el número solo (sin letra), se reemplaza.
+// con la misma caja. Si el lote original era el número solo (sin letra), se reemplaza.
 // Devuelve {lotes, creados, reemplazado}.
 export function partirLote(lotes, id, letras) {
   const orig = lotes.find(l => l.id === id);
@@ -241,7 +290,7 @@ export function partirLote(lotes, id, letras) {
   const existentes = new Set(lotes.map(claveLote));
   const nuevos = [];
   letras.forEach(L => {
-    const l = { id: nuevoIdLote(), etapa: orig.etapa, manzana: orig.manzana, numero: `${base}${L}`, planId: orig.planId, cajaId: orig.cajaId };
+    const l = { id: nuevoIdLote(), etapa: orig.etapa, manzana: orig.manzana, numero: `${base}${L}`, cajaId: orig.cajaId };
     const k = claveLote(l);
     if (!existentes.has(k)) { nuevos.push(l); existentes.add(k); }
   });
@@ -259,7 +308,7 @@ export function diffLotes(ini, act) {
     const nuevo = loteLimpio(l.id, l);
     const antes = previos.get(l.id);
     if (!antes || JSON.stringify(antes) !== JSON.stringify(nuevo)) {
-      ops.push({ tipo: "set", id: l.id, data: { etapa: nuevo.etapa, manzana: nuevo.manzana, numero: nuevo.numero, planId: nuevo.planId, cajaId: nuevo.cajaId } });
+      ops.push({ tipo: "set", id: l.id, data: { etapa: nuevo.etapa, manzana: nuevo.manzana, numero: nuevo.numero, cajaId: nuevo.cajaId } });
     }
   });
   ini.forEach(l => { if (!siguen.has(l.id)) ops.push({ tipo: "del", id: l.id }); });
@@ -269,21 +318,15 @@ export function diffLotes(ini, act) {
 // Deja los números como números (los inputs los manejan como texto).
 export function normalizar(cfg) {
   return {
-    financiacion: {
-      planes: cfg.financiacion.planes.map(p => ({
-        id: p.id,
-        nombre: String(p.nombre).trim(),
-        moneda: p.moneda,
-        cuotas: num(p.cuotas),
-        incremento: {
-          tipo: p.incremento.tipo,
-          cadaMeses: num(p.incremento.cadaMeses),
-          porcentaje: p.incremento.tipo === "fijo" ? num(p.incremento.porcentaje) : 0,
-          usdAumenta: !!p.incremento.usdAumenta,
-        },
-        grupos: p.grupos.map(g => ({ id: g.id, nombre: String(g.nombre).trim(), color: g.color, meses: [...g.meses].sort((x, y) => x - y) })),
-      })),
-    },
+    financiacion: Object.fromEntries(MONEDAS.map(({ id }) => {
+      const f = cfg.financiacion[id];
+      const tipo = f.incremento.tipo;
+      return [id, {
+        habilitada: !!f.habilitada,
+        incremento: { tipo, cadaMeses: num(f.incremento.cadaMeses) || 0, porcentaje: tipo === "fijo" ? num(f.incremento.porcentaje) : 0 },
+        grupos: tipo === "no" ? [] : f.grupos.map(g => ({ id: g.id, nombre: String(g.nombre).trim(), color: g.color })),
+      }];
+    })),
     cobranza: {
       mora: {
         activa: !!cfg.cobranza.mora.activa,
@@ -367,7 +410,7 @@ export function lotesDesdeEstructura(etapas) {
 // Junta los lotes que ya existían (base de datos) con los que salen de la estructura del asistente.
 // - Los lotes que ya estaban guardados no se tocan.
 // - Si un lote de la estructura ya estaba en la lista (misma etapa/manzana/número), se conserva ese,
-//   con el plan y la caja que se le hayan asignado.
+//   con la caja que se le haya asignado.
 // - Los lotes que había generado el asistente y ya no están en la estructura, se sacan.
 export function sincronizarLotes(actuales, idsGuardados, generados) {
   const guardados = actuales.filter(l => idsGuardados.has(l.id));
@@ -378,7 +421,7 @@ export function sincronizarLotes(actuales, idsGuardados, generados) {
     const k = claveLote(g);
     if (clavesGuardadas.has(k)) return;
     const previo = porClave.get(k);
-    nuevos.push(previo ? previo : { id: nuevoIdLote(), etapa: g.etapa, manzana: g.manzana, numero: g.numero, planId: null, cajaId: null });
+    nuevos.push(previo ? previo : { id: nuevoIdLote(), etapa: g.etapa, manzana: g.manzana, numero: g.numero, cajaId: null });
   });
   return guardados.concat(nuevos);
 }

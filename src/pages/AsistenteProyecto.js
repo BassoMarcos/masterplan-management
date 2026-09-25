@@ -7,10 +7,10 @@ import ThemeSelector from "../components/ThemeSelector";
 import { AREAS_DEFAULT, areasVisibles, estructuraInicial, PANELES_SIEMPRE } from "../config/appConfig";
 import {
   completarConfig, validar, validarLotes, normalizar, loteLimpio, nuevoId,
-  lotesDesdeEstructura, sincronizarLotes, TIPOS_INCREMENTO,
+  lotesDesdeEstructura, sincronizarLotes, TIPOS_INCREMENTO, MONEDAS,
 } from "../config/adminConfigLogica";
 import {
-  PlanCard, SeccionMora, SeccionTransferencias, SeccionDistribucion, SeccionCajas, SelectorLotes,
+  SeccionFinanciacion, SeccionMora, SeccionTransferencias, SeccionDistribucion, SeccionCajas, SelectorPartes,
   Campo, guardarConfigYLotes, estilosConfig as s,
 } from "./AdministracionConfig";
 
@@ -27,7 +27,7 @@ const INFO_PASOS = {
   bienvenida: { titulo: "Bienvenida" },
   areas: { titulo: "Áreas del proyecto", pregunta: "¿Qué áreas va a usar este proyecto?" },
   lotes: { titulo: "Lotes", pregunta: "¿Cómo está armado el loteo?" },
-  financiacion: { titulo: "Financiación", pregunta: "¿Cómo se financian los lotes?" },
+  financiacion: { titulo: "Financiación", pregunta: "¿Cómo son las cuotas de este proyecto?" },
   mora: { titulo: "Mora", pregunta: "¿Hasta qué día se paga la cuota, y qué interés tiene el atraso?" },
   transferencias: { titulo: "Transferencias", pregunta: "Si el cliente paga por transferencia, ¿qué porcentaje se suma sobre el valor base?" },
   duenos: { titulo: "Dueños", pregunta: "¿El proyecto se divide entre varios dueños?" },
@@ -59,7 +59,6 @@ export default function AsistenteProyecto() {
   const [lotesIni, setLotesIni] = useState([]);
   const [lotes, setLotes] = useState([]);
   const [etapas, setEtapas] = useState([]);
-  const [planAbierto, setPlanAbierto] = useState(null);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
@@ -154,10 +153,6 @@ export default function AsistenteProyecto() {
     if (SECCION_DE_PASO[p]) {
       const e = validar(cfg);
       if (e && e.seccion === SECCION_DE_PASO[p]) return e.mensaje;
-      if (p === "financiacion" && cfg.financiacion.planes.length > 1) {
-        const sinPlan = lotes.filter(l => !l.planId).length;
-        if (sinPlan) return `Hay ${sinPlan} lote(s) sin financiación: elegí a qué plan va cada uno.`;
-      }
     }
     return "";
   }
@@ -179,11 +174,6 @@ export default function AsistenteProyecto() {
     let lotesAct = lotes;
     if (pasoActual === "lotes") {
       lotesAct = sincronizarLotes(lotes, idsGuardados, lotesDesdeEstructura(etapas).lotes);
-      setLotes(lotesAct);
-    }
-    if (pasoActual === "financiacion" && cfg.financiacion.planes.length === 1) {
-      const unico = cfg.financiacion.planes[0].id;
-      lotesAct = lotesAct.map(l => (l.planId ? l : { ...l, planId: unico }));
       setLotes(lotesAct);
     }
     const sig = pasos[idx + 1];
@@ -278,14 +268,12 @@ export default function AsistenteProyecto() {
         )}
 
         {pasoActual === "financiacion" && (
-          <PasoFinanciacion
-            cfg={cfg}
-            editar={editar}
-            lotes={lotes}
-            editarLotes={editarLotes}
-            planAbierto={planAbierto}
-            setPlanAbierto={setPlanAbierto}
-          />
+          <div>
+            <p style={est.texto}>
+              Acá van las reglas generales. La cantidad de cuotas y el valor de la cuota se ponen cuando se firma cada lote.
+            </p>
+            <SeccionFinanciacion cfg={cfg} editar={editar} dis={false} sinTitulo />
+          </div>
         )}
 
         {pasoActual === "mora" && <SeccionMora cfg={cfg} editar={editar} dis={false} />}
@@ -467,21 +455,21 @@ function PasoLotes({ etapas, setEtapas, lotesGuardados }) {
             <div style={{ ...s.grid, marginTop: 12 }}>
               <Campo label="Del lote"><input style={s.input} type="number" min="1" value={et.desde} onChange={e => cambiar(c => { c[i].desde = e.target.value; })} /></Campo>
               <Campo label="Al lote"><input style={s.input} type="number" min="1" placeholder="Ej: 20" value={et.hasta} onChange={e => cambiar(c => { c[i].hasta = e.target.value; })} /></Campo>
-              <Campo label="Letras (si están partidos)"><input style={s.input} placeholder="Ej: A, B" value={et.letras} onChange={e => cambiar(c => { c[i].letras = e.target.value; })} /></Campo>
+              <Campo label="¿Están partidos?"><SelectorPartes value={et.letras} onChange={v => cambiar(c => { c[i].letras = v; })} /></Campo>
             </div>
           )}
 
           {et.conManzanas && et.manzanas.length > 0 && (
             <div style={{ marginTop: 12 }}>
               <div style={est.filaMzTitulo}>
-                <span>Manzana</span><span>Del lote</span><span>Al lote</span><span>Letras (si están partidos)</span>
+                <span>Manzana</span><span>Del lote</span><span>Al lote</span><span>¿Están partidos?</span>
               </div>
               {et.manzanas.map((m, j) => (
                 <div key={m.id} style={est.filaMz}>
                   <input style={s.input} value={m.nombre} onChange={e => cambiar(c => { c[i].manzanas[j].nombre = e.target.value; })} />
                   <input style={s.input} type="number" min="1" value={m.desde} onChange={e => cambiar(c => { c[i].manzanas[j].desde = e.target.value; })} />
                   <input style={s.input} type="number" min="1" placeholder="Ej: 20" value={m.hasta} onChange={e => cambiar(c => { c[i].manzanas[j].hasta = e.target.value; })} />
-                  <input style={s.input} placeholder="Ej: A, B" value={m.letras} onChange={e => cambiar(c => { c[i].manzanas[j].letras = e.target.value; })} />
+                  <SelectorPartes value={m.letras} onChange={v => cambiar(c => { c[i].manzanas[j].letras = v; })} />
                 </div>
               ))}
               {et.manzanas.length > 1 && (
@@ -506,103 +494,7 @@ function PasoLotes({ etapas, setEtapas, lotesGuardados }) {
           {r.error ? "Completá los datos para ver cuántos lotes se crean." : `✓ Se van a crear ${nuevos} lote(s) nuevos.`}
         </p>
       )}
-      <p style={s.nota}>Letras: "del 1 al 4" con "A, B" crea 1A, 1B, 2A, 2B, 3A, 3B, 4A, 4B. Para partir un lote suelto en más letras, usá Configuración → Lotes → "Desplegar en letras".</p>
-    </div>
-  );
-}
-
-function PasoFinanciacion({ cfg, editar, lotes, editarLotes, planAbierto, setPlanAbierto }) {
-  const planes = cfg.financiacion.planes;
-  const monedas = new Set(planes.map(p => p.moneda));
-  const actual = monedas.has("ARS") && monedas.has("USD") ? "AMBAS" : (monedas.has("USD") ? "USD" : "ARS");
-
-  function elegirMonedas(sel) {
-    const quiere = sel === "AMBAS" ? ["ARS", "USD"] : [sel];
-    const quitados = planes.filter(p => !quiere.includes(p.moneda)).map(p => p.id);
-    editar(c => {
-      c.financiacion.planes = c.financiacion.planes.filter(p => quiere.includes(p.moneda));
-      quiere.forEach(m => {
-        if (!c.financiacion.planes.some(p => p.moneda === m)) {
-          c.financiacion.planes.push({
-            id: nuevoId(), nombre: m === "USD" ? "Dólares" : "Pesos", moneda: m, cuotas: 60,
-            incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, usdAumenta: false }, grupos: [],
-          });
-        }
-      });
-    });
-    if (quitados.length) editarLotes(arr => { arr.forEach(l => { if (quitados.includes(l.planId)) l.planId = null; }); });
-  }
-
-  function agregarPlan() {
-    editar(c => {
-      c.financiacion.planes.push({
-        id: nuevoId(), nombre: `Plan ${c.financiacion.planes.length + 1}`, moneda: "ARS", cuotas: 60,
-        incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, usdAumenta: false }, grupos: [],
-      });
-    });
-  }
-
-  const nombrePlan = (id) => { const p = planes.find(x => x.id === id); return p ? p.nombre || "otro plan" : "otro plan"; };
-  const sinPlan = lotes.filter(l => !l.planId).length;
-
-  return (
-    <div>
-      <div style={est.subPregunta}>¿En qué moneda se venden los lotes?</div>
-      <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-        {[["ARS", "Pesos"], ["USD", "Dólares"], ["AMBAS", "Pesos y dólares"]].map(([id, txt]) => (
-          <button key={id} type="button" onClick={() => elegirMonedas(id)} style={{ ...s.modoBtn, ...(actual === id ? s.modoBtnOn : {}) }}>{txt}</button>
-        ))}
-      </div>
-
-      <div style={est.subPregunta}>
-        {planes.length > 1 ? "¿Cómo se financia cada uno? ¿Incrementa? ¿De qué forma y cada cuánto?" : "¿Cómo se financia? ¿Incrementa? ¿De qué forma y cada cuánto?"}
-      </div>
-      <p style={s.nota}>
-        Opciones de incremento: {TIPOS_INCREMENTO.map(t => t.label.toLowerCase()).join(" · ")}. Con ICC, el robot busca el porcentaje y vos lo confirmás.
-      </p>
-      <div style={{ marginTop: 10 }}>
-        {planes.map((p, i) => (
-          <PlanCard key={p.id} plan={p} indice={i} totalPlanes={planes.length} editar={editar} dis={false} />
-        ))}
-      </div>
-      <button type="button" style={s.btnSec} onClick={agregarPlan}>+ Hay otra financiación (en la misma u otra moneda)</button>
-
-      {lotes.length > 0 && planes.length > 1 && (
-        <div style={{ marginTop: 20 }}>
-          <div style={est.subPregunta}>¿Qué lotes van con cada financiación?</div>
-          <p style={{ ...s.nota, marginTop: 0, color: sinPlan ? "var(--red, #dc2626)" : "var(--green, #16a34a)", fontWeight: 600 }}>
-            {sinPlan ? `Faltan ${sinPlan} lote(s) por asignar.` : "✓ Todos los lotes tienen su financiación."}
-          </p>
-          {planes.map(p => {
-            const cant = lotes.filter(l => l.planId === p.id).length;
-            const open = planAbierto === p.id;
-            return (
-              <div key={p.id} style={{ ...s.mzBloque, marginTop: 8 }}>
-                <div style={s.mzTop}>
-                  <span style={{ fontWeight: 700, fontSize: 13.5 }}>{p.nombre || "Plan sin nombre"}</span>
-                  <span style={{ fontSize: 12.5, color: "var(--text2)" }}>{cant} lote(s)</span>
-                  <button type="button" style={s.linkBtn} onClick={() => setPlanAbierto(open ? null : p.id)}>{open ? "Listo" : "Elegir lotes"}</button>
-                </div>
-                {open && (
-                  <SelectorLotes
-                    lotes={lotes}
-                    dis={false}
-                    estado={l => (l.planId === p.id ? "on" : (l.planId ? "otro" : "off"))}
-                    textoOtro={l => `usa ${nombrePlan(l.planId)}`}
-                    onCambiar={(ids, marcar) => editarLotes(arr => {
-                      const set = new Set(ids);
-                      arr.forEach(l => { if (set.has(l.id)) l.planId = marcar ? p.id : null; });
-                    })}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-      {lotes.length > 0 && planes.length === 1 && (
-        <p style={s.nota}>Todos los lotes ({lotes.length}) van a usar esta financiación.</p>
-      )}
+      <p style={s.nota}>Partidos: "del 1 al 4" en 2 partes crea 1A, 1B, 2A, 2B, 3A, 3B, 4A, 4B. Si un lote suelto tiene más partes, se ajusta después en Configuración → Lotes → "Partir".</p>
     </div>
   );
 }
@@ -611,10 +503,10 @@ function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin }
   const areas = AREAS_DEFAULT.filter(a => habilitadas.some(h => h.id === a.id) && estructura.areas[a.id] && estructura.areas[a.id].activa);
   const nuevos = lotes.filter(l => !lotesIni.some(x => x.id === l.id)).length;
   const m = cfg.cobranza.mora;
-  const incTxt = (p) => {
-    const t = TIPOS_INCREMENTO.find(x => x.id === p.incremento.tipo);
-    if (!t || p.incremento.tipo === "no") return "sin incremento";
-    return `${t.label.toLowerCase()} cada ${p.incremento.cadaMeses} mes(es)${p.incremento.tipo === "fijo" ? ` (${p.incremento.porcentaje}%)` : ""}`;
+  const incTxt = (f) => {
+    const t = TIPOS_INCREMENTO.find(x => x.id === f.incremento.tipo);
+    if (!t || f.incremento.tipo === "no") return "fijas, sin incremento";
+    return `${t.label.toLowerCase()} cada ${f.incremento.cadaMeses} mes(es)${f.incremento.tipo === "fijo" ? ` (${f.incremento.porcentaje}%)` : ""} · ${f.grupos.length} grupo(s): ${f.grupos.map(g => g.nombre).join(", ")}`;
   };
   const Fila = ({ titulo, children }) => (
     <div style={est.resFila}>
@@ -636,11 +528,8 @@ function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin }
       {conAdmin && (
         <>
           <Fila titulo="Financiación">
-            {cfg.financiacion.planes.map(p => (
-              <div key={p.id}>
-                {p.nombre}: {p.moneda === "USD" ? "dólares" : "pesos"}, {p.cuotas} cuotas, {incTxt(p)}
-                {lotes.length ? ` · ${lotes.filter(l => l.planId === p.id).length} lote(s)` : ""}
-              </div>
+            {MONEDAS.filter(mo => cfg.financiacion[mo.id].habilitada).map(mo => (
+              <div key={mo.id}>Cuotas en {mo.nombre.toLowerCase()}: {incTxt(cfg.financiacion[mo.id])}</div>
             ))}
           </Fila>
           <Fila titulo="Mora">{m.activa ? `se paga hasta el día ${m.ultimoDia}; después ${m.porcentajeDia}% por día de atraso` : "sin interés por atraso"}</Fila>
