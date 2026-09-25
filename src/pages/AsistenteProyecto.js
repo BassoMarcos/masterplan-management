@@ -7,7 +7,7 @@ import ThemeSelector from "../components/ThemeSelector";
 import { AREAS_DEFAULT, areasVisibles, estructuraInicial, PANELES_SIEMPRE } from "../config/appConfig";
 import {
   completarConfig, validar, validarLotes, normalizar, loteLimpio, nuevoId,
-  lotesDesdeEstructura, sincronizarLotes, TIPOS_INCREMENTO, MONEDAS,
+  lotesDesdeEstructura, sincronizarLotes, TIPOS_INCREMENTO, MONEDAS, textoCalendario,
 } from "../config/adminConfigLogica";
 import {
   SeccionFinanciacion, SeccionMora, SeccionTransferencias, SeccionDistribucion, SeccionCajas, SelectorPartes,
@@ -506,7 +506,9 @@ function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin }
   const incTxt = (f) => {
     const t = TIPOS_INCREMENTO.find(x => x.id === f.incremento.tipo);
     if (!t || f.incremento.tipo === "no") return "fijas, sin incremento";
-    return `${t.label.toLowerCase()} cada ${f.incremento.cadaMeses} mes(es)${f.incremento.tipo === "fijo" ? ` (${f.incremento.porcentaje}%)` : ""} · ${f.grupos.length} grupo(s): ${f.grupos.map(g => g.nombre).join(", ")}`;
+    const base = `${t.label.toLowerCase()} cada ${f.incremento.cadaMeses} mes(es)${f.incremento.tipo === "fijo" ? ` (${f.incremento.porcentaje}%)` : ""}`;
+    if (f.incremento.modo === "calendario") return `${base} · todos juntos en ${textoCalendario(f.incremento.mesInicio || 1, Number(f.incremento.cadaMeses))}`;
+    return `${base} · ${f.grupos.length} grupo(s): ${f.grupos.map(g => g.nombre).join(", ")}`;
   };
   const Fila = ({ titulo, children }) => (
     <div style={est.resFila}>

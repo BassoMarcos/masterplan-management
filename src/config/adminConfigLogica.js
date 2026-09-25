@@ -26,7 +26,7 @@ export const CADA_MESES_MAX = 12;
 // Financiación del PROYECTO: una regla por moneda (¿se usa? ¿aumenta? ¿cómo y cada cuánto?).
 // La cantidad de cuotas y el valor de la cuota NO van acá: se ponen al firmar cada lote.
 function monedaDefault(id) {
-  return { habilitada: id === "ARS", incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0 }, grupos: [] };
+  return { habilitada: id === "ARS", incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, modo: "grupos", mesInicio: 1 }, grupos: [] };
 }
 
 // Valores iniciales neutros: la empresa decide todo. (Los de F&J se cargan cuando llegue ese momento.)
@@ -41,6 +41,30 @@ export const CONFIG_ADMIN_DEFAULT = {
   duenos: [{ id: "empresa", nombre: "Empresa", porcentaje: 100 }],
   cajasEspeciales: [],
 };
+
+// ── Cómo se reparten los aumentos ──────────────────────────────
+// "grupos": cada cliente aumenta cada N meses contando desde SU firma (se reparten en N grupos).
+// "calendario": todos aumentan juntos en meses fijos (ej. cada 4 desde enero: Ene · May · Sep).
+//   Aunque un cliente haya firmado hace un mes, aumenta igual que todos (pedido de Marcos).
+export const MODOS_AUMENTO = [
+  { id: "grupos", label: "Por grupos (cada cliente según su firma)" },
+  { id: "calendario", label: "Fecha fija para todos" },
+];
+
+// Meses fijos (1-12) del modo calendario. Si N no divide a 12, cambian de un año a otro → null.
+export function mesesCalendario(mesInicio, n) {
+  const m0 = num(mesInicio);
+  if (!(n >= 1 && n <= 12) || 12 % n !== 0 || !(m0 >= 1 && m0 <= 12)) return null;
+  const out = [];
+  for (let i = 0; i < 12 / n; i++) out.push(((m0 - 1 + i * n) % 12) + 1);
+  return out.sort((a, b) => a - b);
+}
+
+export function textoCalendario(mesInicio, n) {
+  const meses = mesesCalendario(mesInicio, n);
+  if (meses) return meses.map(m => MESES_CORTO[m - 1]).join(" · ");
+  return `Arranca en ${MESES_CORTO[(num(mesInicio) - 1 + 12) % 12] || "?"} y sigue cada ${n} meses (los meses cambian de un año a otro)`;
+}
 
 // ── Grupos de aumento ──────────────────────────────────────────
 // Si las cuotas aumentan cada N meses, los clientes se reparten en N grupos: el grupo k arranca en el
@@ -81,11 +105,11 @@ function completarMoneda(id, guardada) {
   const x = guardada || {};
   const incremento = { ...d.incremento, ...(x.incremento || {}) };
   delete incremento.usdAumenta;
-  const tipo = incremento.tipo;
+  const usaGrupos = incremento.tipo !== "no" && incremento.modo !== "calendario";
   return {
     habilitada: x.habilitada !== undefined ? !!x.habilitada : d.habilitada,
     incremento,
-    grupos: tipo === "no" ? [] : ajustarGrupos(Array.isArray(x.grupos) ? x.grupos : [], incremento.cadaMeses),
+    grupos: usaGrupos ? ajustarGrupos(Array.isArray(x.grupos) ? x.grupos : [], incremento.cadaMeses) : (Array.isArray(x.grupos) ? x.grupos : []),
   };
 }
 
@@ -162,9 +186,14 @@ export function validar(cfg) {
       const n = num(inc.cadaMeses);
       if (!(Number.isInteger(n) && n >= 1 && n <= CADA_MESES_MAX)) return { mensaje: pref + `"aumenta cada" tiene que ser entre 1 y ${CADA_MESES_MAX} meses.`, seccion: "financiacion" };
       if (inc.tipo === "fijo" && !(num(inc.porcentaje) > 0 && num(inc.porcentaje) <= 100)) return { mensaje: pref + "el porcentaje por aumento tiene que ser mayor que 0 y no pasar de 100.", seccion: "financiacion" };
-      if (f.grupos.length !== n) return { mensaje: pref + "los grupos de aumento no coinciden con cada cuántos meses aumenta.", seccion: "financiacion" };
-      for (const g of f.grupos) {
-        if (!String(g.nombre || "").trim()) return { mensaje: pref + "todos los grupos de aumento necesitan un nombre.", seccion: "financiacion" };
+      if (inc.modo === "calendario") {
+        const m0 = num(inc.mesInicio);
+        if (!(Number.isInteger(m0) && m0 >= 1 && m0 <= 12)) return { mensaje: pref + "elegí el mes del primer aumento.", seccion: "financiacion" };
+      } else {
+        if (f.grupos.length !== n) return { mensaje: pref + "los grupos de aumento no coinciden con cada cuántos meses aumenta.", seccion: "financiacion" };
+        for (const g of f.grupos) {
+          if (!String(g.nombre || "").trim()) return { mensaje: pref + "todos los grupos de aumento necesitan un nombre.", seccion: "financiacion" };
+        }
       }
     }
   }
@@ -321,10 +350,17 @@ export function normalizar(cfg) {
     financiacion: Object.fromEntries(MONEDAS.map(({ id }) => {
       const f = cfg.financiacion[id];
       const tipo = f.incremento.tipo;
+      const modo = f.incremento.modo === "calendario" ? "calendario" : "grupos";
       return [id, {
         habilitada: !!f.habilitada,
-        incremento: { tipo, cadaMeses: num(f.incremento.cadaMeses) || 0, porcentaje: tipo === "fijo" ? num(f.incremento.porcentaje) : 0 },
-        grupos: tipo === "no" ? [] : f.grupos.map(g => ({ id: g.id, nombre: String(g.nombre).trim(), color: g.color })),
+        incremento: {
+          tipo,
+          cadaMeses: num(f.incremento.cadaMeses) || 0,
+          porcentaje: tipo === "fijo" ? num(f.incremento.porcentaje) : 0,
+          modo,
+          mesInicio: num(f.incremento.mesInicio) || 1,
+        },
+        grupos: tipo === "no" || modo === "calendario" ? [] : f.grupos.map(g => ({ id: g.id, nombre: String(g.nombre).trim(), color: g.color })),
       }];
     })),
     cobranza: {

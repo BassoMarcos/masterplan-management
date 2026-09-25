@@ -10,6 +10,9 @@ import {
   OPCIONES_PARTES,
   ajustarGrupos,
   textoGrupo,
+  MODOS_AUMENTO,
+  textoCalendario,
+  MESES_CORTO,
   nuevoId,
   completarConfig,
   num,
@@ -295,11 +298,20 @@ function ReglaMoneda({ id, nombre, f, editar, dis }) {
   const nValido = Number.isInteger(n) && n >= 1 && n <= CADA_MESES_MAX;
   const tipoInfo = TIPOS_INCREMENTO.find(t => t.id === inc.tipo) || TIPOS_INCREMENTO[0];
 
+  const calendario = inc.modo === "calendario";
+
   function setTipo(t) {
     editar(c => {
       const x = c.financiacion[id];
       x.incremento.tipo = t;
-      x.grupos = t === "no" ? [] : ajustarGrupos(x.grupos, x.incremento.cadaMeses);
+      if (t !== "no" && x.incremento.modo !== "calendario") x.grupos = ajustarGrupos(x.grupos, x.incremento.cadaMeses);
+    });
+  }
+  function setModo(m) {
+    editar(c => {
+      const x = c.financiacion[id];
+      x.incremento.modo = m;
+      if (m !== "calendario") x.grupos = ajustarGrupos(x.grupos, x.incremento.cadaMeses);
     });
   }
   function setCada(v) {
@@ -326,6 +338,20 @@ function ReglaMoneda({ id, nombre, f, editar, dis }) {
             <input style={s.input} disabled={dis} type="number" min="1" max={CADA_MESES_MAX} value={inc.cadaMeses} onChange={e => setCada(e.target.value)} />
           </Campo>
         )}
+        {inc.tipo !== "no" && (
+          <Campo label="¿Cómo se reparten los aumentos?">
+            <select style={s.input} disabled={dis} value={calendario ? "calendario" : "grupos"} onChange={e => setModo(e.target.value)}>
+              {MODOS_AUMENTO.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+            </select>
+          </Campo>
+        )}
+        {inc.tipo !== "no" && calendario && (
+          <Campo label="Mes del primer aumento">
+            <select style={s.input} disabled={dis} value={String(inc.mesInicio || 1)} onChange={e => editar(c => { c.financiacion[id].incremento.mesInicio = Number(e.target.value); })}>
+              {MESES_CORTO.map((m, i) => <option key={m} value={String(i + 1)}>{m}</option>)}
+            </select>
+          </Campo>
+        )}
         {inc.tipo === "fijo" && (
           <Campo label="Porcentaje por aumento (%)">
             <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={inc.porcentaje} onChange={e => editar(c => { c.financiacion[id].incremento.porcentaje = e.target.value; })} />
@@ -334,7 +360,14 @@ function ReglaMoneda({ id, nombre, f, editar, dis }) {
       </div>
       <p style={s.nota}>{tipoInfo.ayuda}</p>
 
-      {inc.tipo !== "no" && nValido && f.grupos.length > 0 && (
+      {inc.tipo !== "no" && nValido && calendario && (
+        <div style={{ ...s.grupoFila, marginTop: 14, display: "block" }}>
+          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text)" }}>Aumentan todos juntos en: {textoCalendario(inc.mesInicio || 1, n)}</div>
+          <div style={{ fontSize: 12.5, color: "var(--text2)", marginTop: 4 }}>Aunque un cliente haya firmado hace poco, aumenta igual que todos en esos meses.</div>
+        </div>
+      )}
+
+      {inc.tipo !== "no" && nValido && !calendario && f.grupos.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={s.h3}>Grupos de aumento: {f.grupos.length}</div>
           <p style={{ ...s.sub, marginBottom: 10 }}>
