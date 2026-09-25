@@ -189,6 +189,12 @@
   - **Letras en lista**: "¿Están partidos?" → No / 2 partes (A,B) / 3 partes (A,B,C) … hasta 6. En Configuración → Lotes: "Partir el lote N en…".
 - Probado: reglas en Node y simulación de navegador (asistente completo, solo vende, Configuración con config vieja).
 
+## 2026-09-25 — MasterPlan: aumentos con fecha fija para todos
+- Nueva opción por moneda: **¿Cómo se reparten los aumentos?** → *Por grupos* (cada cliente según su firma, lo que ya estaba) o *Fecha fija para todos* (todos aumentan juntos en meses fijos). En fecha fija se elige el **mes del primer aumento** y se calculan los demás (cada 4 desde enero = Ene · May · Sep; desde marzo = Mar · Jul · Nov). Datos: `incremento.modo` (`grupos` | `calendario`) y `incremento.mesInicio`.
+- Regla de Marcos: en fecha fija, aunque el cliente haya firmado hace un mes, **aumenta igual que todos** (sin mínimo ni proporcional).
+- **Regla para la firma de lotes (a implementar en contratos):** el período de aumento cuenta desde la FIRMA. Con aumento cada N meses (modo grupos) aumenta en las cuotas N, 2N, 3N…: la primera tanda tiene N−1 cuotas al precio inicial (ej. cada 3: cuotas 1-2, después 3-5, 6-8). El grupo del cliente sale del mes en que le cae la cuota N (igual que fyj `calcTrimestrePorCuota`).
+- Probado: Node y simulación de navegador (4 casos).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
