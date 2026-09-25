@@ -67,3 +67,7 @@ node_modules/
 
 # dataconnect generated files
 .dataconnect
+
+# dependencias de las pruebas de reglas
+/pruebas/reglas/node_modules
+/pruebas/reglas/package-lock.json

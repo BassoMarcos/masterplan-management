@@ -1,0 +1,49 @@
+name: Deploy reglas de Firestore
+
+# Publica firestore.rules en Firebase cuando cambia en main.
+# ANTES corre las pruebas en el emulador (pruebas/reglas/test.mjs): si alguna falla, NO publica nada.
+# Las reglas ya no se editan a mano en la consola: la fuente de verdad es firestore.rules.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'firestore.rules'
+      - 'pruebas/reglas/**'
+      - '.github/workflows/deploy-reglas.yml'
+  workflow_dispatch:
+
+jobs:
+  probar-y-publicar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instalar Firebase CLI y dependencias de las pruebas
+        run: |
+          npm install -g firebase-tools
+          npm install --no-audit --no-fund
+        working-directory: pruebas/reglas
+
+      - name: Probar las reglas en el emulador
+        run: firebase emulators:exec --only firestore --project demo-reglas "node pruebas/reglas/test.mjs"
+
+      - name: Preparar credenciales
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DEPLOY }}' > "$HOME/sa.json"
+
+      - name: Publicar reglas
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: /home/runner/sa.json
+        run: firebase deploy --only firestore:rules --project masterplanproyects --non-interactive
+
+      - name: Limpiar credenciales
+        if: always()
+        run: rm -f "$HOME/sa.json"
