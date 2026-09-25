@@ -3,9 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, collection, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
 import {
-  MESES_CORTO,
   COLORES,
   TIPOS_INCREMENTO,
+  MONEDAS,
+  CADA_MESES_MAX,
+  OPCIONES_PARTES,
+  ajustarGrupos,
+  textoGrupo,
   nuevoId,
   completarConfig,
   num,
@@ -32,18 +36,18 @@ import {
 // Layout: lista de secciones a la izquierda, el detalle de la sección elegida a la derecha
 // (como los Ajustes de cualquier app grande) — para no mezclar todo en una sola pantalla larga.
 //
-// Financiación NO es una sola configuración: un proyecto puede tener varios "planes"
-// (ej. lotes en dólares sin incremento + lotes en pesos con ICC). Qué lote usa qué plan
-// se define en la sección Lotes.
+// Financiación = las REGLAS del proyecto por moneda (pesos / dólares): si aumentan, cómo y cada
+// cuánto, con los grupos de aumento automáticos. La cantidad de cuotas, el valor y a qué grupo va
+// cada cliente se definen al FIRMAR cada lote (contrato), no acá.
 //
 // Lotes: inventario del proyecto, un documento por lote en proyectos/{id}/lotes
-// ({etapa, manzana, numero, planId, cajaId}). Es la lista única de lotes del proyecto:
+// ({etapa, manzana, numero, cajaId}). Es la lista única de lotes del proyecto:
 // más adelante Comercial, Legales y Desarrollos van a usar esta misma colección.
 // Los cambios de lotes se guardan junto con la configuración (mismo botón, misma tanda).
 
 // Las secciones que aparecen en la lista de la izquierda.
 const SECCIONES = [
-  { id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Planes: moneda, cuotas e incremento" },
+  { id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Monedas e incrementos" },
   { id: "mora", icono: "⚠️", nombre: "Mora", resumen: "Interés por atraso" },
   { id: "transferencias", icono: "🏦", nombre: "Transferencias", resumen: "Impuesto sobre transferencias" },
   { id: "distribucion", icono: "📊", nombre: "Dueños", resumen: "Distribución de ganancias" },
@@ -249,157 +253,120 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
   );
 }
 
-function SeccionFinanciacion({ cfg, editar, dis }) {
-  const planes = cfg.financiacion.planes;
-
-  function agregarPlan() {
-    editar(c => {
-      c.financiacion.planes.push({
-        id: nuevoId(),
-        nombre: `Plan ${c.financiacion.planes.length + 1}`,
-        moneda: "ARS",
-        cuotas: 60,
-        incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, usdAumenta: false },
-        grupos: [],
-      });
-    });
-  }
-
+export function SeccionFinanciacion({ cfg, editar, dis, sinTitulo }) {
+  const encendidas = MONEDAS.filter(m => cfg.financiacion[m.id].habilitada);
   return (
     <div>
-      <SeccionTitulo
-        icono="💳"
-        nombre="Financiación"
-        desc={'Un proyecto puede tener más de una forma de financiar. Por ejemplo: la mitad de los lotes en dólares sin incremento, y la otra mitad en pesos con ICC. Armá un plan para cada caso. Qué lote usa cada plan se elige más adelante, en Lotes.'}
-      />
-      {planes.map((p, i) => (
-        <PlanCard key={p.id} plan={p} indice={i} totalPlanes={planes.length} editar={editar} dis={dis} />
+      {!sinTitulo && (
+        <SeccionTitulo
+          icono="💳"
+          nombre="Financiación"
+          desc="Las reglas de las cuotas del proyecto, por moneda. La cantidad de cuotas, el valor de la cuota y el grupo de aumento de cada cliente se ponen al firmar cada lote."
+        />
+      )}
+      <div style={s.h3}>¿En qué moneda se pueden pagar las cuotas?</div>
+      <div style={{ ...s.modoFila, marginBottom: 14 }}>
+        {MONEDAS.map(m => {
+          const on = cfg.financiacion[m.id].habilitada;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              disabled={dis}
+              onClick={() => editar(c => { c.financiacion[m.id].habilitada = !on; })}
+              style={{ ...s.modoBtn, ...(on ? s.modoBtnOn : {}) }}
+            >
+              {on ? "✓ " : ""}{m.nombre}
+            </button>
+          );
+        })}
+      </div>
+      {encendidas.length === 0 && <p style={s.vacio}>Elegí al menos una moneda.</p>}
+      {encendidas.map(m => (
+        <ReglaMoneda key={m.id} id={m.id} nombre={m.nombre} f={cfg.financiacion[m.id]} editar={editar} dis={dis} />
       ))}
-      {!dis && <button type="button" style={s.btnSec} onClick={agregarPlan}>+ Agregar plan de financiación</button>}
     </div>
   );
 }
 
-export function PlanCard({ plan, indice, totalPlanes, editar, dis }) {
-  const inc = plan.incremento;
+function ReglaMoneda({ id, nombre, f, editar, dis }) {
+  const inc = f.incremento;
+  const n = num(inc.cadaMeses);
+  const nValido = Number.isInteger(n) && n >= 1 && n <= CADA_MESES_MAX;
   const tipoInfo = TIPOS_INCREMENTO.find(t => t.id === inc.tipo) || TIPOS_INCREMENTO[0];
-  const usaGrupos = inc.tipo === "icc" || inc.tipo === "fijo";
 
-  function agregarGrupo() {
+  function setTipo(t) {
     editar(c => {
-      const gs = c.financiacion.planes[indice].grupos;
-      gs.push({ id: nuevoId(), nombre: "", color: COLORES[gs.length % COLORES.length], meses: [] });
+      const x = c.financiacion[id];
+      x.incremento.tipo = t;
+      x.grupos = t === "no" ? [] : ajustarGrupos(x.grupos, x.incremento.cadaMeses);
+    });
+  }
+  function setCada(v) {
+    editar(c => {
+      const x = c.financiacion[id];
+      x.incremento.cadaMeses = v;
+      const nv = num(v);
+      // Mientras se escribe un número inválido no se tocan los grupos (así no se pierden los nombres).
+      if (Number.isInteger(nv) && nv >= 1 && nv <= CADA_MESES_MAX) x.grupos = ajustarGrupos(x.grupos, nv);
     });
   }
 
   return (
     <div style={s.plan}>
-      <div style={s.planTop}>
-        <input
-          style={{ ...s.input, ...s.planNombre }}
-          disabled={dis}
-          placeholder="Nombre del plan (ej. Pesos con ICC)"
-          value={plan.nombre}
-          onChange={e => editar(c => { c.financiacion.planes[indice].nombre = e.target.value; })}
-        />
-        {!dis && totalPlanes > 1 && (
-          <button type="button" style={s.quitar} onClick={() => editar(c => { c.financiacion.planes.splice(indice, 1); })}>Quitar plan</button>
-        )}
-      </div>
-
-      <div style={s.grid}>
-        <Campo label="Moneda del plan">
-          <select style={s.input} disabled={dis} value={plan.moneda} onChange={e => editar(c => { c.financiacion.planes[indice].moneda = e.target.value; })}>
-            <option value="ARS">Pesos</option>
-            <option value="USD">Dólares</option>
-          </select>
-        </Campo>
-        <Campo label="Cantidad de cuotas">
-          <input style={s.input} disabled={dis} type="number" min="1" value={plan.cuotas} onChange={e => editar(c => { c.financiacion.planes[indice].cuotas = e.target.value; })} />
-        </Campo>
-        <Campo label="Tipo de incremento">
-          <select style={s.input} disabled={dis} value={inc.tipo} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.tipo = e.target.value; })}>
+      <div style={{ ...s.h3, fontSize: 15 }}>Cuotas en {nombre.toLowerCase()}</div>
+      <div style={{ ...s.grid, marginTop: 10 }}>
+        <Campo label="¿Incrementan?">
+          <select style={s.input} disabled={dis} value={inc.tipo} onChange={e => setTipo(e.target.value)}>
             {TIPOS_INCREMENTO.map(t => <option key={t.id} value={t.id}>{t.label}</option>)}
           </select>
         </Campo>
         {inc.tipo !== "no" && (
-          <Campo label="Aumenta cada (meses)">
-            <input style={s.input} disabled={dis} type="number" min="1" value={inc.cadaMeses} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.cadaMeses = e.target.value; })} />
+          <Campo label="¿Cada cuántos meses?">
+            <input style={s.input} disabled={dis} type="number" min="1" max={CADA_MESES_MAX} value={inc.cadaMeses} onChange={e => setCada(e.target.value)} />
           </Campo>
         )}
         {inc.tipo === "fijo" && (
           <Campo label="Porcentaje por aumento (%)">
-            <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={inc.porcentaje} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.porcentaje = e.target.value; })} />
-          </Campo>
-        )}
-        {inc.tipo !== "no" && plan.moneda === "USD" && (
-          <Campo label="Este plan en dólares, ¿aumenta?">
-            <select style={s.input} disabled={dis} value={inc.usdAumenta ? "si" : "no"} onChange={e => editar(c => { c.financiacion.planes[indice].incremento.usdAumenta = e.target.value === "si"; })}>
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-            </select>
+            <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={inc.porcentaje} onChange={e => editar(c => { c.financiacion[id].incremento.porcentaje = e.target.value; })} />
           </Campo>
         )}
       </div>
       <p style={s.nota}>{tipoInfo.ayuda}</p>
 
-      {usaGrupos && (
-        <div style={{ marginTop: 18 }}>
-          <div style={s.h3}>Grupos de aumento</div>
-          <p style={s.sub}>
-            Cada grupo (por ejemplo una "planilla" de un color) aumenta en los meses que marques.
-            Si todos los lotes de este plan aumentan el mismo mes, alcanza con un solo grupo.
+      {inc.tipo !== "no" && nValido && f.grupos.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={s.h3}>Grupos de aumento: {f.grupos.length}</div>
+          <p style={{ ...s.sub, marginBottom: 10 }}>
+            {n === 1
+              ? "Aumenta todos los meses: un solo grupo."
+              : `Como aumenta cada ${n} meses, los clientes se reparten en ${n} grupos: cada mes aumenta un grupo distinto. A qué grupo va cada cliente se decide al firmar su lote. Si querés, cambiales el nombre y el color.`}
           </p>
-          {plan.grupos.length === 0 && <p style={s.vacio}>Todavía no hay grupos.</p>}
-          {plan.grupos.map((g, gi) => (
-            <div key={g.id} style={s.grupo}>
-              <div style={s.grupoTop}>
-                <input
-                  style={{ ...s.input, flex: 1, minWidth: 140 }}
-                  disabled={dis}
-                  placeholder="Nombre del grupo (ej. Verde)"
-                  value={g.nombre}
-                  onChange={e => editar(c => { c.financiacion.planes[indice].grupos[gi].nombre = e.target.value; })}
-                />
+          {f.grupos.map((g, gi) => (
+            <div key={g.id} style={s.grupoFila}>
+              <span style={{ ...s.leyDot, background: g.color, width: 14, height: 14 }} />
+              <input
+                style={{ ...s.input, flex: "0 1 170px", minWidth: 120 }}
+                disabled={dis}
+                value={g.nombre}
+                onChange={e => editar(c => { c.financiacion[id].grupos[gi].nombre = e.target.value; })}
+              />
+              <span style={{ fontSize: 12.5, color: "var(--text2)", flex: 1, minWidth: 150 }}>{textoGrupo(gi + 1, n)}</span>
+              {!dis && (
                 <div style={s.colores}>
                   {COLORES.map(col => (
                     <button
                       key={col}
                       type="button"
-                      disabled={dis}
                       aria-label={`Color ${col}`}
-                      onClick={() => editar(c => { c.financiacion.planes[indice].grupos[gi].color = col; })}
-                      style={{ ...s.colorDot, background: col, outline: g.color === col ? "2px solid var(--text)" : "none" }}
+                      onClick={() => editar(c => { c.financiacion[id].grupos[gi].color = col; })}
+                      style={{ ...s.colorDot, width: 16, height: 16, background: col, outline: g.color === col ? "2px solid var(--text)" : "none" }}
                     />
                   ))}
                 </div>
-                {!dis && (
-                  <button type="button" style={s.quitar} onClick={() => editar(c => { c.financiacion.planes[indice].grupos.splice(gi, 1); })}>Quitar</button>
-                )}
-              </div>
-              <div style={s.meses}>
-                {MESES_CORTO.map((mes, mi) => {
-                  const on = g.meses.includes(mi + 1);
-                  return (
-                    <button
-                      key={mes}
-                      type="button"
-                      disabled={dis}
-                      onClick={() => editar(c => {
-                        const arr = c.financiacion.planes[indice].grupos[gi].meses;
-                        const pos = arr.indexOf(mi + 1);
-                        if (pos >= 0) arr.splice(pos, 1); else arr.push(mi + 1);
-                      })}
-                      style={{ ...s.mes, ...(on ? { background: g.color, color: "#fff", borderColor: g.color } : {}) }}
-                    >
-                      {mes}
-                    </button>
-                  );
-                })}
-              </div>
+              )}
             </div>
           ))}
-          {!dis && <button type="button" style={s.btnSec} onClick={agregarGrupo}>+ Agregar grupo</button>}
         </div>
       )}
     </div>
@@ -655,7 +622,6 @@ export function SeccionCajas({ cfg, editar, dis, lotes, editarLotes, lotesCargan
 }
 
 function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
-  const planes = cfg.financiacion.planes;
   const cajas = cfg.cajasEspeciales;
 
   // Formulario de alta
@@ -668,14 +634,12 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
   const [numero, setNumero] = useState("");
   const [letrasPartir, setLetrasPartir] = useState("");
   const [msgPartir, setMsgPartir] = useState("");
-  const [planNuevo, setPlanNuevo] = useState(planes.length === 1 ? planes[0].id : "");
   const [cajaNueva, setCajaNueva] = useState("");
   const [msgAlta, setMsgAlta] = useState("");
 
   // Selección, filtro y acciones sobre los seleccionados
   const [sel, setSel] = useState(() => new Set());
   const [filtro, setFiltro] = useState("todos");
-  const [planAsignar, setPlanAsignar] = useState("");
   const [cajaAsignar, setCajaAsignar] = useState("");
 
   if (cargando) {
@@ -686,9 +650,6 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
     );
   }
 
-  const colorPlan = {};
-  planes.forEach((p, i) => { colorPlan[p.id] = COLORES[i % COLORES.length]; });
-  const nombrePlan = (id) => { const p = planes.find(x => x.id === id); return p ? (p.nombre || "Plan sin nombre") : "Plan que quitaste"; };
   const nombreCaja = (id) => { const c = cajas.find(x => x.id === id); return c ? (c.nombre || "Caja sin nombre") : "Caja que quitaste"; };
 
   const etapasExistentes = [...new Set(lotes.map(l => l.etapa).filter(Boolean))].sort(cmpNatural);
@@ -715,7 +676,7 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
     const nuevos = [];
     let repetidos = 0;
     numeros.forEach(n => {
-      const l = { id: nuevoIdLote(), etapa: et, manzana: mz, numero: n, planId: planNuevo || null, cajaId: cajaNueva || null };
+      const l = { id: nuevoIdLote(), etapa: et, manzana: mz, numero: n, cajaId: cajaNueva || null };
       const k = claveLote(l);
       if (existentes.has(k)) repetidos++;
       else { nuevos.push(l); existentes.add(k); }
@@ -730,9 +691,7 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
 
   const pasaFiltro = (l) => {
     if (filtro === "todos") return true;
-    if (filtro === "sinplan") return !l.planId;
     if (filtro === "principal") return !l.cajaId;
-    if (filtro.startsWith("plan:")) return l.planId === filtro.slice(5);
     if (filtro.startsWith("caja:")) return l.cajaId === filtro.slice(5);
     return true;
   };
@@ -757,11 +716,6 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
   const selIds = lotes.filter(l => sel.has(l.id)).map(l => l.id);
   const unico = selIds.length === 1 ? lotes.find(l => l.id === selIds[0]) : null;
 
-  function aplicarPlan() {
-    if (!planAsignar) return;
-    const valor = planAsignar === "__ninguno" ? null : planAsignar;
-    editarLotes(c => { c.forEach(l => { if (sel.has(l.id)) l.planId = valor; }); });
-  }
   function aplicarCaja() {
     if (!cajaAsignar) return;
     const valor = cajaAsignar === "__principal" ? null : cajaAsignar;
@@ -778,7 +732,7 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
   function partir() {
     const pl = parseLetras(letrasPartir);
     if (pl.error) { setMsgPartir(pl.error); return; }
-    if (!pl.letras.length) { setMsgPartir("Escribí las letras (ej. A, B, C)."); return; }
+    if (!pl.letras.length) { setMsgPartir("Elegí en cuántas partes."); return; }
     const r = partirLote(lotes, unico.id, pl.letras);
     if (!r.creados) { setMsgPartir("Esas letras ya existían: no se agregó nada."); return; }
     editarLotes(() => r.lotes);
@@ -787,14 +741,12 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
     setMsgPartir(`✓ ${r.creados} lote(s) nuevos${r.reemplazado ? " (el lote sin letra se reemplazó)" : ""}. Acordate de guardar.`);
   }
 
-  const sinPlan = lotes.filter(l => !l.planId).length;
-
   return (
     <div>
       <SeccionTitulo
         icono="🧩"
         nombre="Lotes"
-        desc="Todos los lotes del proyecto, por etapa y manzana. A cada lote le asignás su plan de financiación y, si corresponde, una caja especial."
+        desc="Todos los lotes del proyecto, por etapa y manzana. Si corresponde, les asignás una caja separada. La financiación de cada lote se define al firmarlo."
       />
 
       {errorCarga && <p style={{ ...s.nota, color: "var(--red, #dc2626)", marginTop: 0 }}>{errorCarga}</p>}
@@ -821,8 +773,8 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
                 <Campo label="Al lote">
                   <input style={s.input} type="number" min="1" placeholder="Ej: 20" value={hasta} onChange={e => setHasta(e.target.value)} />
                 </Campo>
-                <Campo label="Letras (si están partidos)">
-                  <input style={s.input} placeholder="Ej: A, B" value={letrasAlta} onChange={e => setLetrasAlta(e.target.value)} />
+                <Campo label="¿Están partidos?">
+                  <SelectorPartes value={letrasAlta} onChange={setLetrasAlta} />
                 </Campo>
               </>
             ) : (
@@ -830,12 +782,6 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
                 <input style={s.input} placeholder="Ej: 4B" value={numero} onChange={e => setNumero(e.target.value)} />
               </Campo>
             )}
-            <Campo label="Plan de financiación">
-              <select style={s.input} value={planNuevo} onChange={e => setPlanNuevo(e.target.value)}>
-                <option value="">Sin plan por ahora</option>
-                {planes.map(p => <option key={p.id} value={p.id}>{p.nombre || "Plan sin nombre"}</option>)}
-              </select>
-            </Campo>
             <Campo label="Caja">
               <select style={s.input} value={cajaNueva} onChange={e => setCajaNueva(e.target.value)}>
                 <option value="">Caja principal</option>
@@ -863,14 +809,7 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
 
       {lotes.length > 0 && (
         <div style={s.leyenda}>
-          <span style={s.resumenLotes}>{lotes.length} lote(s){sinPlan ? ` · ${sinPlan} sin plan` : ""}</span>
-          {planes.map(p => (
-            <span key={p.id} style={s.leyItem}>
-              <span style={{ ...s.leyDot, background: colorPlan[p.id] }} />
-              {p.nombre || "Plan sin nombre"} ({lotes.filter(l => l.planId === p.id).length})
-            </span>
-          ))}
-          {sinPlan > 0 && <span style={s.leyItem}><span style={{ ...s.leyDot, background: "transparent", border: "1.5px dashed var(--text2)" }} />Sin plan ({sinPlan})</span>}
+          <span style={s.resumenLotes}>{lotes.length} lote(s)</span>
           {cajas.length > 0 && <span style={s.leyItem}><span style={s.marcaCaja}>★</span> en caja especial</span>}
         </div>
       )}
@@ -879,8 +818,6 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "12px 0" }}>
           <select style={{ ...s.input, width: "auto" }} value={filtro} onChange={e => setFiltro(e.target.value)}>
             <option value="todos">Mostrar todos</option>
-            <option value="sinplan">Solo sin plan</option>
-            {planes.map(p => <option key={p.id} value={"plan:" + p.id}>Plan: {p.nombre || "sin nombre"}</option>)}
             <option value="principal">Caja principal</option>
             {cajas.map(c => <option key={c.id} value={"caja:" + c.id}>Caja: {c.nombre || "sin nombre"}</option>)}
           </select>
@@ -898,12 +835,6 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
             <button type="button" style={{ ...s.quitar, color: "var(--red, #dc2626)" }} onClick={eliminarSeleccionados}>Eliminar</button>
           </div>
           <div style={s.selAcciones}>
-            <select style={{ ...s.input, width: "auto" }} value={planAsignar} onChange={e => setPlanAsignar(e.target.value)}>
-              <option value="">Asignar plan…</option>
-              {planes.map(p => <option key={p.id} value={p.id}>{p.nombre || "Plan sin nombre"}</option>)}
-              <option value="__ninguno">Sin plan</option>
-            </select>
-            <button type="button" style={s.btnSec} onClick={aplicarPlan} disabled={!planAsignar}>Aplicar</button>
             <select style={{ ...s.input, width: "auto" }} value={cajaAsignar} onChange={e => setCajaAsignar(e.target.value)}>
               <option value="">Pasar a caja…</option>
               <option value="__principal">Caja principal</option>
@@ -926,10 +857,10 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
           )}
           {unico && (
             <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-              <Campo label={`Desplegar el lote ${(String(unico.numero).match(/^\d+/) || [unico.numero])[0]} en letras`}>
-                <input style={s.input} placeholder="Ej: A, B, C" value={letrasPartir} onChange={e => { setLetrasPartir(e.target.value); setMsgPartir(""); }} />
+              <Campo label={`Partir el lote ${(String(unico.numero).match(/^\d+/) || [unico.numero])[0]} en`}>
+                <SelectorPartes value={letrasPartir} onChange={v => { setLetrasPartir(v); setMsgPartir(""); }} sinEntero />
               </Campo>
-              <button type="button" style={s.btnSec} onClick={partir}>Desplegar</button>
+              <button type="button" style={s.btnSec} onClick={partir}>Partir</button>
               {msgPartir && <span style={{ fontSize: 13, color: "var(--text2)" }}>{msgPartir}</span>}
             </div>
           )}
@@ -955,8 +886,7 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
                   <div style={s.chips}>
                     {grupo.map(l => {
                       const on = sel.has(l.id);
-                      const col = l.planId ? (colorPlan[l.planId] || "#888780") : null;
-                      const titulo = `${etiquetaLote(l)}\nPlan: ${l.planId ? nombrePlan(l.planId) : "sin plan"}\nCaja: ${l.cajaId ? nombreCaja(l.cajaId) : "principal"}`;
+                      const titulo = `${etiquetaLote(l)}\nCaja: ${l.cajaId ? nombreCaja(l.cajaId) : "principal"}`;
                       return (
                         <button
                           key={l.id}
@@ -965,7 +895,7 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
                           onClick={() => { if (!dis) toggle(l.id); }}
                           style={{
                             ...s.chip,
-                            border: col ? `2px solid ${col}` : "2px dashed var(--border2)",
+                            border: "2px solid var(--border2)",
                             ...(on ? { background: "var(--acc)", color: "#fff" } : {}),
                             cursor: dis ? "default" : "pointer",
                           }}
@@ -983,6 +913,20 @@ function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
         );
       })}
     </div>
+  );
+}
+
+// "¿En cuántas partes está partido cada lote?" → se guarda como rango de letras ("A-C" = A, B, C).
+// Si viene algo escrito a mano de antes (ej. "A, D"), se muestra como opción aparte para no perderlo.
+export function SelectorPartes({ value, onChange, sinEntero, disabled }) {
+  const opciones = OPCIONES_PARTES.filter(o => !(sinEntero && o.v === ""));
+  const conocido = opciones.some(o => o.v === (value || ""));
+  return (
+    <select style={s.input} disabled={disabled} value={value || ""} onChange={e => onChange(e.target.value)}>
+      {sinEntero && <option value="">Elegí…</option>}
+      {!conocido && value ? <option value={value}>Letras: {value}</option> : null}
+      {opciones.map(o => <option key={o.v || "entero"} value={o.v}>{o.label}</option>)}
+    </select>
   );
 }
 
@@ -1037,6 +981,7 @@ const s = {
   quitar: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "7px 12px", borderRadius: "8px", cursor: "pointer", fontSize: "12px" },
   btnSec: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text)", padding: "9px 14px", borderRadius: "8px", cursor: "pointer", fontSize: "13px" },
   btnPri: { background: "var(--acc)", border: "none", color: "#fff", padding: "10px 18px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
+  grupoFila: { display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap", padding: "8px 10px", border: "1px solid var(--border)", borderRadius: "10px", marginBottom: "8px", background: "var(--card)" },
   bloque: { border: "1px solid var(--border)", borderRadius: "12px", padding: "14px", background: "var(--surface)", marginBottom: "14px" },
   modoFila: { display: "flex", gap: "6px", flexWrap: "wrap", margin: "8px 0 12px" },
   modoBtn: { padding: "6px 12px", borderRadius: "20px", border: "1px solid var(--border2)", background: "transparent", color: "var(--text2)", fontSize: "12.5px", cursor: "pointer" },
