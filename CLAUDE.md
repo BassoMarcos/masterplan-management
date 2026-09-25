@@ -50,6 +50,8 @@
 
 - La colección **`emails_empresa`** requiere `allow read: if true` para el chequeo de email pre-auth.
 - Las reglas de Firebase se entregan como rulesets completos para pegar en la consola.
+- **Fuente de verdad de las reglas: `firestore.rules` en este repo** (copia de lo pegado en la consola; no se despliega sola). Al cambiarlas: editar ese archivo, probar en el emulador y entregarle a Marcos el archivo completo para pegar.
+- Regla general (2026-09-25): `match /proyectos/{proyectoId}/{coleccion}/{resto=**}` → pueden usar TODO lo de adentro de un proyecto el dueño de la empresa, sus empleados aprobados y el SuperAdmin. Cubre lotes, Desarrollos y lo que venga (clientes, contratos, cobros…): no hace falta tocar reglas al agregar colecciones dentro de un proyecto.
 
 ## EmailJS (email de bienvenida al aprobar cuenta)
 

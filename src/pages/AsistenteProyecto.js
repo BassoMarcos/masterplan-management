@@ -72,6 +72,8 @@ export default function AsistenteProyecto() {
         const snap = await getDoc(doc(db, "proyectos", proyectoId));
         if (!snap.exists() || snap.data().empresaId !== empresaUid) { navigate("/proyectos"); return; }
         const p = { id: snap.id, ...snap.data() };
+        // Se leen los lotes aunque el proyecto sea nuevo: si alguien ya cargó lotes desde
+        // Configuración, el asistente tiene que verlos para no duplicarlos.
         const lotesSnap = await getDocs(collection(db, "proyectos", proyectoId, "lotes"));
         const lotesDb = lotesSnap.docs.map(d => loteLimpio(d.id, d.data()));
         if (!vivo) return;
@@ -85,7 +87,11 @@ export default function AsistenteProyecto() {
         setEtapas(b && Array.isArray(b.etapas) ? b.etapas : []);
         setPaso(b && b.paso ? b.paso : "bienvenida");
       } catch (e) {
-        if (vivo) setError("No se pudo abrir el proyecto. Recargá la página.");
+        if (vivo) {
+          setError(e && e.code === "permission-denied"
+            ? "No se pudo abrir la configuración: falta permiso en las reglas de Firebase. Avisale a Mark."
+            : "No se pudo abrir el proyecto. Revisá tu conexión y recargá la página.");
+        }
       }
       if (vivo) setCargando(false);
     }

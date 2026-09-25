@@ -176,6 +176,11 @@
 - Decisión con Marcos: el logo va en Firestore (no como link al Drive: se rompe si borran la foto o desconectan el Drive). El Drive queda para archivos pesados (boletos, PDFs, fotos de obra).
 - Estimación de costo charlada (500 empresas × 3 proyectos × 500 clientes, 4 años): ~27 GB, ~US$ 70-260/mes en total (lo que más pesa son las lecturas). Guardar las 48 cuotas de un lote juntas en un solo registro.
 
+## 2026-09-25 — MasterPlan: reglas de Firestore para lo de adentro de los proyectos
+- El asistente de proyecto nuevo mostraba "No se pudo abrir el proyecto": las reglas no permitían la colección `proyectos/{id}/lotes`. Tampoco permitían las secciones de **Desarrollos y Obras** (`proyectos/{id}/desarrollos_*`).
+- Nueva regla general (`firestore.rules`, guardado en el repo): todo lo que está dentro de un proyecto lo pueden usar el dueño de la empresa, sus empleados aprobados y el SuperAdmin. Probado en el emulador de Firebase: 18 casos (dueño, empleado aprobado/pendiente, otra empresa, sin sesión, SuperAdmin, tanda de 200 lotes + proyecto, reglas viejas intactas).
+- El asistente ahora dice si el error es de permisos.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App

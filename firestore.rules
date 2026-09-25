@@ -1,0 +1,85 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function esEmpleadoDe(empresaId) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/empleados/$(request.auth.uid))
+        && get(/databases/$(database)/documents/empleados/$(request.auth.uid)).data.empresaId == empresaId
+        && get(/databases/$(database)/documents/empleados/$(request.auth.uid)).data.estado == "aprobado";
+    }
+    function esAccesoTotalDe(empresaId) {
+      return esEmpleadoDe(empresaId)
+        && get(/databases/$(database)/documents/empleados/$(request.auth.uid)).data.accesoTotal == true;
+    }
+    // (2026-09-25) Empresa dueña de un proyecto.
+    function empresaDelProyecto(proyectoId) {
+      return get(/databases/$(database)/documents/proyectos/$(proyectoId)).data.empresaId;
+    }
+    // (2026-09-25) Pueden usar los datos DE ADENTRO de un proyecto: el dueño de la empresa,
+    // sus empleados aprobados y el SuperAdmin. (Lo que puede ver/editar cada empleado dentro
+    // de la app lo siguen controlando sus permisos por área/panel.)
+    function puedeUsarProyecto(proyectoId) {
+      return request.auth != null && (
+        empresaDelProyecto(proyectoId) == request.auth.uid
+        || esEmpleadoDe(empresaDelProyecto(proyectoId))
+        || request.auth.token.email == "marky.basso98@gmail.com"
+      );
+    }
+    match /empresas/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if request.auth.token.email == "marky.basso98@gmail.com";
+      allow read: if request.auth != null;
+    }
+    match /emails_empresa/{email} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    match /drive_conexiones/{empresaId} {
+      allow read, write: if false;
+    }
+    match /notificaciones/{notifId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+    match /notif_leidas/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /proyectos/{proyectoId} {
+      allow read, write: if request.auth != null && resource.data.empresaId == request.auth.uid;
+      allow read, write: if request.auth.token.email == "marky.basso98@gmail.com";
+      allow create: if request.auth != null;
+      allow read, write: if esEmpleadoDe(resource.data.empresaId);
+    }
+    // (2026-09-25) REGLA GENERAL: todo lo que está DENTRO de un proyecto (lotes, secciones de
+    // Desarrollos y Obras, y lo que venga: clientes, contratos, cobros, cajas...). Así no hay
+    // que tocar las reglas cada vez que se agrega algo nuevo dentro de un proyecto.
+    match /proyectos/{proyectoId}/{coleccion}/{resto=**} {
+      allow read, write: if puedeUsarProyecto(proyectoId);
+    }
+    match /preferencias/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /pizarras/{pizarraId} {
+      allow read, write: if request.auth != null && pizarraId.split("_")[0] == request.auth.uid;
+    }
+    match /empleados/{empId} {
+      allow read, write: if request.auth != null && request.auth.uid == empId;
+      allow read, write: if request.auth != null && resource.data.empresaId == request.auth.uid;
+      allow create: if request.auth != null;
+      allow read, write: if esAccesoTotalDe(resource.data.empresaId);
+      allow read, write: if request.auth.token.email == "marky.basso98@gmail.com";
+    }
+    match /comercial_datos/{docId} {
+      allow read, write: if request.auth != null && resource.data.empresaId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.empresaId != null;
+      allow read, write: if esEmpleadoDe(resource.data.empresaId);
+      allow read, write: if request.auth.token.email == "marky.basso98@gmail.com";
+    }
+    match /comercial_config/{docId} {
+      allow read, write: if request.auth != null && resource.data.empresaId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.empresaId != null;
+      allow read, write: if esEmpleadoDe(resource.data.empresaId);
+      allow read, write: if request.auth.token.email == "marky.basso98@gmail.com";
+    }
+  }
+}
