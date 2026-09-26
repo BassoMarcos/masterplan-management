@@ -534,7 +534,7 @@ function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin }
               <div key={mo.id}>Cuotas en {mo.nombre.toLowerCase()}: {incTxt(cfg.financiacion[mo.id])}</div>
             ))}
           </Fila>
-          <Fila titulo="Mora">{m.activa ? `se paga hasta el día ${m.ultimoDia}; después ${m.porcentajeDia}% por día de atraso` : "sin interés por atraso"}</Fila>
+          <Fila titulo="Mora">{m.activa ? `se paga hasta el día ${m.ultimoDia}; después ${m.porcentajeDia}% por día de atraso, sobre ${m.base === "primera" ? "la primera cuota" : "la última cuota del mes anterior"}` : "sin interés por atraso"}</Fila>
           <Fila titulo="Transferencias">{Number(cfg.cobranza.transferencia.impuestoPct) > 0 ? `recargo de ${cfg.cobranza.transferencia.impuestoPct}%` : "sin recargo"}</Fila>
           <Fila titulo="Dueños">{cfg.duenos.map(d => `${d.nombre} ${d.porcentaje}%`).join(" · ")}</Fila>
           <Fila titulo="Cajas separadas">
