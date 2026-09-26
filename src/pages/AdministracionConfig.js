@@ -11,6 +11,9 @@ import {
   ajustarGrupos,
   textoGrupo,
   MODOS_AUMENTO,
+  BASES_MORA,
+  rebalancearDuenos,
+  quitarDueno,
   textoCalendario,
   MESES_CORTO,
   nuevoId,
@@ -426,13 +429,18 @@ export function SeccionMora({ cfg, editar, dis }) {
             <Campo label="Interés por día de atraso (%)">
               <input style={s.input} disabled={dis} type="number" min="0" step="0.01" value={m.porcentajeDia} onChange={e => editar(c => { c.cobranza.mora.porcentajeDia = e.target.value; })} />
             </Campo>
+            <Campo label="¿Sobre qué valor se calcula el interés?">
+              <select style={s.input} disabled={dis} value={m.base === "primera" ? "primera" : "anterior"} onChange={e => editar(c => { c.cobranza.mora.base = e.target.value; })}>
+                {BASES_MORA.map(b => <option key={b.id} value={b.id}>{b.label}</option>)}
+              </select>
+            </Campo>
           </>
         )}
       </div>
       <p style={s.nota}>
         {m.activa
           ? (Number.isInteger(num(m.ultimoDia)) && num(m.ultimoDia) >= 1 && num(m.ultimoDia) < 31
-            ? `Ejemplo: quien paga el día ${num(m.ultimoDia) + 1} tiene 1 día de atraso${num(m.porcentajeDia) > 0 ? ` (${num(m.porcentajeDia)}% de interés)` : ""}. Si el mes tiene menos días, vale el último día del mes.`
+            ? `Ejemplo: quien paga el día ${num(m.ultimoDia) + 1} tiene 1 día de atraso${num(m.porcentajeDia) > 0 ? ` (${num(m.porcentajeDia)}% de ${m.base === "primera" ? "la primera cuota" : "la última cuota del mes anterior"})` : ""}. Si el mes tiene menos días, vale el último día del mes.`
             : "Si el mes tiene menos días, vale el último día del mes.")
           : "Los clientes que no pagan a tiempo no generan interés."}
       </p>
@@ -460,6 +468,18 @@ export function SeccionTransferencias({ cfg, editar, dis }) {
 }
 
 export function SeccionDistribucion({ cfg, editar, dis }) {
+  // Orden en que la persona fue tocando los %: los que NO tocó absorben la diferencia.
+  const [tocados, setTocados] = useState([]);
+  function cambiarPct(id, valor) {
+    const r = rebalancearDuenos(cfg.duenos, id, valor, tocados);
+    setTocados(r.tocados);
+    editar(c => { c.duenos = r.duenos; });
+  }
+  function quitar(id) {
+    const r = quitarDueno(cfg.duenos, id, tocados);
+    setTocados(r.tocados);
+    editar(c => { c.duenos = r.duenos; });
+  }
   const suma = cfg.duenos.reduce((acc, du) => acc + (Number.isFinite(num(du.porcentaje)) ? num(du.porcentaje) : 0), 0);
   const sumaR = Math.round(suma * 100) / 100;
   const ok = Math.abs(suma - 100) <= 0.01;
@@ -488,12 +508,12 @@ export function SeccionDistribucion({ cfg, editar, dis }) {
               max="100"
               step="0.01"
               value={du.porcentaje}
-              onChange={e => editar(c => { c.duenos[i].porcentaje = e.target.value; })}
+              onChange={e => cambiarPct(du.id, e.target.value)}
             />
             <span style={{ color: "var(--text2)" }}>%</span>
           </div>
           {!dis && cfg.duenos.length > 1 && (
-            <button type="button" style={s.quitar} onClick={() => editar(c => { c.duenos.splice(i, 1); })}>Quitar</button>
+            <button type="button" style={s.quitar} onClick={() => quitar(du.id)}>Quitar</button>
           )}
         </div>
       ))}

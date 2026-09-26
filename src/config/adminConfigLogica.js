@@ -34,7 +34,9 @@ export const CONFIG_ADMIN_DEFAULT = {
   financiacion: { ARS: monedaDefault("ARS"), USD: monedaDefault("USD") },
   cobranza: {
     // ultimoDia: último día del mes para pagar sin interés (10 → quien paga el 11 tiene 1 día de atraso).
-    mora: { activa: false, porcentajeDia: 0, ultimoDia: 10 },
+    // base: sobre qué valor se calcula el % de mora ("anterior" = última cuota del mes anterior,
+    // "primera" = primera cuota, el precio de la firma).
+    mora: { activa: false, porcentajeDia: 0, ultimoDia: 10, base: "anterior" },
     transferencia: { impuestoPct: 0 },
   },
   // Dueños del proyecto y su parte de lo que entra (tienen que sumar 100).
@@ -126,6 +128,62 @@ export function completarFinanciacion(fg) {
     else out[id] = completarMoneda(id, planes.length ? { habilitada: false } : undefined);
   });
   return out;
+}
+
+export const BASES_MORA = [
+  { id: "anterior", label: "La última cuota del mes anterior" },
+  { id: "primera", label: "La primera cuota (precio de la firma)" },
+];
+
+// ── Dueños: los % se reparten solos para que siempre sumen 100 ──
+// Al cambiar el % de un dueño, lo que sobra (o falta) se reparte en partes iguales entre los dueños
+// que la persona NO tocó. Si ya tocó a todos, se usa el que tocó hace más tiempo.
+// Ej. con 3: A = 20 → B y C = 40 y 40; después B = 50 → solo C cambia (30).
+// "tocados" = ids en el orden en que se editaron (el más viejo primero).
+function redondear2(x) { return Math.round(x * 100) / 100; }
+function pct(d) { const v = num(d.porcentaje); return Number.isFinite(v) ? v : 0; }
+function repartir(lista, ids, total) {
+  if (!ids.length) return;
+  const parte = redondear2(total / ids.length);
+  let acumulado = 0;
+  ids.forEach((id, k) => {
+    const val = k === ids.length - 1 ? redondear2(total - acumulado) : parte;
+    acumulado = redondear2(acumulado + val);
+    lista.find(d => d.id === id).porcentaje = val;
+  });
+}
+export function rebalancearDuenos(duenos, id, valorTexto, tocados) {
+  const lista = duenos.map(d => ({ ...d }));
+  const i = lista.findIndex(d => d.id === id);
+  if (i < 0) return { duenos: lista, tocados };
+  let v = num(valorTexto);
+  if (!Number.isFinite(v)) v = 0;
+  v = Math.min(100, Math.max(0, v));
+  lista[i].porcentaje = valorTexto;            // lo que escribió la persona queda tal cual
+  const otros = lista.filter(d => d.id !== id);
+  const orden = (tocados || []).filter(t => t !== id && otros.some(d => d.id === t));
+  const candidatos = otros.filter(d => !orden.includes(d.id)).map(d => d.id);
+  const sumaFijos = () => otros.filter(d => !candidatos.includes(d.id)).reduce((s, d) => s + pct(d), 0);
+  let resto = 100 - v - sumaFijos();
+  let k = 0;
+  while ((candidatos.length === 0 || resto < -0.001) && k < orden.length) {
+    const masViejo = orden[k++];
+    if (!candidatos.includes(masViejo)) candidatos.push(masViejo);
+    resto = 100 - v - sumaFijos();
+  }
+  repartir(lista, candidatos, Math.max(0, resto));
+  return { duenos: lista, tocados: orden.filter(t => !candidatos.includes(t)).concat(id) };
+}
+// Al quitar un dueño, su % se reparte entre los no tocados (o entre todos si ya se tocaron todos).
+export function quitarDueno(duenos, id, tocados) {
+  const quitado = duenos.find(d => d.id === id);
+  const lista = duenos.filter(d => d.id !== id).map(d => ({ ...d }));
+  const orden = (tocados || []).filter(t => t !== id);
+  let destino = lista.filter(d => !orden.includes(d.id)).map(d => d.id);
+  if (!destino.length) destino = lista.map(d => d.id);
+  const sumaDestino = destino.reduce((s, did) => s + pct(lista.find(d => d.id === did)), 0);
+  repartir(lista, destino, sumaDestino + (quitado ? pct(quitado) : 0));
+  return { duenos: lista, tocados: orden };
 }
 
 // Pasa el reparto viejo (parte A / parte B) a la lista de dueños.
@@ -368,6 +426,7 @@ export function normalizar(cfg) {
         activa: !!cfg.cobranza.mora.activa,
         porcentajeDia: cfg.cobranza.mora.activa ? num(cfg.cobranza.mora.porcentajeDia) : 0,
         ultimoDia: num(cfg.cobranza.mora.ultimoDia),
+        base: cfg.cobranza.mora.base === "primera" ? "primera" : "anterior",
       },
       transferencia: { impuestoPct: num(cfg.cobranza.transferencia.impuestoPct) },
     },

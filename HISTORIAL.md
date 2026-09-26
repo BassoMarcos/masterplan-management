@@ -195,6 +195,11 @@
 - **Regla para la firma de lotes (a implementar en contratos):** el período de aumento cuenta desde la FIRMA. Con aumento cada N meses (modo grupos) aumenta en las cuotas N, 2N, 3N…: la primera tanda tiene N−1 cuotas al precio inicial (ej. cada 3: cuotas 1-2, después 3-5, 6-8). El grupo del cliente sale del mes en que le cae la cuota N (igual que fyj `calcTrimestrePorCuota`).
 - Probado: Node y simulación de navegador (4 casos).
 
+## 2026-09-25 — MasterPlan: base de la mora y dueños en vivo
+- **Mora**: nueva opción "¿Sobre qué valor se calcula el interés?" → la última cuota del mes anterior (por defecto) o la primera cuota (precio de la firma). `cobranza.mora.base` = `anterior` | `primera`. (Marcos descartó "la cuota atrasada".)
+- **Dueños**: los % se reparten solos para sumar siempre 100. Al cambiar uno, la diferencia se reparte en partes iguales entre los que NO se tocaron (si ya se tocaron todos, absorbe el tocado hace más tiempo). Ej. 3 dueños: A = 20 → B y C = 40/40; B = 50 → solo C (30). Al quitar un dueño, su % va a los no tocados. Lógica en `rebalancearDuenos` / `quitarDueno`.
+- Probado: Node y simulación de navegador (5 casos).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
