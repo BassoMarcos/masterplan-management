@@ -178,7 +178,7 @@ export default function ComercialDisenoReserva() {
     <div style={styles.container}>
       <header style={styles.header}>
         <div style={styles.headerLeft}>
-          <button style={styles.backBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configuracion/comercial/recorrido`)}>← Volver</button>
+          <button style={styles.backBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/configuracion/recorrido`)}>← Volver</button>
           <div>
             <h1 style={styles.headerTitle}>📝 Formulario de reserva</h1>
             <p style={styles.headerSub}>{proyecto?.nombre}{!puedeEditar && " · 👁️ Solo lectura"}</p>

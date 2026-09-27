@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { db } from "../firebase/config";
 import { doc, collection, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
 import { areaActivaEnProyecto } from "../config/appConfig";
+import { SECCIONES_ADMIN } from "../config/configuracionGrupos";
 import { s, Campo, SeccionTitulo } from "../components/configUI";
 import {
   TopeMora, SeccionAvisosMora, SeccionAdelantos, SeccionPermisos, SeccionDiferencias,
@@ -38,8 +39,8 @@ import {
 // Se guarda en proyectos/{id}.adminConfig. Todavía no mueve plata: es la base sobre la que
 // después se arman clientes, cobros, cajas y cierres.
 //
-// Layout: lista de secciones a la izquierda, el detalle de la sección elegida a la derecha
-// (como los Ajustes de cualquier app grande) — para no mezclar todo en una sola pantalla larga.
+// Vive dentro de ⚙️ Configuración (Configuracion.js): la lista de secciones y las pestañas las dibuja esa pantalla;
+// acá solo va el detalle de la sección elegida y el botón de guardar.
 //
 // Financiación = las REGLAS del proyecto por moneda (pesos / dólares): si aumentan, cómo y cada
 // cuánto, con los grupos de aumento automáticos. La cantidad de cuotas, el valor y a qué grupo va
@@ -50,24 +51,7 @@ import {
 // Desarrollos). Acá solo se elige en qué caja va cada lote (Cajas separadas); ese cambio se
 // guarda junto con la configuración (mismo botón, misma tanda).
 
-// Las secciones que aparecen en la lista de la izquierda.
-// Secciones de Administración. La lista la dibuja ⚙️ Configuración del proyecto (ConfiguracionProyecto.js);
-// "grupo" arma los títulos chicos de esa lista.
-export const SECCIONES_ADMIN = [
-  { grupo: "Cuotas", id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Monedas e incrementos" },
-  { grupo: "Cuotas", id: "mora", icono: "⚠️", nombre: "Mora", resumen: "Interés por atraso" },
-  { grupo: "Cuotas", id: "avisosMora", icono: "📲", nombre: "Avisos de mora", resumen: "Grupos de morosos y WhatsApp" },
-  { grupo: "Cuotas", id: "adelantos", icono: "⏩", nombre: "Adelantos", resumen: "Pagar cuotas antes" },
-  { grupo: "Cuotas", id: "transferencias", icono: "🏦", nombre: "Transferencias", resumen: "Impuesto sobre transferencias" },
-  { grupo: "Cobros", id: "permisos", icono: "🔐", nombre: "Permisos de cobro", resumen: "Quién puede hacer qué" },
-  { grupo: "Cobros", id: "diferencias", icono: "⚖️", nombre: "Diferencias al cobrar", resumen: "Saldo a favor o en contra" },
-  { grupo: "Cobros", id: "recibos", icono: "🧾", nombre: "Recibos", resumen: "Comprobante del pago" },
-  { grupo: "Cobros", id: "cierre", icono: "🗓️", nombre: "Cierre del mes", resumen: "Respaldos y simulador" },
-  { grupo: "Casos", id: "especiales", icono: "⭐", nombre: "Casos especiales", resumen: "Préstamos, escalonado, etc." },
-  { grupo: "Casos", id: "terminados", icono: "🏁", nombre: "Lotes terminados", resumen: "Certificado de fin de pago" },
-  { grupo: "Plata", id: "distribucion", icono: "📊", nombre: "Dueños", resumen: "Distribución de ganancias" },
-  { grupo: "Plata", id: "cajas", icono: "🗃️", nombre: "Cajas separadas", resumen: "Lotes que no van a la caja central" },
-];
+// La lista de secciones (SECCIONES_ADMIN) está en config/configuracionGrupos.js y la dibuja ⚙️ Configuración.
 
 // Guarda configuración y lotes juntos (lo usan esta pantalla y el asistente de proyecto nuevo).
 // - Lotes: solo se escribe lo que cambió (nuevos, modificados, borrados).

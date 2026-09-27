@@ -5,6 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
+import BotonConfiguracion from "../components/BotonConfiguracion";
 import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, panelesVisiblesEmpleado, empleadoNivelPanel, areaActivaEnProyecto, panelesDelProyecto } from "../config/appConfig";
 import { PANELES_ADMINISTRACION } from "./AdministracionPanel";
 import { administracionConfigurada } from "../config/adminConfigLogica";
@@ -55,7 +56,9 @@ export default function AdministracionHub() {
   const area = AREAS_DEFAULT.find(a => a.id === "administracion");
   const paneles = panelesDelProyecto(esEmpleado
     ? panelesVisiblesEmpleado(empleadoData, proyectoId, "administracion")
-    : area.paneles, proyecto, "administracion");
+    : area.paneles, proyecto, "administracion")
+    // "Configuración" no va como tarjeta: se abre con el ⚙️ de arriba (igual que en las otras áreas).
+    .filter(p => p.id !== "configuracion");
 
   return (
     <div style={styles.container}>
@@ -68,6 +71,7 @@ export default function AdministracionHub() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <BotonConfiguracion proyecto={proyecto} areaId="administracion" />
           <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
@@ -100,9 +104,7 @@ export default function AdministracionHub() {
                 <div
                   key={p.id}
                   style={styles.card}
-                  onClick={() => navigate(p.id === "configuracion"
-                    ? `/proyecto/${proyectoId}/configuracion/administracion/financiacion`
-                    : `/proyecto/${proyectoId}/administracion/${p.id}`, { state: { desde: `/proyecto/${proyectoId}/administracion` } })}
+                  onClick={() => navigate(`/proyecto/${proyectoId}/administracion/${p.id}`)}
                   onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-3px)")}
                   onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
                 >

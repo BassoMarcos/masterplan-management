@@ -5,6 +5,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
+import BotonConfiguracion from "../components/BotonConfiguracion";
 import { panelesVisiblesEmpleado, empleadoNivelPanel, panelesDelProyecto } from "../config/appConfig";
 
 const PANEL_INFO = {
@@ -74,6 +75,7 @@ export default function ComercialHub() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <BotonConfiguracion proyecto={proyecto} areaId="comercial" />
           <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
@@ -90,9 +92,6 @@ export default function ComercialHub() {
                 <div style={styles.grupoTitulo}>📈 Estrategia de Ventas</div>
                 <div style={styles.grupoDesc}>Pipeline de captación: datos, filtrado y ventas.</div>
               </div>
-              {(!esEmpleado || empleadoData?.accesoTotal) && (
-                <button style={styles.configEstBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configuracion/comercial/recorrido`, { state: { desde: `/proyecto/${proyectoId}/comercial` } })}>⚙️ Configuración</button>
-              )}
             </div>
             <div style={styles.grid}>
               {paneles.map(p => {
@@ -130,7 +129,6 @@ const styles = {
   grupoHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px", flexWrap: "wrap", marginBottom: "18px" },
   grupoTitulo: { fontSize: "18px", fontWeight: "800", color: "var(--text)", marginBottom: "4px" },
   grupoDesc: { fontSize: "13px", color: "var(--text2)" },
-  configEstBtn: { background: "transparent", border: "1.5px solid var(--border2)", color: "var(--text)", padding: "8px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "13px", fontWeight: "600" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" },
   card: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "14px", padding: "24px 20px", cursor: "pointer", transition: "transform 0.2s", textAlign: "center" },
   cardIcon: { fontSize: "40px", marginBottom: "10px" },

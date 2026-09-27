@@ -246,6 +246,16 @@
   - `LotesProyecto` (componente) = la lista de lotes con su guardado, usada en Desarrollos y en Configuración.
 - Probado: simulación de navegador (33 casos).
 
+## 2026-09-27 — MasterPlan: ⚙️ Configuración con pestañas + la de cada área + la de la empresa
+- Pedido de Marcos: una configuración central con todas las áreas (y lo de la empresa), y en cada área su ⚙️ con SOLO lo de esa área, sincronizado. Y que al elegir un área sus opciones vayan como títulos arriba, sin desplegarse en la lista (se perdía lo demás).
+- `Configuracion.js` (antes ConfiguracionProyecto) con 3 modos, mismas piezas y mismos datos:
+  - Central: `/proyecto/:id/configuracion/:grupo/:seccion` — izquierda: solo la lista de grupos (Proyecto, cada área en el orden de AREAS_DEFAULT, Empresa); las opciones del grupo van como **pestañas arriba del recuadro** (con títulos chicos Cuotas/Cobros/Casos/Plata en Administración).
+  - De un área: `/proyecto/:id/:area/configuracion/:seccion` — el **⚙️ Configuración** del encabezado de cada área (`BotonConfiguracion`, aparece solo si la persona tiene algo para configurar). Botón "Ver toda la configuración".
+  - De la empresa: `/configuracion/:seccion` — el ⚙️ de la pantalla de proyectos (reemplaza el cartel "Ajustes"): Cuenta (mail + cambiar contraseña por mail), Código de la empresa, Google Drive, Empleados y permisos, Lo que viene. Lo mismo aparece como grupo "Empresa" en la central (`components/AjustesEmpresa.js`).
+- Qué se configura en cada área y quién lo ve: `config/configuracionGrupos.js` (`SECCIONES_ADMIN`, `LO_QUE_VIENE`, `armarGrupos`, `tieneConfiguracion`). Un área nueva en AREAS_DEFAULT aparece sola.
+- Administración: "Configuración" deja de ser una tarjeta y pasa al ⚙️ de arriba, como en las demás áreas.
+- Probado: simulación de navegador (38 casos) + captura visual de la central y de Comercial.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App

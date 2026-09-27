@@ -193,7 +193,7 @@ export default function ComercialFiltrado() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {puedeEditar && (
-            <button style={styles.configBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configuracion/comercial/filtro`, { state: { desde: `/proyecto/${proyectoId}/comercial/filtrado` } })} title="Configurar formulario de filtro">⚙️ Formulario</button>
+            <button style={styles.configBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/configuracion/filtro`, { state: { desde: `/proyecto/${proyectoId}/comercial/filtrado` } })} title="Configurar formulario de filtro">⚙️ Formulario</button>
           )}
           <Notificaciones />
           <ThemeSelector />
