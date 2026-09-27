@@ -7,6 +7,7 @@ import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, panelesVisiblesEmpleado, empleadoNivelPanel, areaActivaEnProyecto, panelesDelProyecto } from "../config/appConfig";
 import { PANELES_ADMINISTRACION } from "./AdministracionPanel";
+import { administracionConfigurada } from "../config/adminConfigLogica";
 
 // Entrada del pilar Administración: 3 secciones que comparten los mismos datos.
 // Lo que ve cada empleado depende de sus permisos por panel (ver Empleados).
@@ -74,7 +75,21 @@ export default function AdministracionHub() {
       </header>
 
       <main style={styles.main}>
-        {paneles.length === 0 ? (
+        {!administracionConfigurada(proyecto) ? (
+          // Primera vez: antes de usar el área hay que configurarla (una sola vez).
+          <div style={styles.pendiente}>
+            <div style={{ fontSize: "40px", marginBottom: "8px" }}>📊</div>
+            <h2 style={{ margin: "0 0 6px", fontSize: "19px", color: "var(--text)" }}>Falta configurar Administración</h2>
+            <p style={{ margin: "0 0 18px", fontSize: "14px", color: "var(--text2)", lineHeight: 1.5 }}>
+              Antes de usarla, hay que definir cómo son las cuotas, la mora, las transferencias, los dueños y las cajas de este proyecto. Son unas preguntas cortas y se hacen una sola vez.
+            </p>
+            {(!esEmpleado || empleadoData?.accesoTotal) ? (
+              <button style={styles.btnConfigurar} onClick={() => navigate(`/proyecto/${proyectoId}/administracion/configurar`)}>Configurar Administración →</button>
+            ) : (
+              <p style={{ margin: 0, fontSize: "13px", color: "var(--text2)" }}>Pedile al dueño de la empresa (o a alguien con acceso total) que la configure.</p>
+            )}
+          </div>
+        ) : paneles.length === 0 ? (
           <p style={styles.empty}>No tenés secciones habilitadas en Administración.</p>
         ) : (
           <div style={styles.grid}>
@@ -120,5 +135,7 @@ const styles = {
   cardDesc: { fontSize: "12.5px", color: "var(--text2)", lineHeight: "1.4" },
   soloVer: { marginTop: "10px", fontSize: "11px", color: "var(--text2)", background: "var(--surface)", padding: "3px 8px", borderRadius: "20px", display: "inline-block" },
   empty: { color: "var(--text2)", fontSize: "14px" },
+  pendiente: { background: "var(--card)", border: "1.5px solid #BA7517", borderRadius: "16px", padding: "32px 28px", textAlign: "center", maxWidth: "560px", margin: "0 auto" },
+  btnConfigurar: { background: "var(--acc)", color: "#fff", border: "none", borderRadius: "10px", padding: "12px 22px", fontSize: "15px", fontWeight: "700", cursor: "pointer" },
   emptyWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "80px 24px" },
 };

@@ -151,6 +151,7 @@ function AppRoutes() {
       <Route path="/empleados" element={<PrivateRoute><Empleados /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/configurar" element={<PrivateRoute><AsistenteProyecto /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/administracion/configurar" element={<PrivateRoute><AsistenteProyecto key="administracion" modo="administracion" /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/administracion" element={<PrivateRoute><AdministracionHub /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/administracion/:panelId" element={<PrivateRoute><AdministracionPanel /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial" element={<PrivateRoute><ComercialHub /></PrivateRoute>} />

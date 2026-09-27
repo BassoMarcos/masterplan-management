@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, Navigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import { empleadoNivelPanel, areasVisibles, areasVisiblesEmpleado, panelActivoEnProyecto } from "../config/appConfig";
 import AdministracionConfig from "./AdministracionConfig";
+import { administracionConfigurada } from "../config/adminConfigLogica";
 
 // Descripción de cada sección del pilar Administración.
 // "contenido" es lo que va a tener cada una (hoja de ruta), no funciones que ya existan.
@@ -89,6 +90,10 @@ export default function AdministracionPanel() {
   const areaPermitida = visibles.some(a => a.id === "administracion");
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "administracion", panelId) : "editar";
 
+  // Hasta configurar Administración, a las secciones se entra por su asistente (desde la entrada del área).
+  if (info && areaPermitida && panelId !== "configuracion" && !administracionConfigurada(proyecto)) {
+    return <Navigate to={`/proyecto/${proyectoId}/administracion`} replace />;
+  }
   if (!info || !areaPermitida || nivel === "ninguno" || !panelActivoEnProyecto(proyecto, "administracion", panelId)) {
     return (
       <div style={styles.container}>

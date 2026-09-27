@@ -190,9 +190,13 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
         {!puedeEditar && <b> Solo lectura: no tenés permiso para cambiar estas opciones.</b>}
         {puedeEditar && (
           <div style={{ marginTop: 8 }}>
-            Para cambiar qué áreas y paneles usa el proyecto, o repasar todo con preguntas:{" "}
+            Repasar con preguntas:{" "}
+            <button type="button" style={s.linkBtnInline} onClick={() => navigate(`/proyecto/${proyectoId}/administracion/configurar`)}>
+              asistente de Administración
+            </button>
+            {" · "}Áreas, lotes y datos del proyecto:{" "}
             <button type="button" style={s.linkBtnInline} onClick={() => navigate(`/proyecto/${proyectoId}/configurar`)}>
-              abrir el asistente de configuración
+              configuración del proyecto
             </button>
           </div>
         )}

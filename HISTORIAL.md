@@ -200,6 +200,14 @@
 - **Dueños**: los % se reparten solos para sumar siempre 100. Al cambiar uno, la diferencia se reparte en partes iguales entre los que NO se tocaron (si ya se tocaron todos, absorbe el tocado hace más tiempo). Ej. 3 dueños: A = 20 → B y C = 40/40; B = 50 → solo C (30). Al quitar un dueño, su % va a los no tocados. Lógica en `rebalancearDuenos` / `quitarDueno`.
 - Probado: Node y simulación de navegador (5 casos).
 
+## 2026-09-26 — MasterPlan: configuración en partes (asistente del proyecto + asistente de Administración)
+- Acordado con Marcos: el inicio no se sobrecarga; cada área configura lo suyo la primera vez que se usa.
+- **Asistente del proyecto** (al crear): Bienvenida → Áreas → Lotes → **Datos del proyecto** (tipo, dirección, localidad, provincia → `proyectos/{id}.datos`) → Resumen. Ya NO pregunta nada de Administración.
+- **Asistente de Administración** (`/proyecto/:id/administracion/configurar`, mismo componente con `modo="administracion"`): Financiación → Mora → Transferencias → Dueños → Cajas → Resumen. Guarda `adminConfig`, la caja de cada lote y `adminAsistente.completo`. Pausable (`adminAsistente.borrador`).
+- La entrada de Administración muestra "Falta configurar Administración" hasta completarlo (solo dueño / acceso total puede configurarla; los demás ven que se lo pidan). Las secciones redirigen a la entrada. Proyectos que ya tenían `adminConfig` cuentan como configurados (`administracionConfigurada`).
+- Configuración de Administración tiene links a los dos asistentes.
+- Probado: build estricto + simulación de navegador (7 casos).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
