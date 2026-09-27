@@ -29,6 +29,73 @@ function monedaDefault(id) {
   return { habilitada: id === "ARS", incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, modo: "grupos", mesInicio: 1 }, grupos: [] };
 }
 
+// ── Opciones de cobranza (2026-09-26): lo que en fyj era regla fija pasa a ser opción ──
+// Categorías de mora: cada una arranca en "desde" cuotas atrasadas y llega hasta la siguiente.
+export const VARIABLES_MENSAJE = ["{nombre}", "{lote}", "{cuotas}", "{meses}", "{monto}", "{cuotapura}"];
+function categoriasDefault() {
+  return [
+    { id: "c1", desde: 1, nombre: "Recordatorio", color: "#BA7517", mensaje: "Te escribimos por el lote {lote}. Figura pendiente la cuota de {meses}, por un total de {monto} (con intereses al día de hoy). Si ya la pagaste, desestimá este mensaje." },
+    { id: "c2", desde: 2, nombre: "Atraso", color: "#D85A30", mensaje: "Te escribimos por el lote {lote}. Figuran {cuotas} cuotas pendientes ({meses}), por un total de {monto} (con intereses al día de hoy). Te pedimos regularizar a la brevedad." },
+    { id: "c3", desde: 4, nombre: "Atraso grave", color: "#D4537E", mensaje: "Te escribimos por el lote {lote}. Tu cuenta registra {cuotas} cuotas impagas ({meses}), por un total de {monto} con intereses. Necesitamos que te comuniques con nosotros para regularizar." },
+    { id: "c4", desde: 7, nombre: "Pasa a Legales", color: "#7F77DD", mensaje: "Te escribimos por el lote {lote}. Tu cuenta registra {cuotas} cuotas adeudadas y el caso pasa al área de Legales. Comunicate con nosotros lo antes posible." },
+  ];
+}
+
+// Quién puede hacer cada acción delicada al cobrar.
+export const NIVELES_PERMISO = [
+  { id: "cobranzas", label: "Lo hace Cobranzas" },
+  { id: "aprobacion", label: "Cobranzas, con aprobación de Administración" },
+  { id: "admin", label: "Solo Administración" },
+];
+export const ACCIONES_COBRO = [
+  { id: "transferenciaTotal", label: "Cobrar todo por transferencia (sin efectivo)" },
+  { id: "cambiarInteres", label: "Cobrar con otro interés o con descuento" },
+  { id: "anular", label: "Anular un cobro (hasta el cierre del mes)" },
+  { id: "marcarSinCobrar", label: "Marcar una cuota como pagada sin cobrarla" },
+];
+
+export const CASOS_ESPECIALES = [
+  { id: "cuotaFutura", label: "Primera cuota más adelante", ayuda: "El cliente firma hoy y empieza a pagar en un mes futuro. Hasta ese mes no cuenta en la mora ni en los totales." },
+  { id: "escalonado", label: "Cuota escalonada", ayuda: "La cuota cambia por tramos (ej. las primeras 12 más bajas)." },
+  { id: "refinanciacion", label: "Refinanciación", ayuda: "Una deuda atrasada se reparte en cuotas nuevas." },
+  { id: "prestamos", label: "Préstamos", ayuda: "Lotes que se pagan solos (autopago): no entran en la caja ni en los cierres." },
+  { id: "empresaPaga", label: "La empresa paga", ayuda: "Lotes cuya cuota la paga la propia empresa." },
+];
+
+function extrasDefault() {
+  return {
+    // cuotas: "ultimas" (como fyj) | "proximas" | "elige" (lo elige quien cobra).
+    // conAumento (si descuenta próximas y hay un aumento en el medio): "hoy" = quedan pagas al precio
+    // de hoy | "diferencia" = cuando llega el aumento, el cliente paga la diferencia.
+    adelantos: { permitidos: true, cuotas: "ultimas", aprobacion: true, conAumento: "hoy" },
+    // tope: el interés de mora no puede pasar de este % de la cuota.
+    moraExtra: { categorias: categoriasDefault(), saludo: "Hola {nombre}:", firma: "Saludos cordiales.", tope: { activo: false, pct: 100 } },
+    permisos: { transferenciaTotal: "aprobacion", cambiarInteres: "aprobacion", anular: "cobranzas", marcarSinCobrar: "admin" },
+    // Diferencias al cobrar (vuelto de más o de menos): hasta este monto se ignoran; si son más,
+    // quedan anotadas como saldo a favor o en contra del cliente.
+    diferencias: { ignorarHasta: 0, alProximoPago: true },
+    cierre: { respaldos: true, simulador: true },
+    recibos: { titulo: "Recibo de pago", pie: "", numeroInicial: 1, whatsapp: true },
+    especiales: { cuotaFutura: true, escalonado: false, refinanciacion: false, prestamos: false, empresaPaga: false },
+    terminados: { certificado: true, pasos: [{ id: "p1", nombre: "Solicitado" }, { id: "p2", nombre: "Recibido" }, { id: "p3", nombre: "Entregado" }] },
+  };
+}
+
+// Rango de cuotas de cada categoría de mora, en orden: "1 cuota", "2 a 3 cuotas", "7 o más cuotas".
+export function rangosCategorias(categorias) {
+  const orden = (categorias || []).slice().sort((a, b) => num(a.desde) - num(b.desde));
+  return orden.map((c, i) => {
+    const d = num(c.desde);
+    const sig = orden[i + 1] ? num(orden[i + 1].desde) - 1 : null;
+    let texto;
+    if (!Number.isFinite(d)) texto = "?";
+    else if (sig === null) texto = `${d} o más cuotas`;
+    else if (sig <= d) texto = d === 1 ? "1 cuota" : `${d} cuotas`;
+    else texto = `${d} a ${sig} cuotas`;
+    return { ...c, texto };
+  });
+}
+
 // Valores iniciales neutros: la empresa decide todo. (Los de F&J se cargan cuando llegue ese momento.)
 export const CONFIG_ADMIN_DEFAULT = {
   financiacion: { ARS: monedaDefault("ARS"), USD: monedaDefault("USD") },
@@ -42,6 +109,7 @@ export const CONFIG_ADMIN_DEFAULT = {
   // Dueños del proyecto y su parte de lo que entra (tienen que sumar 100).
   duenos: [{ id: "empresa", nombre: "Empresa", porcentaje: 100 }],
   cajasEspeciales: [],
+  ...extrasDefault(),
 };
 
 // ── Cómo se reparten los aumentos ──────────────────────────────
@@ -224,6 +292,27 @@ export function completarConfig(guardada) {
     },
     duenos,
     cajasEspeciales: Array.isArray(g.cajasEspeciales) ? g.cajasEspeciales : [],
+    ...completarExtras(g),
+  };
+}
+
+function completarExtras(g) {
+  const d = extrasDefault();
+  const mezclar = (k) => ({ ...d[k], ...(g[k] || {}) });
+  const me = mezclar("moraExtra");
+  me.categorias = Array.isArray(me.categorias) ? me.categorias.map(c => ({ ...c })) : d.moraExtra.categorias;
+  me.tope = { ...d.moraExtra.tope, ...(me.tope || {}) };
+  const te = mezclar("terminados");
+  te.pasos = Array.isArray(te.pasos) ? te.pasos.map(p => ({ ...p })) : d.terminados.pasos;
+  return {
+    adelantos: mezclar("adelantos"),
+    moraExtra: me,
+    permisos: mezclar("permisos"),
+    diferencias: mezclar("diferencias"),
+    cierre: mezclar("cierre"),
+    recibos: mezclar("recibos"),
+    especiales: mezclar("especiales"),
+    terminados: te,
   };
 }
 
@@ -273,6 +362,29 @@ export function validar(cfg) {
   if (Math.abs(suma - 100) > 0.01) return { mensaje: `Los porcentajes de los dueños suman ${Math.round(suma * 100) / 100}: tienen que sumar 100.`, seccion: "distribucion" };
   for (const c of cfg.cajasEspeciales) {
     if (!String(c.nombre || "").trim()) return { mensaje: "Todas las cajas especiales necesitan un nombre.", seccion: "cajas" };
+  }
+  return validarExtras(cfg);
+}
+
+function validarExtras(cfg) {
+  const me = cfg.moraExtra;
+  if (!me.categorias.length) return { mensaje: "Tiene que haber al menos una categoría de mora.", seccion: "avisosMora" };
+  const vistos = new Set();
+  for (const c of me.categorias) {
+    const d = num(c.desde);
+    if (!(Number.isInteger(d) && d >= 1 && d <= 999)) return { mensaje: "Cada categoría de mora arranca en una cantidad de cuotas (1 o más).", seccion: "avisosMora" };
+    if (vistos.has(d)) return { mensaje: `Hay dos categorías de mora que arrancan en ${d} cuota(s).`, seccion: "avisosMora" };
+    vistos.add(d);
+    if (!String(c.nombre || "").trim()) return { mensaje: "Todas las categorías de mora necesitan un nombre.", seccion: "avisosMora" };
+  }
+  if (me.tope.activo && !(num(me.tope.pct) > 0 && num(me.tope.pct) <= 1000)) return { mensaje: "El tope de interés tiene que ser mayor que 0 (y hasta 1000%).", seccion: "mora" };
+  if (!(num(cfg.diferencias.ignorarHasta) >= 0)) return { mensaje: "El monto de diferencias que se ignora tiene que ser 0 o más.", seccion: "diferencias" };
+  const n0 = num(cfg.recibos.numeroInicial);
+  if (!(Number.isInteger(n0) && n0 >= 1)) return { mensaje: "El número del primer recibo tiene que ser 1 o más.", seccion: "recibos" };
+  if (!String(cfg.recibos.titulo || "").trim()) return { mensaje: "El recibo necesita un título.", seccion: "recibos" };
+  if (cfg.terminados.certificado) {
+    if (!cfg.terminados.pasos.length) return { mensaje: "Si hay certificado, cargá al menos un paso.", seccion: "terminados" };
+    if (cfg.terminados.pasos.some(p => !String(p.nombre || "").trim())) return { mensaje: "Todos los pasos del certificado necesitan un nombre.", seccion: "terminados" };
   }
   return null;
 }
@@ -438,6 +550,44 @@ export function normalizar(cfg) {
     },
     duenos: cfg.duenos.map(du => ({ id: du.id, nombre: String(du.nombre).trim(), porcentaje: Math.round(num(du.porcentaje) * 100) / 100 })),
     cajasEspeciales: cfg.cajasEspeciales.map(c => ({ id: c.id, nombre: String(c.nombre).trim(), nota: String(c.nota || "").trim() })),
+    ...normalizarExtras(cfg),
+  };
+}
+
+const unoDe = (v, opciones, def) => (opciones.includes(v) ? v : def);
+function normalizarExtras(cfg) {
+  const a = cfg.adelantos;
+  const me = cfg.moraExtra;
+  const niveles = NIVELES_PERMISO.map(n => n.id);
+  return {
+    adelantos: {
+      permitidos: !!a.permitidos,
+      cuotas: unoDe(a.cuotas, ["ultimas", "proximas", "elige"], "ultimas"),
+      aprobacion: !!a.aprobacion,
+      conAumento: unoDe(a.conAumento, ["hoy", "diferencia"], "hoy"),
+    },
+    moraExtra: {
+      categorias: me.categorias
+        .map(c => ({ id: c.id, desde: num(c.desde), nombre: String(c.nombre).trim(), color: c.color, mensaje: String(c.mensaje || "") }))
+        .sort((x, y) => x.desde - y.desde),
+      saludo: String(me.saludo || ""),
+      firma: String(me.firma || ""),
+      tope: { activo: !!me.tope.activo, pct: num(me.tope.pct) || 100 },
+    },
+    permisos: Object.fromEntries(ACCIONES_COBRO.map(x => [x.id, unoDe(cfg.permisos[x.id], niveles, "admin")])),
+    diferencias: { ignorarHasta: num(cfg.diferencias.ignorarHasta) || 0, alProximoPago: !!cfg.diferencias.alProximoPago },
+    cierre: { respaldos: !!cfg.cierre.respaldos, simulador: !!cfg.cierre.simulador },
+    recibos: {
+      titulo: String(cfg.recibos.titulo).trim(),
+      pie: String(cfg.recibos.pie || "").trim(),
+      numeroInicial: num(cfg.recibos.numeroInicial),
+      whatsapp: !!cfg.recibos.whatsapp,
+    },
+    especiales: Object.fromEntries(CASOS_ESPECIALES.map(x => [x.id, !!cfg.especiales[x.id]])),
+    terminados: {
+      certificado: !!cfg.terminados.certificado,
+      pasos: cfg.terminados.pasos.map(p => ({ id: p.id, nombre: String(p.nombre).trim() })),
+    },
   };
 }
 
