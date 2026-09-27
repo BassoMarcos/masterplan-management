@@ -14,17 +14,19 @@ import {
   Campo, guardarConfigYLotes, estilosConfig as s,
 } from "./AdministracionConfig";
 
-// Asistente de configuración, en dos modos (acordado con Marcos: el inicio no se sobrecarga y cada
-// área configura lo suyo la primera vez que se usa):
+// Asistente de configuración, en dos modos (la bienvenida pregunta todo de una; Administración tiene
+// además su propio asistente de respaldo):
 //
-// modo "proyecto" — se abre solo al crear un proyecto (y desde ⚙️ Configuración del proyecto):
-//   Bienvenida → Áreas y paneles → Lotes → Datos del proyecto → Resumen. Guarda:
+// modo "proyecto" — se abre solo al crear un proyecto (y desde ⚙️ Configuración del proyecto). Pregunta TODO
+//   de una (Marcos lo prefiere así): si el proyecto usa Administración, también sus reglas:
+//   Bienvenida → Áreas → Lotes → Datos → [Financiación → Mora → Transferencias → Dueños → Cajas] → Resumen.
 //   - proyectos/{id}.estructura  → qué áreas y paneles usa el proyecto
 //   - proyectos/{id}/lotes       → los lotes que salen de la estructura del loteo
 //   - proyectos/{id}.datos       → tipo, dirección, localidad, provincia
 //   - proyectos/{id}.asistente   → { completo, paso, borrador } para pausar y retomar
 //
-// modo "administracion" — la PRIMERA vez que se entra a Administración (y después para repasar):
+// modo "administracion" — de respaldo: si Administración se activa después y no está configurada, la entrada
+//   del área lo pide (y sirve para repasar):
 //   Bienvenida → Financiación → Mora → Transferencias → Dueños → Cajas → Resumen. Guarda:
 //   - proyectos/{id}.adminConfig     → reglas de Administración
 //   - proyectos/{id}/lotes           → la caja de cada lote
@@ -138,11 +140,11 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
   const esNuevo = esAdm ? !administracionConfigurada(proyecto) : !!(proyecto.asistente && !proyecto.asistente.completo);
   const yaConfigurado = !esNuevo;
   const act = (id) => !!(estructura.areas[id] && estructura.areas[id].activa);
-  const conAdmin = esAdm;
+  const conAdmin = esAdm || act("administracion");
   const conLotes = act("administracion") || act("comercial") || act("desarrollos");
   const pasos = esAdm
     ? ["bienvenida", "financiacion", "mora", "transferencias", "duenos", "cajas", "resumen"]
-    : ["bienvenida", "areas", conLotes && "lotes", "datos", "resumen"].filter(Boolean);
+    : ["bienvenida", "areas", conLotes && "lotes", "datos", conAdmin && "financiacion", conAdmin && "mora", conAdmin && "transferencias", conAdmin && "duenos", conAdmin && "cajas", "resumen"].filter(Boolean);
   const volverA = esAdm ? `/proyecto/${proyectoId}/administracion` : `/proyecto/${proyectoId}`;
   let idx = pasos.indexOf(paso);
   if (idx < 0) idx = 1;
@@ -192,7 +194,7 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
     try {
       const borrador = JSON.parse(JSON.stringify(esAdm
         ? { cfg, lotes: lotesAct, paso: pasoSig }
-        : { estructura, etapas, lotes: lotesAct, datos, paso: pasoSig }));
+        : { estructura, cfg, etapas, lotes: lotesAct, datos, paso: pasoSig }));
       await updateDoc(doc(db, "proyectos", proyectoId), { [campoAsistente]: { completo: false, paso: pasoSig, borrador } });
     } catch (e) {
       // Sin conexión: el borrador es solo una ayuda, no frena el asistente.
@@ -267,11 +269,16 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
       };
       await guardarConfigYLotes({
         proyectoId,
-        limpia: null,
-        cambioCfg: false,
+        limpia: conAdmin ? normalizar(cfg) : null,
+        cambioCfg: conAdmin,
         lotesIni,
         lotes,
-        extra: { estructura: estructuraLimpia, datos: datosLimpios, asistente: { completo: true, fecha: serverTimestamp() } },
+        extra: {
+          estructura: estructuraLimpia,
+          datos: datosLimpios,
+          asistente: { completo: true, fecha: serverTimestamp() },
+          ...(conAdmin ? { adminAsistente: { completo: true, fecha: serverTimestamp() } } : {}),
+        },
       });
       navigate(`/proyecto/${proyectoId}`);
     } catch (err) {
@@ -318,8 +325,8 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
                   ? "Vas a repasar las reglas de Administración. Cambiá lo que necesites y al final guardá."
                   : "Son unas preguntas sobre las cuotas, la mora, las transferencias, los dueños y las cajas. Se hacen una sola vez; después podés cambiar todo desde Administración → Configuración.")
                 : (yaConfigurado
-                  ? "Vas a repasar la configuración general del proyecto. Cambiá lo que necesites y al final guardá."
-                  : `Felicidades. Antes de continuar, configuremos lo general de "${proyecto.nombre}": sus áreas, sus lotes y sus datos. Cada área después pide lo suyo la primera vez que se usa.`)}
+                  ? "Vas a repasar todas las respuestas de la configuración. Cambiá lo que necesites y al final guardá."
+                  : `Felicidades. Antes de continuar, vamos a configurar todo el sistema de "${proyecto.nombre}". Son unas preguntas cortas; después podés cambiar cualquier respuesta desde la configuración.`)}
             </p>
           </div>
         )}
@@ -351,7 +358,7 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
         )}
 
         {pasoActual === "resumen" && (
-          <PasoResumen estructura={estructura} habilitadas={habilitadas} cfg={cfg} lotes={lotes} lotesIni={lotesIni} conAdmin={conAdmin} datos={esAdm ? null : datos} />
+          <PasoResumen estructura={estructura} habilitadas={habilitadas} cfg={cfg} lotes={lotes} lotesIni={lotesIni} conAdmin={conAdmin} datos={esAdm ? null : datos} mostrarProyecto={!esAdm} />
         )}
 
         {error && <p style={est.error}>{error}</p>}
@@ -594,7 +601,7 @@ function PasoLotes({ etapas, setEtapas, lotesGuardados }) {
   );
 }
 
-function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin, datos }) {
+function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin, datos, mostrarProyecto }) {
   const areas = AREAS_DEFAULT.filter(a => habilitadas.some(h => h.id === a.id) && estructura.areas[a.id] && estructura.areas[a.id].activa);
   const nuevos = lotes.filter(l => !lotesIni.some(x => x.id === l.id)).length;
   const m = cfg.cobranza.mora;
@@ -614,7 +621,7 @@ function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin, 
   return (
     <div>
       <p style={est.texto}>Revisá que esté todo bien. Cualquier cosa la podés cambiar después.</p>
-      {!conAdmin && (
+      {mostrarProyecto && (
         <>
       <Fila titulo="Áreas">
         {areas.length ? areas.map(a => {

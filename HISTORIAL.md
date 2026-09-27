@@ -208,6 +208,11 @@
 - Configuración de Administración tiene links a los dos asistentes.
 - Probado: build estricto + simulación de navegador (7 casos).
 
+## 2026-09-26 — MasterPlan: la bienvenida vuelve a preguntar todo
+- Marcos prefirió el asistente de bienvenida como estaba ("ya con eso configurábamos bastante"): vuelve a incluir Financiación, Mora, Transferencias, Dueños y Cajas cuando el proyecto usa Administración, y suma el paso **Datos del proyecto**. Al terminar queda `adminConfig` y `adminAsistente.completo`.
+- El asistente de Administración queda **de respaldo**: la entrada del área lo pide solo si Administración no está configurada (ej. se activó después).
+- Probado: simulación de navegador (7 casos).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
