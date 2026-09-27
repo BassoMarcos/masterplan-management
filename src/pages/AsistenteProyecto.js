@@ -4,7 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, getDoc, getDocs, collection, updateDoc, serverTimestamp } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
-import { AREAS_DEFAULT, areasVisibles, estructuraInicial, PANELES_SIEMPRE } from "../config/appConfig";
+import { AREAS_DEFAULT, areasVisibles, estructuraInicial, PANELES_SIEMPRE, validarEstructura, limpiarEstructura } from "../config/appConfig";
 import {
   completarConfig, validar, validarLotes, normalizar, loteLimpio, nuevoId,
   lotesDesdeEstructura, sincronizarLotes, TIPOS_INCREMENTO, MONEDAS, textoCalendario, administracionConfigurada,
@@ -17,7 +17,7 @@ import {
 // Asistente de configuración, en dos modos (la bienvenida pregunta todo de una; Administración tiene
 // además su propio asistente de respaldo):
 //
-// modo "proyecto" — se abre solo al crear un proyecto (y desde ⚙️ Configuración del proyecto). Pregunta TODO
+// modo "proyecto" — se abre solo al crear un proyecto (y desde ⚙️ Configuración → "Repasar con el asistente"). Pregunta TODO
 //   de una (Marcos lo prefiere así): si el proyecto usa Administración, también sus reglas:
 //   Bienvenida → Áreas → Lotes → Datos → [Financiación → Mora → Transferencias → Dueños → Cajas] → Resumen.
 //   - proyectos/{id}.estructura  → qué áreas y paneles usa el proyecto
@@ -34,13 +34,21 @@ import {
 //
 // Reusa las mismas pantallas de Administración → Configuración, así se valida todo igual.
 
-const TIPOS_PROYECTO = ["Loteo", "Barrio cerrado", "Condominio", "Edificio", "Otro"];
+export const TIPOS_PROYECTO = ["Loteo", "Barrio cerrado", "Condominio", "Edificio", "Otro"];
 const PROVINCIAS = [
   "Buenos Aires", "Ciudad de Buenos Aires", "Catamarca", "Chaco", "Chubut", "Córdoba", "Corrientes",
   "Entre Ríos", "Formosa", "Jujuy", "La Pampa", "La Rioja", "Mendoza", "Misiones", "Neuquén", "Río Negro",
   "Salta", "San Juan", "San Luis", "Santa Cruz", "Santa Fe", "Santiago del Estero", "Tierra del Fuego", "Tucumán",
 ];
-function datosIniciales(p) {
+export function limpiarDatos(datos) {
+  return {
+    tipo: datos.tipo || "Loteo",
+    direccion: String(datos.direccion || "").trim(),
+    localidad: String(datos.localidad || "").trim(),
+    provincia: datos.provincia || "",
+  };
+}
+export function datosIniciales(p) {
   const d = (p && p.datos) || {};
   return { tipo: d.tipo || "Loteo", direccion: d.direccion || "", localidad: d.localidad || "", provincia: d.provincia || "" };
 }
@@ -170,16 +178,7 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
   }
 
   function validarPaso(p) {
-    if (p === "areas") {
-      const activas = Object.keys(estructura.areas).filter(id => estructura.areas[id].activa && habilitadas.some(a => a.id === id));
-      if (!activas.length) return "Elegí al menos un área.";
-      for (const id of activas) {
-        const area = AREAS_DEFAULT.find(a => a.id === id);
-        const elegibles = area.paneles.filter(pn => !(PANELES_SIEMPRE[id] || []).includes(pn.id));
-        if (elegibles.length && !elegibles.some(pn => estructura.areas[id].paneles.includes(pn.id))) return `En ${area.nombre}, elegí al menos un panel.`;
-      }
-      return "";
-    }
+    if (p === "areas") return validarEstructura(estructura, habilitadas);
     if (p === "lotes") return lotesDesdeEstructura(etapas).error;
     if (SECCION_DE_PASO[p]) {
       const e = validar(cfg);
@@ -250,21 +249,8 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
       return;
     }
     try {
-      const estructuraLimpia = { areas: {} };
-      AREAS_DEFAULT.forEach(a => {
-        const x = estructura.areas[a.id];
-        const habil = habilitadas.some(h => h.id === a.id);
-        estructuraLimpia.areas[a.id] = {
-          activa: !!(x && x.activa && habil),
-          paneles: x ? a.paneles.map(p => p.id).filter(id => x.paneles.includes(id) || (PANELES_SIEMPRE[a.id] || []).includes(id)) : [],
-        };
-      });
-      const datosLimpios = {
-        tipo: datos.tipo || "Loteo",
-        direccion: String(datos.direccion || "").trim(),
-        localidad: String(datos.localidad || "").trim(),
-        provincia: datos.provincia || "",
-      };
+      const estructuraLimpia = limpiarEstructura(estructura, habilitadas);
+      const datosLimpios = limpiarDatos(datos);
       await guardarConfigYLotes({
         proyectoId,
         limpia: conAdmin ? normalizar(cfg) : null,
@@ -379,25 +365,25 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
   );
 }
 
-function PasoDatos({ datos, setDatos }) {
+export function PasoDatos({ datos, setDatos, dis }) {
   const set = (k, v) => setDatos({ ...datos, [k]: v });
   return (
     <div>
       <p style={est.texto}>Datos generales del proyecto. Después los van a usar todas las áreas (reservas, boletos, recibos).</p>
       <div style={s.grid}>
         <Campo label="Tipo de proyecto">
-          <select style={s.input} value={datos.tipo} onChange={e => set("tipo", e.target.value)}>
+          <select style={s.input} disabled={dis} value={datos.tipo} onChange={e => set("tipo", e.target.value)}>
             {TIPOS_PROYECTO.map(t => <option key={t} value={t}>{t}</option>)}
           </select>
         </Campo>
         <Campo label="Dirección">
-          <input style={s.input} placeholder="Ej: Ruta 5 km 12" value={datos.direccion} onChange={e => set("direccion", e.target.value)} />
+          <input style={s.input} disabled={dis} placeholder="Ej: Ruta 5 km 12" value={datos.direccion} onChange={e => set("direccion", e.target.value)} />
         </Campo>
         <Campo label="Localidad">
-          <input style={s.input} placeholder="Ej: Luján" value={datos.localidad} onChange={e => set("localidad", e.target.value)} />
+          <input style={s.input} disabled={dis} placeholder="Ej: Luján" value={datos.localidad} onChange={e => set("localidad", e.target.value)} />
         </Campo>
         <Campo label="Provincia">
-          <select style={s.input} value={datos.provincia} onChange={e => set("provincia", e.target.value)}>
+          <select style={s.input} disabled={dis} value={datos.provincia} onChange={e => set("provincia", e.target.value)}>
             <option value="">Elegí…</option>
             {PROVINCIAS.map(p => <option key={p} value={p}>{p}</option>)}
           </select>
@@ -413,7 +399,7 @@ function Pantalla({ children, navigate, logout, proyectoId, proyecto, botonSalir
       <header style={est.header}>
         <div style={est.headerLeft}>
           <div>
-            <h1 style={est.headerTitle}>{esAdm ? "📊 Configuración de Administración" : "⚙️ Configuración del proyecto"}</h1>
+            <h1 style={est.headerTitle}>{esAdm ? "🧭 Asistente de Administración" : "🧭 Asistente del proyecto"}</h1>
             <p style={est.headerSub}>{proyecto ? proyecto.nombre : ""}</p>
           </div>
         </div>
@@ -428,7 +414,7 @@ function Pantalla({ children, navigate, logout, proyectoId, proyecto, botonSalir
   );
 }
 
-function PasoAreas({ estructura, setEstructura, habilitadas }) {
+export function PasoAreas({ estructura, setEstructura, habilitadas, dis }) {
   function cambiar(fn) {
     const copia = JSON.parse(JSON.stringify(estructura));
     fn(copia);
@@ -448,7 +434,7 @@ function PasoAreas({ estructura, setEstructura, habilitadas }) {
           <div key={a.id} style={{ ...est.areaCard, ...(on ? est.areaOn : {}), opacity: habil ? 1 : 0.55 }}>
             <button
               type="button"
-              disabled={!habil}
+              disabled={!habil || dis}
               onClick={() => cambiar(c => { c.areas[a.id] = { ...(c.areas[a.id] || { paneles: a.paneles.map(p => p.id) }), activa: !on }; })}
               style={est.areaTop}
             >
@@ -471,6 +457,7 @@ function PasoAreas({ estructura, setEstructura, habilitadas }) {
                       <button
                         key={p.id}
                         type="button"
+                        disabled={dis}
                         onClick={() => cambiar(c => {
                           const arr = c.areas[a.id].paneles;
                           const i = arr.indexOf(p.id);

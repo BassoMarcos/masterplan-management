@@ -6,7 +6,6 @@ import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import { empleadoNivelPanel, areasVisibles, areasVisiblesEmpleado, panelActivoEnProyecto } from "../config/appConfig";
-import AdministracionConfig from "./AdministracionConfig";
 import { administracionConfigurada } from "../config/adminConfigLogica";
 
 // Descripción de cada sección del pilar Administración.
@@ -15,7 +14,7 @@ export const PANELES_ADMINISTRACION = {
   configuracion: {
     icono: "⚙️",
     nombre: "Configuración",
-    desc: "Financiación, mora, transferencias y cajas especiales de este proyecto",
+    desc: "Todas las opciones de Administración (se abren en ⚙️ Configuración del proyecto)",
     contenido: [],
   },
   gerencia: {
@@ -56,7 +55,8 @@ export const PANELES_ADMINISTRACION = {
   },
 };
 
-// Portada de una sección de Administración (en construcción), o la pantalla de Configuración.
+// Portada de una sección de Administración (en construcción). "Configuración" vive en la pantalla
+// central ⚙️ Configuración del proyecto: esta ruta solo redirige ahí.
 export default function AdministracionPanel() {
   const { proyectoId, panelId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -90,8 +90,11 @@ export default function AdministracionPanel() {
   const areaPermitida = visibles.some(a => a.id === "administracion");
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "administracion", panelId) : "editar";
 
+  if (panelId === "configuracion") {
+    return <Navigate to={`/proyecto/${proyectoId}/configuracion/administracion/financiacion`} replace state={{ desde: `/proyecto/${proyectoId}/administracion` }} />;
+  }
   // Hasta configurar Administración, a las secciones se entra por su asistente (desde la entrada del área).
-  if (info && areaPermitida && panelId !== "configuracion" && !administracionConfigurada(proyecto)) {
+  if (info && areaPermitida && !administracionConfigurada(proyecto)) {
     return <Navigate to={`/proyecto/${proyectoId}/administracion`} replace />;
   }
   if (!info || !areaPermitida || nivel === "ninguno" || !panelActivoEnProyecto(proyecto, "administracion", panelId)) {
@@ -122,14 +125,7 @@ export default function AdministracionPanel() {
         </div>
       </header>
 
-      <main style={panelId === "configuracion" ? styles.mainAncho : styles.main}>
-        {panelId === "configuracion" ? (
-          <AdministracionConfig
-            proyecto={proyecto}
-            puedeEditar={nivel === "editar"}
-            onGuardado={cfg => setProyecto(p => ({ ...p, adminConfig: cfg }))}
-          />
-        ) : (
+      <main style={styles.main}>
         <div style={styles.card}>
           <span style={{ fontSize: "44px" }}>🚧</span>
           <h2 style={styles.cardTitulo}>En construcción</h2>
@@ -141,7 +137,6 @@ export default function AdministracionPanel() {
             </ul>
           </div>
         </div>
-        )}
       </main>
     </div>
   );
@@ -157,7 +152,6 @@ const styles = {
   headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "560px", margin: "0 auto", padding: "40px 24px" },
-  mainAncho: { maxWidth: "860px", margin: "0 auto", padding: "32px 24px 60px" },
   card: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "40px 32px", textAlign: "center" },
   cardTitulo: { fontSize: "20px", fontWeight: "700", color: "var(--text)", margin: "12px 0 6px" },
   cardTexto: { fontSize: "14px", color: "var(--text2)", lineHeight: "1.6", margin: "0 0 20px" },

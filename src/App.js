@@ -10,13 +10,12 @@ import ProyectoPilares from "./pages/ProyectoPilares";
 import AreaSecciones from "./pages/AreaSecciones";
 import DesarrollosSecciones from "./pages/DesarrollosSecciones";
 import DesarrollosLotes from "./pages/DesarrollosLotes";
+import ConfiguracionProyecto from "./pages/ConfiguracionProyecto";
 import AdministracionHub from "./pages/AdministracionHub";
 import AdministracionPanel from "./pages/AdministracionPanel";
 import AsistenteProyecto from "./pages/AsistenteProyecto";
 import ComercialHub from "./pages/ComercialHub";
 import ComercialDatos from "./pages/ComercialDatos";
-import ComercialConfigFiltro from "./pages/ComercialConfigFiltro";
-import ComercialConfigEstrategia from "./pages/ComercialConfigEstrategia";
 import ComercialDisenoReserva from "./pages/ComercialDisenoReserva";
 import ComercialFiltrado from "./pages/ComercialFiltrado";
 import ComercialVentas from "./pages/ComercialVentas";
@@ -86,6 +85,11 @@ const pageStyle = {
   link: { background: "none", border: "none", color: "#94a3b8", fontSize: "13px", cursor: "pointer", marginTop: "8px", display: "block", textDecoration: "underline" },
 };
 
+function IrAConfiguracion({ grupo, seccion }) {
+  const { proyectoId } = useParams();
+  return <Navigate to={`/proyecto/${proyectoId}/configuracion/${grupo}/${seccion}`} replace />;
+}
+
 function SeccionPlaceholder() {
   const { proyectoId, pilarId, seccionId } = useParams();
   const navigate = useNavigate();
@@ -151,14 +155,16 @@ function AppRoutes() {
       <Route path="/proyectos" element={<PrivateRoute><Proyectos /></PrivateRoute>} />
       <Route path="/empleados" element={<PrivateRoute><Empleados /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/configuracion/:grupoId?/:seccionId?" element={<PrivateRoute><ConfiguracionProyecto /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/configurar" element={<PrivateRoute><AsistenteProyecto /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/administracion/configurar" element={<PrivateRoute><AsistenteProyecto key="administracion" modo="administracion" /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/administracion" element={<PrivateRoute><AdministracionHub /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/administracion/:panelId" element={<PrivateRoute><AdministracionPanel /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial" element={<PrivateRoute><ComercialHub /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/datos" element={<PrivateRoute><ComercialDatos /></PrivateRoute>} />
-      <Route path="/proyecto/:proyectoId/comercial/config_filtro" element={<PrivateRoute><ComercialConfigFiltro /></PrivateRoute>} />
-      <Route path="/proyecto/:proyectoId/comercial/config_estrategia" element={<PrivateRoute><ComercialConfigEstrategia /></PrivateRoute>} />
+      {/* Direcciones viejas: la configuración de Comercial ahora está en ⚙️ Configuración */}
+      <Route path="/proyecto/:proyectoId/comercial/config_filtro" element={<IrAConfiguracion grupo="comercial" seccion="filtro" />} />
+      <Route path="/proyecto/:proyectoId/comercial/config_estrategia" element={<IrAConfiguracion grupo="comercial" seccion="recorrido" />} />
       <Route path="/proyecto/:proyectoId/comercial/diseno_reserva" element={<PrivateRoute><ComercialDisenoReserva /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/filtrado" element={<PrivateRoute><ComercialFiltrado /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/ventas" element={<PrivateRoute><ComercialVentas /></PrivateRoute>} />

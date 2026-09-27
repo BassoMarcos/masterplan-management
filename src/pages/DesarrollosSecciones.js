@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
+import { empleadoNivelPanel, panelActivoEnProyecto } from "../config/appConfig";
 
 // ────────────────────────────────────────────────────────────
 // Configuración de cada sección: título, ícono, campos del form,
@@ -107,10 +108,13 @@ function badgeColor(estado) {
 
 export default function DesarrollosSecciones() {
   const { proyectoId, seccionId } = useParams();
-  const { empresaUid, logout } = useAuth();
+  const { empresaUid, esEmpleado, empleadoData, logout } = useAuth();
   const navigate = useNavigate();
 
   const cfg = SECCIONES[seccionId];
+  // Permiso del empleado en ESTE panel: "ver" = solo lectura; "ninguno" = no entra.
+  const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "desarrollos", seccionId) : "editar";
+  const puedeEditar = nivel === "editar";
 
   const [proyecto, setProyecto] = useState(null);
   const [items, setItems] = useState([]);
@@ -126,7 +130,9 @@ export default function DesarrollosSecciones() {
       try {
         const snap = await getDoc(doc(db, "proyectos", proyectoId));
         if (snap.exists() && snap.data().empresaId === empresaUid) {
-          setProyecto({ id: snap.id, ...snap.data() });
+          const p = { id: snap.id, ...snap.data() };
+          if (nivel === "ninguno" || !panelActivoEnProyecto(p, "desarrollos", seccionId)) { navigate(`/proyecto/${proyectoId}/desarrollos`); return; }
+          setProyecto(p);
         } else {
           navigate("/proyectos");
         }
@@ -136,7 +142,7 @@ export default function DesarrollosSecciones() {
       setLoading(false);
     }
     cargar();
-  }, [proyectoId, empresaUid, navigate]);
+  }, [proyectoId, empresaUid, navigate, nivel, seccionId]);
 
   // Suscripción en vivo a la colección de la sección
   useEffect(() => {
@@ -254,13 +260,13 @@ export default function DesarrollosSecciones() {
               </div>
             )}
           </div>
-          <button style={styles.addBtn} onClick={abrirNuevo}>+ Agregar</button>
+          {puedeEditar ? <button style={styles.addBtn} onClick={abrirNuevo}>+ Agregar</button> : <span style={{ fontSize: "13px", color: "var(--text2)" }}>👁️ Solo lectura</span>}
         </div>
 
         {items.length === 0 ? (
           <div style={styles.emptyCard}>
             <span style={{ fontSize: "42px" }}>{cfg.icono}</span>
-            <p style={styles.emptyText}>Todavía no hay registros. Agregá el primero con el botón de arriba.</p>
+            <p style={styles.emptyText}>Todavía no hay registros.{puedeEditar ? " Agregá el primero con el botón de arriba." : ""}</p>
           </div>
         ) : (
           <div style={styles.table}>
@@ -268,7 +274,7 @@ export default function DesarrollosSecciones() {
               {cfg.columnas.map(col => (
                 <div key={col.id} style={{ ...styles.th, flex: col.flex || 1.4 }}>{col.label}</div>
               ))}
-              <div style={{ ...styles.th, flex: 0.8, textAlign: "right" }}>Acciones</div>
+              {puedeEditar && <div style={{ ...styles.th, flex: 0.8, textAlign: "right" }}>Acciones</div>}
             </div>
             {items.map(item => (
               <div key={item.id} style={styles.tr}>
@@ -290,10 +296,12 @@ export default function DesarrollosSecciones() {
                     )}
                   </div>
                 ))}
-                <div style={{ ...styles.td, flex: 0.8, justifyContent: "flex-end", gap: "6px" }}>
-                  <button style={styles.iconBtn} title="Editar" onClick={() => abrirEditar(item)}>✏️</button>
-                  <button style={styles.iconBtn} title="Eliminar" onClick={() => borrar(item)}>🗑️</button>
-                </div>
+                {puedeEditar && (
+                  <div style={{ ...styles.td, flex: 0.8, justifyContent: "flex-end", gap: "6px" }}>
+                    <button style={styles.iconBtn} title="Editar" onClick={() => abrirEditar(item)}>✏️</button>
+                    <button style={styles.iconBtn} title="Eliminar" onClick={() => borrar(item)}>🗑️</button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

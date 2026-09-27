@@ -37,21 +37,22 @@ export const AREAS_DEFAULT = [
     ],
   },
   {
-    id: "legales", nombre: "Legales", icono: "⚖️", desc: "Contratos, escrituras, verificaciones",
+    id: "legales", nombre: "Legales", icono: "⚖️", desc: "Contratos, escrituras, trámites y documentos",
     paneles: [
-      { id: "contratos", nombre: "Contratos" },
-      { id: "escrituras", nombre: "Escrituras" },
-      { id: "verificaciones", nombre: "Verificaciones / trámites" },
+      { id: "contratos", nombre: "Contratos", icono: "📑", desc: "Boletos, cesiones y adendas" },
+      { id: "escrituras", nombre: "Escrituras", icono: "🖋️", desc: "Escrituración de lotes" },
+      { id: "verificaciones", nombre: "Verificaciones / trámites", icono: "✅", desc: "Chequeos y trámites legales" },
+      { id: "documentacion", nombre: "Biblioteca de documentos", icono: "🗂️", desc: "Carpetas y archivos para todos" },
     ],
   },
   {
     id: "desarrollos", nombre: "Desarrollos y Obras", icono: "🏗️", desc: "Etapas, lotes, avances de obra",
     paneles: [
-      { id: "etapas", nombre: "Etapas" },
-      { id: "lotes", nombre: "Manzanas y lotes" },
-      { id: "avance", nombre: "Avance de obra" },
-      { id: "infraestructura", nombre: "Infraestructura" },
-      { id: "agrimensura", nombre: "Agrimensura" },
+      { id: "etapas", nombre: "Etapas", icono: "📐", desc: "Etapas del desarrollo" },
+      { id: "lotes", nombre: "Manzanas y lotes", icono: "🧩", desc: "La lista de lotes del proyecto" },
+      { id: "avance", nombre: "Avance de obra", icono: "🚧", desc: "Progreso de la obra" },
+      { id: "infraestructura", nombre: "Infraestructura", icono: "🔌", desc: "Agua, luz, calles" },
+      { id: "agrimensura", nombre: "Agrimensura", icono: "📏", desc: "Mensuras y planos" },
     ],
   },
 ];
@@ -151,7 +152,9 @@ export function areasVisiblesEmpleado(empresaData, empleadoData, proyectoId) {
 // ───────────────────────────────────────────────────────────────
 // ÁREAS Y PANELES POR PROYECTO
 // Cada proyecto elige qué áreas y qué paneles usa (se elige en el asistente de proyecto nuevo):
-//   proyectos/{id}.estructura = { areas: { "<areaId>": { activa: true|false, paneles: ["<panelId>", ...] } } }
+//   proyectos/{id}.estructura = { areas: { "<areaId>": { activa: true|false, paneles: ["<panelId>", ...], conocidos: [...] } } }
+// "conocidos" = los paneles que existían cuando se guardó: un panel que se agrega DESPUÉS a la app
+// (no está en "conocidos") arranca prendido en los proyectos que ya existían.
 // Siempre DENTRO de lo que el SuperAdmin habilitó para la empresa (areasVisibles): un proyecto
 // no puede usar un área que la empresa no tiene. Ej.: una empresa que solo vende apaga Administración.
 // Proyectos sin "estructura" (los creados antes del asistente) ven todo, como hasta ahora.
@@ -171,6 +174,7 @@ export function panelActivoEnProyecto(proyecto, areaId, panelId) {
   if ((PANELES_SIEMPRE[areaId] || []).includes(panelId)) return true;
   const a = proyecto?.estructura?.areas?.[areaId];
   if (!a || !Array.isArray(a.paneles)) return true;
+  if (Array.isArray(a.conocidos) && !a.conocidos.includes(panelId)) return true;
   return a.paneles.includes(panelId);
 }
 
@@ -188,11 +192,39 @@ export function estructuraInicial(proyecto, areasHabilitadas) {
   const areas = {};
   areasHabilitadas.forEach(a => {
     const guardada = proyecto?.estructura?.areas?.[a.id];
+    const nuevos = Array.isArray(guardada?.conocidos) ? a.paneles.map(p => p.id).filter(id => !guardada.conocidos.includes(id)) : [];
     areas[a.id] = guardada
-      ? { activa: !!guardada.activa, paneles: Array.isArray(guardada.paneles) ? guardada.paneles.slice() : a.paneles.map(p => p.id) }
+      ? { activa: !!guardada.activa, paneles: Array.isArray(guardada.paneles) ? guardada.paneles.concat(nuevos) : a.paneles.map(p => p.id) }
       : { activa: !proyecto?.estructura, paneles: a.paneles.map(p => p.id) };
   });
   return { areas };
+}
+
+// "" si está bien, o el problema (lo usan el asistente y ⚙️ Configuración → Áreas y paneles).
+export function validarEstructura(estructura, areasHabilitadas) {
+  const activas = Object.keys(estructura.areas).filter(id => estructura.areas[id].activa && areasHabilitadas.some(a => a.id === id));
+  if (!activas.length) return "Elegí al menos un área.";
+  for (const id of activas) {
+    const area = AREAS_DEFAULT.find(a => a.id === id);
+    const elegibles = area.paneles.filter(pn => !(PANELES_SIEMPRE[id] || []).includes(pn.id));
+    if (elegibles.length && !elegibles.some(pn => estructura.areas[id].paneles.includes(pn.id))) return `En ${area.nombre}, elegí al menos un panel.`;
+  }
+  return "";
+}
+
+// Lo que se guarda en proyectos/{id}.estructura: todas las áreas, en orden, solo las habilitadas.
+export function limpiarEstructura(estructura, areasHabilitadas) {
+  const out = { areas: {} };
+  AREAS_DEFAULT.forEach(a => {
+    const x = estructura.areas[a.id];
+    const habil = areasHabilitadas.some(h => h.id === a.id);
+    out.areas[a.id] = {
+      activa: !!(x && x.activa && habil),
+      paneles: x ? a.paneles.map(p => p.id).filter(id => x.paneles.includes(id) || (PANELES_SIEMPRE[a.id] || []).includes(id)) : [],
+      conocidos: a.paneles.map(p => p.id),
+    };
+  });
+  return out;
 }
 
 // Sub-paneles visibles para un empleado dentro de un área/proyecto

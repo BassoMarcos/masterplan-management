@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
@@ -29,7 +29,9 @@ export default function Proyectos() {
   const [fotoPreview, setFotoPreview] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
-  const [showAjustes, setShowAjustes] = useState(false);
+  const location = useLocation();
+  // ⚙️ Configuración → Empresa trae "abrirAjustes" para abrir directo los ajustes de la empresa.
+  const [showAjustes, setShowAjustes] = useState(() => !!(esAdminEfectivo && location.state && location.state.abrirAjustes));
   const [driveOk, setDriveOk] = useState(false);
   const [driveMsg, setDriveMsg] = useState("");
   const [driveEmail, setDriveEmail] = useState("");

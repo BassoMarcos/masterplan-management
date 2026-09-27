@@ -7,7 +7,8 @@ import ThemeSelector from "../components/ThemeSelector";
 import { empleadoNivelPanel, RECORRIDO_BASE } from "../config/appConfig";
 
 // Configuración de la Estrategia de Ventas: etapas del recorrido + mensaje de WhatsApp.
-export default function ComercialConfigEstrategia() {
+// embebido: se muestra dentro de ⚙️ Configuración del proyecto (sin encabezado propio).
+export default function ComercialConfigEstrategia({ embebido }) {
   const { proyectoId } = useParams();
   const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
@@ -82,8 +83,8 @@ export default function ComercialConfigEstrategia() {
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
+    <div style={embebido ? undefined : styles.container}>
+      {!embebido && <header style={styles.header}>
         <div style={styles.headerLeft}>
           <button style={styles.backBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial`)}>← Volver</button>
           <div>
@@ -95,9 +96,9 @@ export default function ComercialConfigEstrategia() {
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
-      </header>
+      </header>}
 
-      <main style={styles.main}>
+      <main style={embebido ? undefined : styles.main}>
         {/* Etapas del recorrido */}
         <div style={styles.bloque}>
           <div style={styles.bloqueTitulo}>🛤️ Etapas del recorrido</div>

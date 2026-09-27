@@ -91,7 +91,7 @@ export default function ComercialHub() {
                 <div style={styles.grupoDesc}>Pipeline de captación: datos, filtrado y ventas.</div>
               </div>
               {(!esEmpleado || empleadoData?.accesoTotal) && (
-                <button style={styles.configEstBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial/config_estrategia`)}>⚙️ Configuración</button>
+                <button style={styles.configEstBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configuracion/comercial/recorrido`, { state: { desde: `/proyecto/${proyectoId}/comercial` } })}>⚙️ Configuración</button>
               )}
             </div>
             <div style={styles.grid}>

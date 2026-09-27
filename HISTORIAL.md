@@ -230,6 +230,22 @@
 - Todavía no mueven plata: las van a usar los cobros.
 - Probado: simulación de navegador (6 casos nuevos + lotes + asistente).
 
+## 2026-09-27 — MasterPlan: ⚙️ Configuración central + orden general (auditoría)
+- Nueva pantalla **⚙️ Configuración** (`ConfiguracionProyecto.js`, ruta `/proyecto/:id/configuracion/:grupo/:seccion`): lista por área a la izquierda (Proyecto · Desarrollos y Obras · Administración · Comercial · Legales · Empresa) y el detalle a la derecha. Reemplaza las configuraciones desparramadas:
+  - Proyecto: **Datos del proyecto** y **Áreas y paneles** se editan directo (antes solo rehaciendo el asistente). "Lotes" aparece acá si el proyecto no usa Desarrollos.
+  - Administración: todas sus secciones (la lista la dibuja la pantalla central; `AdministracionConfig` ya no tiene lista propia). El cuadro "Configuración" del área lleva acá.
+  - Comercial: Recorrido y reserva + Formulario de filtro (antes en dos pantallas sueltas; las direcciones viejas redirigen). El diseñador de la reserva vuelve acá.
+  - Legales / Desarrollos / Comercial: ítem **"Lo que viene"** con lo acordado (§13) para que se vea el plan.
+  - Empresa: atajos a Ajustes de la empresa (se abre directo) y Empleados.
+  - Pregunta antes de salir con cambios sin guardar; "Volver" regresa a donde estabas. Empleados: solo ven las partes con permiso (ver = solo lectura).
+- El asistente pasa a llamarse **🧭 Asistente** (sirve para crear y para "Repasar todo"); comparte validación y guardado de áreas con la pantalla central (`validarEstructura` / `limpiarEstructura` en appConfig).
+- Orden / auditoría:
+  - Legales y Desarrollos: las tarjetas salen de `AREAS_DEFAULT` (la misma lista que permisos y Áreas y paneles). Legales tenía 5 tarjetas pero 3 permisos; ahora 4 y parejas (sale "Estados legales de lotes": el estado del lote va en Desarrollos; entra **Biblioteca de documentos**). Se borró código muerto de Administración/Comercial en `AreaSecciones`.
+  - Desarrollos respeta permisos por panel (antes cualquiera con acceso podía editar/borrar; "ver" ahora es solo lectura y sin permiso no entra).
+  - Paneles que se agreguen a la app en el futuro arrancan **prendidos** en proyectos existentes (`estructura.areas[x].conocidos`).
+  - `LotesProyecto` (componente) = la lista de lotes con su guardado, usada en Desarrollos y en Configuración.
+- Probado: simulación de navegador (33 casos).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
