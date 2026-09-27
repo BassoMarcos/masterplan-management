@@ -14,7 +14,7 @@ export const PANELES_ADMINISTRACION = {
   configuracion: {
     icono: "⚙️",
     nombre: "Configuración",
-    desc: "Todas las opciones de Administración (se abren en ⚙️ Configuración del proyecto)",
+    desc: "Todas las opciones de Administración",
     contenido: [],
   },
   gerencia: {
@@ -55,8 +55,8 @@ export const PANELES_ADMINISTRACION = {
   },
 };
 
-// Portada de una sección de Administración (en construcción). "Configuración" vive en la pantalla
-// central ⚙️ Configuración del proyecto: esta ruta solo redirige ahí.
+// Portada de una sección de Administración (en construcción). "Configuración" tiene su propia
+// ruta (/proyecto/:id/administracion/configuracion → Configuracion.js, modo área).
 export default function AdministracionPanel() {
   const { proyectoId, panelId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -90,9 +90,6 @@ export default function AdministracionPanel() {
   const areaPermitida = visibles.some(a => a.id === "administracion");
   const nivel = esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, "administracion", panelId) : "editar";
 
-  if (panelId === "configuracion") {
-    return <Navigate to={`/proyecto/${proyectoId}/configuracion/administracion/financiacion`} replace state={{ desde: `/proyecto/${proyectoId}/administracion` }} />;
-  }
   // Hasta configurar Administración, a las secciones se entra por su asistente (desde la entrada del área).
   if (info && areaPermitida && !administracionConfigurada(proyecto)) {
     return <Navigate to={`/proyecto/${proyectoId}/administracion`} replace />;

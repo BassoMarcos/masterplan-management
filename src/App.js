@@ -10,7 +10,8 @@ import ProyectoPilares from "./pages/ProyectoPilares";
 import AreaSecciones from "./pages/AreaSecciones";
 import DesarrollosSecciones from "./pages/DesarrollosSecciones";
 import DesarrollosLotes from "./pages/DesarrollosLotes";
-import ConfiguracionProyecto from "./pages/ConfiguracionProyecto";
+import Configuracion from "./pages/Configuracion";
+import { AREAS_DEFAULT } from "./config/appConfig";
 import AdministracionHub from "./pages/AdministracionHub";
 import AdministracionPanel from "./pages/AdministracionPanel";
 import AsistenteProyecto from "./pages/AsistenteProyecto";
@@ -85,9 +86,9 @@ const pageStyle = {
   link: { background: "none", border: "none", color: "#94a3b8", fontSize: "13px", cursor: "pointer", marginTop: "8px", display: "block", textDecoration: "underline" },
 };
 
-function IrAConfiguracion({ grupo, seccion }) {
+function IrAConfiguracion({ area, seccion }) {
   const { proyectoId } = useParams();
-  return <Navigate to={`/proyecto/${proyectoId}/configuracion/${grupo}/${seccion}`} replace />;
+  return <Navigate to={`/proyecto/${proyectoId}/${area}/configuracion/${seccion}`} replace />;
 }
 
 function SeccionPlaceholder() {
@@ -155,7 +156,12 @@ function AppRoutes() {
       <Route path="/proyectos" element={<PrivateRoute><Proyectos /></PrivateRoute>} />
       <Route path="/empleados" element={<PrivateRoute><Empleados /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
-      <Route path="/proyecto/:proyectoId/configuracion/:grupoId?/:seccionId?" element={<PrivateRoute><ConfiguracionProyecto /></PrivateRoute>} />
+      {/* ⚙️ Configuración: de la empresa, central del proyecto, y la de cada área (misma pantalla, filtrada) */}
+      <Route path="/configuracion/:seccionId?" element={<PrivateRoute><Configuracion modo="empresa" /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/configuracion/:grupoId?/:seccionId?" element={<PrivateRoute><Configuracion /></PrivateRoute>} />
+      {AREAS_DEFAULT.map(a => (
+        <Route key={a.id} path={`/proyecto/:proyectoId/${a.id}/configuracion/:seccionId?`} element={<PrivateRoute><Configuracion key={a.id} modo="area" area={a.id} /></PrivateRoute>} />
+      ))}
       <Route path="/proyecto/:proyectoId/configurar" element={<PrivateRoute><AsistenteProyecto /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/administracion/configurar" element={<PrivateRoute><AsistenteProyecto key="administracion" modo="administracion" /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/administracion" element={<PrivateRoute><AdministracionHub /></PrivateRoute>} />
@@ -163,8 +169,8 @@ function AppRoutes() {
       <Route path="/proyecto/:proyectoId/comercial" element={<PrivateRoute><ComercialHub /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/datos" element={<PrivateRoute><ComercialDatos /></PrivateRoute>} />
       {/* Direcciones viejas: la configuración de Comercial ahora está en ⚙️ Configuración */}
-      <Route path="/proyecto/:proyectoId/comercial/config_filtro" element={<IrAConfiguracion grupo="comercial" seccion="filtro" />} />
-      <Route path="/proyecto/:proyectoId/comercial/config_estrategia" element={<IrAConfiguracion grupo="comercial" seccion="recorrido" />} />
+      <Route path="/proyecto/:proyectoId/comercial/config_filtro" element={<IrAConfiguracion area="comercial" seccion="filtro" />} />
+      <Route path="/proyecto/:proyectoId/comercial/config_estrategia" element={<IrAConfiguracion area="comercial" seccion="recorrido" />} />
       <Route path="/proyecto/:proyectoId/comercial/diseno_reserva" element={<PrivateRoute><ComercialDisenoReserva /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/filtrado" element={<PrivateRoute><ComercialFiltrado /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/ventas" element={<PrivateRoute><ComercialVentas /></PrivateRoute>} />

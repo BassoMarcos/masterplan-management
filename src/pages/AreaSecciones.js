@@ -5,6 +5,8 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
+import Notificaciones from "../components/Notificaciones";
+import BotonConfiguracion from "../components/BotonConfiguracion";
 import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, empleadoNivelPanel, areaActivaEnProyecto, panelActivoEnProyecto } from "../config/appConfig";
 
 // Entrada de las áreas que no tienen pantalla propia (hoy: Legales y Desarrollos y Obras).
@@ -74,6 +76,8 @@ export default function AreaSecciones() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <BotonConfiguracion proyecto={proyecto} areaId={pilarId} />
+          <Notificaciones />
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>

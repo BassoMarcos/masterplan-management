@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, addDoc, getDocs, query, where, serverTimestamp, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { empleadoPuedeVerProyecto } from "../config/appConfig";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { conectarDrive, estadoDrive, desconectarDrive, subirArchivo } from "../utils/drive";
 import PizarraFlotante from "../components/PizarraFlotante";
 import { comprimirImagen } from "../utils/imagen";
 
@@ -29,19 +28,6 @@ export default function Proyectos() {
   const [fotoPreview, setFotoPreview] = useState(null);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
-  const location = useLocation();
-  // ⚙️ Configuración → Empresa trae "abrirAjustes" para abrir directo los ajustes de la empresa.
-  const [showAjustes, setShowAjustes] = useState(() => !!(esAdminEfectivo && location.state && location.state.abrirAjustes));
-  const [driveOk, setDriveOk] = useState(false);
-  const [driveMsg, setDriveMsg] = useState("");
-  const [driveEmail, setDriveEmail] = useState("");
-  const [pruebaMsg, setPruebaMsg] = useState("");
-  const [subiendo, setSubiendo] = useState(false);
-  const [copiado, setCopiado] = useState(false);
-  const [editandoCod, setEditandoCod] = useState(false);
-  const [codigoInput, setCodigoInput] = useState("");
-  const [codigoLocal, setCodigoLocal] = useState(null);
-  const [guardandoCod, setGuardandoCod] = useState(false);
 
   const cargarProyectos = useCallback(async () => {
     setLoading(true);
@@ -63,17 +49,6 @@ export default function Proyectos() {
   useEffect(() => {
     cargarProyectos();
   }, [cargarProyectos]);
-
-  // Estado de la conexión a Drive (guardada en el servidor, por empresa)
-  useEffect(() => {
-    let vivo = true;
-    estadoDrive().then(r => {
-      if (!vivo) return;
-      setDriveOk(!!r.conectado);
-      setDriveEmail(r.email || "");
-    });
-    return () => { vivo = false; };
-  }, [empresaUid]);
 
   // El logo se achica antes de guardarlo: una foto de celular superaba el límite de
   // Firestore (1 MB) y no dejaba crear el proyecto.
@@ -160,22 +135,6 @@ export default function Proyectos() {
     setError("");
   }
 
-  const codigoMostrar = codigoLocal || empresaData?.codigoEmpresa || "—";
-
-  async function guardarCodigo() {
-    const nuevo = codigoInput.trim();
-    if (!nuevo) { alert("El código no puede quedar vacío."); return; }
-    setGuardandoCod(true);
-    try {
-      await updateDoc(doc(db, "empresas", empresaUid), { codigoEmpresa: nuevo });
-      setCodigoLocal(nuevo);
-      setEditandoCod(false);
-    } catch (e) {
-      alert("Error al guardar el código: " + e.message);
-    }
-    setGuardandoCod(false);
-  }
-
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -190,7 +149,7 @@ export default function Proyectos() {
           <Notificaciones />
           <ThemeSelector />
           {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>}
-          {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => setShowAjustes(true)}>⚙️ Ajustes</button>}
+          {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => navigate("/configuracion")}>⚙️ Configuración</button>}
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
       </header>
@@ -345,116 +304,6 @@ export default function Proyectos() {
         </div>
       )}
 
-      {showAjustes && (
-        <div style={styles.modalOverlay} onClick={() => setShowAjustes(false)}>
-          <div style={styles.ajustesModal} onClick={e => e.stopPropagation()}>
-            <h2 style={styles.ajustesTitle}>⚙️ Ajustes de la empresa</h2>
-            <p style={styles.ajustesSub}>{empresaData?.nombre || empleadoData?.empresaNombre || "Mi Empresa"}</p>
-
-            <div style={styles.codigoBox}>
-              <div style={styles.codigoLabel}>🔑 Código de tu empresa</div>
-              {editandoCod ? (
-                <>
-                  <input
-                    style={styles.codigoInput}
-                    value={codigoInput}
-                    onChange={e => setCodigoInput(e.target.value)}
-                    placeholder="Escribí un código"
-                    autoFocus
-                  />
-                  <p style={styles.codigoAyuda}>Escribí el código como quieras (prefijo y números).</p>
-                  <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                    <button style={styles.copiarBtn} onClick={guardarCodigo} disabled={guardandoCod}>
-                      {guardandoCod ? "Guardando..." : "Guardar"}
-                    </button>
-                    <button style={styles.cancelarCodBtn} onClick={() => setEditandoCod(false)} disabled={guardandoCod}>Cancelar</button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div style={styles.codigoTexto}>{codigoMostrar}</div>
-                  <p style={styles.codigoAyuda}>Pasale este código a tu equipo. Lo necesitan una sola vez, al registrarse por primera vez en "Acceso Personal".</p>
-                  <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
-                    <button
-                      style={styles.copiarBtn}
-                      onClick={() => {
-                        if (codigoMostrar !== "—") {
-                          navigator.clipboard.writeText(codigoMostrar);
-                          setCopiado(true);
-                          setTimeout(() => setCopiado(false), 2000);
-                        }
-                      }}
-                    >
-                      {copiado ? "✓ Copiado" : "📋 Copiar"}
-                    </button>
-                    <button
-                      style={styles.editarCodBtn}
-                      onClick={() => { setCodigoInput(codigoMostrar === "—" ? "" : codigoMostrar); setEditandoCod(true); }}
-                    >
-                      ✏️ Editar
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div style={styles.driveBox}>
-              <div style={styles.codigoLabel}>📁 Google Drive</div>
-              <p style={styles.codigoAyuda}>
-                Conectá el Drive de tu empresa para guardar ahí los planos, boletos y archivos.
-                Los archivos quedan en tu cuenta, no en la nuestra.
-              </p>
-              {driveOk ? (
-                <>
-                  <div style={styles.driveOk}>✓ Drive conectado</div>
-                  {driveEmail && <div style={styles.driveEmail}>{driveEmail}</div>}
-                  <label style={styles.pruebaBtn}>
-                    {subiendo ? "Subiendo…" : "🧪 Probar subida de archivo"}
-                    <input type="file" style={{ display: "none" }} disabled={subiendo}
-                      onChange={async (e) => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        setSubiendo(true); setPruebaMsg("");
-                        try {
-                          const r = await subirArchivo(f, "Pruebas");
-                          setPruebaMsg("✓ Subido a tu Drive: " + r.nombre);
-                        } catch (err) {
-                          setPruebaMsg("✗ Error: " + (err?.message || "no se pudo subir"));
-                        }
-                        setSubiendo(false);
-                        e.target.value = "";
-                      }} />
-                  </label>
-                  {pruebaMsg && <div style={styles.pruebaMsg}>{pruebaMsg}</div>}
-                  <button style={styles.cancelarCodBtn} onClick={async () => { await desconectarDrive(); setDriveOk(false); setDriveMsg(""); setDriveEmail(""); }}>Desconectar</button>
-                </>
-              ) : (
-                <button
-                  style={styles.copiarBtn}
-                  onClick={async () => {
-                    setDriveMsg("");
-                    try { const r = await conectarDrive(); setDriveOk(true); setDriveEmail(r?.email || ""); }
-                    catch (e) { setDriveMsg("No se pudo conectar: " + e.message); }
-                  }}
-                >
-                  🔗 Conectar Google Drive
-                </button>
-              )}
-              {driveMsg && <div style={styles.driveError}>{driveMsg}</div>}
-            </div>
-
-            <button
-              style={styles.mapaBtn}
-              onClick={() => window.open("/mapa.html", "_blank")}
-            >
-              🧠 Mapa de arquitectura
-            </button>
-
-            <button style={styles.cerrarAjustesBtn} onClick={() => setShowAjustes(false)}>Cerrar</button>
-          </div>
-        </div>
-      )}
-
       <PizarraFlotante contextoId="general" titulo="General · Desarrolladora" />
     </div>
   );
@@ -470,25 +319,6 @@ const styles = {
   headerTitle: { margin: 0, fontSize: "20px", fontWeight: "700" },
   headerSub: { margin: 0, fontSize: "13px", color: "var(--text2)" },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" },
-  ajustesModal: { background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "28px", maxWidth: "440px", width: "100%" },
-  ajustesTitle: { margin: "0 0 4px", fontSize: "20px", fontWeight: "700", color: "var(--text)" },
-  ajustesSub: { margin: "0 0 20px", fontSize: "14px", color: "var(--text2)" },
-  codigoBox: { background: "var(--bg)", border: "1.5px solid var(--border)", borderRadius: "12px", padding: "20px", textAlign: "center" },
-  codigoLabel: { fontSize: "13px", fontWeight: "600", color: "var(--text2)", marginBottom: "8px" },
-  codigoTexto: { fontSize: "28px", fontWeight: "800", color: "var(--acc)", letterSpacing: "1px", fontFamily: "monospace" },
-  codigoAyuda: { fontSize: "12px", color: "var(--text2)", lineHeight: "1.5", margin: "12px 0 16px" },
-  copiarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
-  editarCodBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
-  cancelarCodBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 16px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
-  codigoInput: { width: "100%", padding: "10px 12px", borderRadius: "8px", border: "1.5px solid var(--acc)", background: "var(--card)", color: "var(--text)", fontSize: "20px", fontWeight: "700", textAlign: "center", fontFamily: "monospace", boxSizing: "border-box", letterSpacing: "1px" },
-  mapaBtn: { width: "100%", marginTop: "16px", background: "linear-gradient(135deg,#2FE0B0,#3FA9FF)", border: "none", color: "#04060a", padding: "11px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
-  driveBox: { background: "var(--surface)", borderRadius: "12px", padding: "16px", marginTop: "16px", textAlign: "center" },
-  driveOk: { color: "#16a34a", fontWeight: "700", fontSize: "14px", marginBottom: "10px" },
-  driveEmail: { fontSize: "12.5px", color: "var(--text2)", marginBottom: "10px", wordBreak: "break-all" },
-  pruebaBtn: { display: "block", marginTop: "10px", marginBottom: "10px", background: "var(--bg)", border: "1.5px dashed var(--border2)", color: "var(--text2)", padding: "9px", borderRadius: "8px", cursor: "pointer", fontSize: "12.5px", fontWeight: "600" },
-  pruebaMsg: { fontSize: "12.5px", color: "var(--text)", marginBottom: "10px", wordBreak: "break-word" },
-  driveError: { color: "#dc2626", fontSize: "12.5px", marginTop: "10px" },
-  cerrarAjustesBtn: { width: "100%", marginTop: "20px", background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   logoutBtn: {
     background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)",
     padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px"
