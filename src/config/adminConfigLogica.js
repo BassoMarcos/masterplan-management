@@ -308,8 +308,9 @@ export function cmpNatural(a, b) {
   return String(a).localeCompare(String(b), "es", { numeric: true, sensitivity: "base" });
 }
 
+// Sin "cfg" (ej. desde Desarrollos, que no maneja cajas) no se revisan las cajas.
 export function validarLotes(lotes, cfg) {
-  const cajaIds = new Set(cfg.cajasEspeciales.map(c => c.id));
+  const cajaIds = cfg ? new Set(cfg.cajasEspeciales.map(c => c.id)) : null;
   const vistos = new Set();
   let cajaPerdida = 0;
   for (const l of lotes) {
@@ -317,9 +318,9 @@ export function validarLotes(lotes, cfg) {
     const k = claveLote(l);
     if (vistos.has(k)) return { mensaje: `El lote ${etiquetaLote(l)} está repetido.`, seccion: "lotes" };
     vistos.add(k);
-    if (l.cajaId && !cajaIds.has(l.cajaId)) cajaPerdida++;
+    if (cajaIds && l.cajaId && !cajaIds.has(l.cajaId)) cajaPerdida++;
   }
-  if (cajaPerdida) return { mensaje: `Hay ${cajaPerdida} lote(s) en una caja especial que quitaste. Pasalos a otra caja antes de guardar.`, seccion: "lotes" };
+  if (cajaPerdida) return { mensaje: `Hay ${cajaPerdida} lote(s) en una caja especial que quitaste. Pasalos a otra caja antes de guardar.`, seccion: "cajas" };
   return null;
 }
 
@@ -387,6 +388,9 @@ export function partirLote(lotes, id, letras) {
 }
 
 // Qué hay que escribir en la base: lotes nuevos o cambiados ("set") y lotes borrados ("del").
+// Lote nuevo → "set" con todo. Lote que ya existía → "upd" SOLO con los campos que cambiaron:
+// así Desarrollos (etapa/manzana/número) y Administración (caja) pueden tocar el mismo lote
+// sin pisarse lo que cambió el otro.
 export function diffLotes(ini, act) {
   const previos = new Map(ini.map(l => [l.id, loteLimpio(l.id, l)]));
   const siguen = new Set(act.map(l => l.id));
@@ -394,9 +398,11 @@ export function diffLotes(ini, act) {
   act.forEach(l => {
     const nuevo = loteLimpio(l.id, l);
     const antes = previos.get(l.id);
-    if (!antes || JSON.stringify(antes) !== JSON.stringify(nuevo)) {
-      ops.push({ tipo: "set", id: l.id, data: { etapa: nuevo.etapa, manzana: nuevo.manzana, numero: nuevo.numero, cajaId: nuevo.cajaId } });
-    }
+    const { id, ...data } = nuevo;
+    if (!antes) { ops.push({ tipo: "set", id, data }); return; }
+    const cambios = {};
+    Object.keys(data).forEach(k => { if (data[k] !== antes[k]) cambios[k] = data[k]; });
+    if (Object.keys(cambios).length) ops.push({ tipo: "upd", id, data: cambios });
   });
   ini.forEach(l => { if (!siguen.has(l.id)) ops.push({ tipo: "del", id: l.id }); });
   return ops;

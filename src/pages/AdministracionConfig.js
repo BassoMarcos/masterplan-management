@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { doc, collection, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
+import { areaActivaEnProyecto } from "../config/appConfig";
 import {
   COLORES,
   TIPOS_INCREMENTO,
@@ -21,14 +22,8 @@ import {
   num,
   validar,
   loteLimpio,
-  nuevoIdLote,
-  claveLote,
   etiquetaLote,
-  cmpNatural,
   validarLotes,
-  parseLetras,
-  numerosDeRango,
-  partirLote,
   diffLotes,
   normalizar,
   agruparLotes,
@@ -46,10 +41,10 @@ import {
 // cuánto, con los grupos de aumento automáticos. La cantidad de cuotas, el valor y a qué grupo va
 // cada cliente se definen al FIRMAR cada lote (contrato), no acá.
 //
-// Lotes: inventario del proyecto, un documento por lote en proyectos/{id}/lotes
-// ({etapa, manzana, numero, cajaId}). Es la lista única de lotes del proyecto:
-// más adelante Comercial, Legales y Desarrollos van a usar esta misma colección.
-// Los cambios de lotes se guardan junto con la configuración (mismo botón, misma tanda).
+// Lotes: lista única del proyecto en proyectos/{id}/lotes ({etapa, manzana, numero, cajaId}).
+// Se cargan en Desarrollos → Manzanas y lotes (o en la configuración del proyecto si no usa
+// Desarrollos). Acá solo se elige en qué caja va cada lote (Cajas separadas); ese cambio se
+// guarda junto con la configuración (mismo botón, misma tanda).
 
 // Las secciones que aparecen en la lista de la izquierda.
 const SECCIONES = [
@@ -58,7 +53,6 @@ const SECCIONES = [
   { id: "transferencias", icono: "🏦", nombre: "Transferencias", resumen: "Impuesto sobre transferencias" },
   { id: "distribucion", icono: "📊", nombre: "Dueños", resumen: "Distribución de ganancias" },
   { id: "cajas", icono: "🗃️", nombre: "Cajas separadas", resumen: "Lotes que no van a la caja central" },
-  { id: "lotes", icono: "🧩", nombre: "Lotes", resumen: "Etapas, manzanas y plan de cada lote" },
 ];
 
 // Guarda configuración y lotes juntos (lo usan esta pantalla y el asistente de proyecto nuevo).
@@ -83,11 +77,19 @@ export async function guardarConfigYLotes({ proyectoId, limpia, cambioCfg, lotes
     tandas[t].forEach(op => {
       const ref = doc(col, op.id);
       if (op.tipo === "del") b.delete(ref);
+      else if (op.tipo === "upd") b.update(ref, { ...op.data, actualizado: serverTimestamp() });
       else b.set(ref, { ...op.data, actualizado: serverTimestamp() });
     });
     if (t === tandas.length - 1 && tocaProyecto) b.update(doc(db, "proyectos", proyectoId), camposProyecto);
     await b.commit();
   }
+}
+
+// Mensaje claro según por qué falló el guardado (lo usan también el asistente y Desarrollos).
+export function mensajeErrorGuardar(e) {
+  if (e && e.code === "permission-denied") return "No se pudo guardar: falta permiso en las reglas de Firebase. Avisale a Mark.";
+  if (e && e.code === "not-found") return "Alguien borró uno de estos lotes mientras editabas. Recargá la página y volvé a hacer el cambio.";
+  return "No se pudo guardar. Revisá tu conexión e intentá de nuevo.";
 }
 
 export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado }) {
@@ -106,6 +108,9 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
 
   const proyectoId = proyecto.id;
   const navigate = useNavigate();
+  const rutaLotes = areaActivaEnProyecto(proyecto, "desarrollos")
+    ? `/proyecto/${proyectoId}/desarrollos/lotes`
+    : `/proyecto/${proyectoId}/configurar`;
 
   useEffect(() => {
     let vivo = true;
@@ -169,9 +174,7 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
       setOk(true);
       if (onGuardado && cambioCfg) onGuardado(limpia);
     } catch (e) {
-      setError(e && e.code === "permission-denied"
-        ? "No se pudo guardar: falta permiso en las reglas de Firebase. Avisale a Mark."
-        : "No se pudo guardar. Revisá tu conexión e intentá de nuevo.");
+      setError(mensajeErrorGuardar(e));
     }
     setGuardando(false);
   }
@@ -226,16 +229,15 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
           {activa === "transferencias" && <SeccionTransferencias cfg={cfg} editar={editar} dis={dis} />}
           {activa === "distribucion" && <SeccionDistribucion cfg={cfg} editar={editar} dis={dis} />}
           {activa === "cajas" && (
-            <SeccionCajas cfg={cfg} editar={editar} dis={dis} lotes={lotes} editarLotes={editarLotes} lotesCargando={lotesCargando} />
-          )}
-          {activa === "lotes" && (
-            <SeccionLotes
-              cfg={cfg}
-              lotes={lotes}
-              editarLotes={editarLotes}
-              dis={dis}
-              cargando={lotesCargando}
-              errorCarga={lotesErrorCarga}
+            <SeccionCajas
+              cfg={cfg} editar={editar} dis={dis} lotes={lotes} editarLotes={editarLotes} lotesCargando={lotesCargando}
+              errorLotes={lotesErrorCarga}
+              avisoLotes={<>
+                Los lotes se cargan en{" "}
+                <button type="button" style={s.linkBtnInline} onClick={() => navigate(rutaLotes)}>
+                  {areaActivaEnProyecto(proyecto, "desarrollos") ? "Desarrollos → Manzanas y lotes" : "la configuración del proyecto"}
+                </button>.
+              </>}
             />
           )}
         </div>
@@ -593,7 +595,8 @@ export function SelectorLotes({ lotes, estado, textoOtro, onCambiar, dis }) {
   );
 }
 
-export function SeccionCajas({ cfg, editar, dis, lotes, editarLotes, lotesCargando }) {
+// "avisoLotes": dónde se cargan los lotes (cambia según la pantalla que la usa).
+export function SeccionCajas({ cfg, editar, dis, lotes, editarLotes, lotesCargando, avisoLotes, errorLotes }) {
   const [abierta, setAbierta] = useState(null);
 
   function agregarCaja() {
@@ -670,305 +673,12 @@ export function SeccionCajas({ cfg, editar, dis, lotes, editarLotes, lotesCargan
           </div>
         );
       })}
-      {!lotesCargando && lotes.length === 0 && cfg.cajasEspeciales.length > 0 && (
-        <p style={s.nota}>Para elegir los lotes de cada caja, primero cargalos en la sección Lotes.</p>
+      {errorLotes && <p style={{ ...s.nota, color: "var(--red, #dc2626)" }}>{errorLotes}</p>}
+      {!lotesCargando && !errorLotes && lotes.length === 0 && cfg.cajasEspeciales.length > 0 && (
+        <p style={s.nota}>Todavía no hay lotes para elegir. {avisoLotes || "Cargalos primero."}</p>
       )}
+      {!lotesCargando && lotes.length > 0 && avisoLotes && <p style={s.nota}>{avisoLotes}</p>}
       {!dis && <button type="button" style={{ ...s.btnSec, marginTop: 6 }} onClick={agregarCaja}>+ Nueva caja</button>}
-    </div>
-  );
-}
-
-function SeccionLotes({ cfg, lotes, editarLotes, dis, cargando, errorCarga }) {
-  const cajas = cfg.cajasEspeciales;
-
-  // Formulario de alta
-  const [modo, setModo] = useState("rango");
-  const [etapa, setEtapa] = useState("");
-  const [manzana, setManzana] = useState("");
-  const [desde, setDesde] = useState("1");
-  const [hasta, setHasta] = useState("");
-  const [letrasAlta, setLetrasAlta] = useState("");
-  const [numero, setNumero] = useState("");
-  const [letrasPartir, setLetrasPartir] = useState("");
-  const [msgPartir, setMsgPartir] = useState("");
-  const [cajaNueva, setCajaNueva] = useState("");
-  const [msgAlta, setMsgAlta] = useState("");
-
-  // Selección, filtro y acciones sobre los seleccionados
-  const [sel, setSel] = useState(() => new Set());
-  const [filtro, setFiltro] = useState("todos");
-  const [cajaAsignar, setCajaAsignar] = useState("");
-
-  if (cargando) {
-    return (
-      <div>
-        <SeccionTitulo icono="🧩" nombre="Lotes" desc="Cargando lotes…" />
-      </div>
-    );
-  }
-
-  const nombreCaja = (id) => { const c = cajas.find(x => x.id === id); return c ? (c.nombre || "Caja sin nombre") : "Caja que quitaste"; };
-
-  const etapasExistentes = [...new Set(lotes.map(l => l.etapa).filter(Boolean))].sort(cmpNatural);
-  const manzanasExistentes = [...new Set(lotes.filter(l => !etapa.trim() || l.etapa.toLowerCase() === etapa.trim().toLowerCase()).map(l => l.manzana).filter(Boolean))].sort(cmpNatural);
-
-  function crear() {
-    const et = etapa.trim();
-    const mz = manzana.trim();
-    if (!et) { setMsgAlta("Escribí la etapa (por ejemplo: Etapa 1)."); return; }
-    let numeros = [];
-    if (modo === "rango") {
-      const d = Number(desde);
-      const h = Number(hasta);
-      if (!Number.isInteger(d) || !Number.isInteger(h) || d < 1 || h < d) { setMsgAlta("Revisá los números: \"del\" tiene que ser 1 o más, y \"al\" igual o mayor."); return; }
-      const pl = parseLetras(letrasAlta);
-      if (pl.error) { setMsgAlta(pl.error); return; }
-      if ((h - d + 1) * Math.max(1, pl.letras.length) > 500) { setMsgAlta("Se pueden crear hasta 500 lotes por vez."); return; }
-      numeros = numerosDeRango(d, h, pl.letras);
-    } else {
-      if (!numero.trim()) { setMsgAlta("Escribí el número del lote (por ejemplo: 4B)."); return; }
-      numeros = [numero.trim()];
-    }
-    const existentes = new Set(lotes.map(claveLote));
-    const nuevos = [];
-    let repetidos = 0;
-    numeros.forEach(n => {
-      const l = { id: nuevoIdLote(), etapa: et, manzana: mz, numero: n, cajaId: cajaNueva || null };
-      const k = claveLote(l);
-      if (existentes.has(k)) repetidos++;
-      else { nuevos.push(l); existentes.add(k); }
-    });
-    if (nuevos.length) editarLotes(c => c.concat(nuevos));
-    const donde = `${et}${mz ? " · " + mz : ""}`;
-    if (nuevos.length && repetidos) setMsgAlta(`✓ ${nuevos.length} lote(s) agregados en ${donde}. ${repetidos} ya existían y no se repitieron.`);
-    else if (nuevos.length) setMsgAlta(`✓ ${nuevos.length} lote(s) agregados en ${donde}. Acordate de guardar.`);
-    else setMsgAlta(`Esos lotes ya existían en ${donde}: no se agregó nada.`);
-    if (modo === "uno") setNumero("");
-  }
-
-  const pasaFiltro = (l) => {
-    if (filtro === "todos") return true;
-    if (filtro === "principal") return !l.cajaId;
-    if (filtro.startsWith("caja:")) return l.cajaId === filtro.slice(5);
-    return true;
-  };
-  const visibles = lotes.filter(pasaFiltro);
-  const grupos = agruparLotes(visibles);
-
-  function toggle(id) {
-    setSel(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else n.add(id);
-      return n;
-    });
-  }
-  function toggleGrupo(ids) {
-    setSel(prev => {
-      const n = new Set(prev);
-      const todos = ids.every(id => n.has(id));
-      ids.forEach(id => { if (todos) n.delete(id); else n.add(id); });
-      return n;
-    });
-  }
-  const selIds = lotes.filter(l => sel.has(l.id)).map(l => l.id);
-  const unico = selIds.length === 1 ? lotes.find(l => l.id === selIds[0]) : null;
-
-  function aplicarCaja() {
-    if (!cajaAsignar) return;
-    const valor = cajaAsignar === "__principal" ? null : cajaAsignar;
-    editarLotes(c => { c.forEach(l => { if (sel.has(l.id)) l.cajaId = valor; }); });
-  }
-  function eliminarSeleccionados() {
-    if (!window.confirm(`¿Eliminar ${selIds.length} lote(s)? Se borran al guardar los cambios.`)) return;
-    editarLotes(c => c.filter(l => !sel.has(l.id)));
-    setSel(new Set());
-  }
-  function editarUnico(campo, valor) {
-    editarLotes(c => { c.forEach(l => { if (l.id === unico.id) l[campo] = valor; }); });
-  }
-  function partir() {
-    const pl = parseLetras(letrasPartir);
-    if (pl.error) { setMsgPartir(pl.error); return; }
-    if (!pl.letras.length) { setMsgPartir("Elegí en cuántas partes."); return; }
-    const r = partirLote(lotes, unico.id, pl.letras);
-    if (!r.creados) { setMsgPartir("Esas letras ya existían: no se agregó nada."); return; }
-    editarLotes(() => r.lotes);
-    if (r.reemplazado) setSel(new Set());
-    setLetrasPartir("");
-    setMsgPartir(`✓ ${r.creados} lote(s) nuevos${r.reemplazado ? " (el lote sin letra se reemplazó)" : ""}. Acordate de guardar.`);
-  }
-
-  return (
-    <div>
-      <SeccionTitulo
-        icono="🧩"
-        nombre="Lotes"
-        desc="Todos los lotes del proyecto, por etapa y manzana. Si corresponde, les asignás una caja separada. La financiación de cada lote se define al firmarlo."
-      />
-
-      {errorCarga && <p style={{ ...s.nota, color: "var(--red, #dc2626)", marginTop: 0 }}>{errorCarga}</p>}
-
-      {!dis && !errorCarga && (
-        <div style={s.bloque}>
-          <div style={s.h3}>Agregar lotes</div>
-          <div style={s.modoFila}>
-            <button type="button" onClick={() => setModo("rango")} style={{ ...s.modoBtn, ...(modo === "rango" ? s.modoBtnOn : {}) }}>Varios (del … al …)</button>
-            <button type="button" onClick={() => setModo("uno")} style={{ ...s.modoBtn, ...(modo === "uno" ? s.modoBtnOn : {}) }}>Uno suelto (ej. 4B)</button>
-          </div>
-          <div style={s.grid}>
-            <Campo label="Etapa *">
-              <input style={s.input} list="mp-etapas" placeholder="Ej: Etapa 1" value={etapa} onChange={e => setEtapa(e.target.value)} />
-            </Campo>
-            <Campo label="Manzana (si tiene)">
-              <input style={s.input} list="mp-manzanas" placeholder="Ej: M1" value={manzana} onChange={e => setManzana(e.target.value)} />
-            </Campo>
-            {modo === "rango" ? (
-              <>
-                <Campo label="Del lote">
-                  <input style={s.input} type="number" min="1" value={desde} onChange={e => setDesde(e.target.value)} />
-                </Campo>
-                <Campo label="Al lote">
-                  <input style={s.input} type="number" min="1" placeholder="Ej: 20" value={hasta} onChange={e => setHasta(e.target.value)} />
-                </Campo>
-                <Campo label="¿Están partidos?">
-                  <SelectorPartes value={letrasAlta} onChange={setLetrasAlta} />
-                </Campo>
-              </>
-            ) : (
-              <Campo label="Número de lote">
-                <input style={s.input} placeholder="Ej: 4B" value={numero} onChange={e => setNumero(e.target.value)} />
-              </Campo>
-            )}
-            <Campo label="Caja">
-              <select style={s.input} value={cajaNueva} onChange={e => setCajaNueva(e.target.value)}>
-                <option value="">Caja principal</option>
-                {cajas.map(c => <option key={c.id} value={c.id}>{c.nombre || "Caja sin nombre"}</option>)}
-              </select>
-            </Campo>
-          </div>
-          <datalist id="mp-etapas">{etapasExistentes.map(e => <option key={e} value={e} />)}</datalist>
-          <datalist id="mp-manzanas">{manzanasExistentes.map(m => <option key={m} value={m} />)}</datalist>
-          {modo === "rango" && (() => {
-            const d = Number(desde);
-            const h = Number(hasta);
-            const pl = parseLetras(letrasAlta);
-            if (!Number.isInteger(d) || !Number.isInteger(h) || d < 1 || h < d || pl.error) return null;
-            const nums = numerosDeRango(d, h, pl.letras);
-            const muestra = nums.length > 10 ? nums.slice(0, 8).join(", ") + ` … ${nums[nums.length - 1]}` : nums.join(", ");
-            return <p style={s.nota}>Se van a crear {nums.length} lote(s): {muestra}</p>;
-          })()}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-            <button type="button" style={s.btnSec} onClick={crear}>+ Agregar</button>
-            {msgAlta && <span style={{ fontSize: 13, color: "var(--text2)" }}>{msgAlta}</span>}
-          </div>
-        </div>
-      )}
-
-      {lotes.length > 0 && (
-        <div style={s.leyenda}>
-          <span style={s.resumenLotes}>{lotes.length} lote(s)</span>
-          {cajas.length > 0 && <span style={s.leyItem}><span style={s.marcaCaja}>★</span> en caja especial</span>}
-        </div>
-      )}
-
-      {lotes.length > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "12px 0" }}>
-          <select style={{ ...s.input, width: "auto" }} value={filtro} onChange={e => setFiltro(e.target.value)}>
-            <option value="todos">Mostrar todos</option>
-            <option value="principal">Caja principal</option>
-            {cajas.map(c => <option key={c.id} value={"caja:" + c.id}>Caja: {c.nombre || "sin nombre"}</option>)}
-          </select>
-          {!dis && visibles.length > 0 && (
-            <button type="button" style={s.quitar} onClick={() => toggleGrupo(visibles.map(l => l.id))}>Seleccionar / quitar todos los que se ven</button>
-          )}
-        </div>
-      )}
-
-      {!dis && selIds.length > 0 && (
-        <div style={s.barraSel}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-            <b style={{ fontSize: 13 }}>{selIds.length} seleccionado(s)</b>
-            <button type="button" style={s.quitar} onClick={() => setSel(new Set())}>Quitar selección</button>
-            <button type="button" style={{ ...s.quitar, color: "var(--red, #dc2626)" }} onClick={eliminarSeleccionados}>Eliminar</button>
-          </div>
-          <div style={s.selAcciones}>
-            <select style={{ ...s.input, width: "auto" }} value={cajaAsignar} onChange={e => setCajaAsignar(e.target.value)}>
-              <option value="">Pasar a caja…</option>
-              <option value="__principal">Caja principal</option>
-              {cajas.map(c => <option key={c.id} value={c.id}>{c.nombre || "Caja sin nombre"}</option>)}
-            </select>
-            <button type="button" style={s.btnSec} onClick={aplicarCaja} disabled={!cajaAsignar}>Aplicar</button>
-          </div>
-          {unico && (
-            <div style={{ ...s.grid, marginTop: 10 }}>
-              <Campo label="Etapa">
-                <input style={s.input} value={unico.etapa} onChange={e => editarUnico("etapa", e.target.value)} />
-              </Campo>
-              <Campo label="Manzana">
-                <input style={s.input} value={unico.manzana} onChange={e => editarUnico("manzana", e.target.value)} />
-              </Campo>
-              <Campo label="Número">
-                <input style={s.input} value={unico.numero} onChange={e => editarUnico("numero", e.target.value)} />
-              </Campo>
-            </div>
-          )}
-          {unico && (
-            <div style={{ display: "flex", alignItems: "flex-end", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
-              <Campo label={`Partir el lote ${(String(unico.numero).match(/^\d+/) || [unico.numero])[0]} en`}>
-                <SelectorPartes value={letrasPartir} onChange={v => { setLetrasPartir(v); setMsgPartir(""); }} sinEntero />
-              </Campo>
-              <button type="button" style={s.btnSec} onClick={partir}>Partir</button>
-              {msgPartir && <span style={{ fontSize: 13, color: "var(--text2)" }}>{msgPartir}</span>}
-            </div>
-          )}
-        </div>
-      )}
-
-      {!errorCarga && lotes.length === 0 && <p style={s.vacio}>Todavía no hay lotes. Agregá los primeros con el formulario de arriba.</p>}
-      {lotes.length > 0 && visibles.length === 0 && <p style={s.vacio}>Ningún lote coincide con el filtro.</p>}
-
-      {grupos.map(g => {
-        return (
-          <div key={g.etapa} style={{ marginTop: 16 }}>
-            <div style={s.etapaTitulo}>{g.etapa}</div>
-            {g.manzanas.map(({ manzana: mz, lotes: grupo }) => {
-              const ids = grupo.map(l => l.id);
-              return (
-                <div key={mz || "_sin"} style={s.mzBloque}>
-                  <div style={s.mzTop}>
-                    <span style={{ fontSize: 13, fontWeight: 700 }}>{mz || "Sin manzana"}</span>
-                    <span style={{ fontSize: 12, color: "var(--text2)" }}>{grupo.length} lote(s)</span>
-                    {!dis && <button type="button" style={s.linkBtn} onClick={() => toggleGrupo(ids)}>Seleccionar {mz ? "manzana" : "grupo"}</button>}
-                  </div>
-                  <div style={s.chips}>
-                    {grupo.map(l => {
-                      const on = sel.has(l.id);
-                      const titulo = `${etiquetaLote(l)}\nCaja: ${l.cajaId ? nombreCaja(l.cajaId) : "principal"}`;
-                      return (
-                        <button
-                          key={l.id}
-                          type="button"
-                          title={titulo}
-                          onClick={() => { if (!dis) toggle(l.id); }}
-                          style={{
-                            ...s.chip,
-                            border: "2px solid var(--border2)",
-                            ...(on ? { background: "var(--acc)", color: "#fff" } : {}),
-                            cursor: dis ? "default" : "pointer",
-                          }}
-                        >
-                          {l.numero}
-                          {l.cajaId && <span style={s.marcaChip}>★</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })}
     </div>
   );
 }

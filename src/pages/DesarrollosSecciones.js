@@ -37,25 +37,7 @@ const SECCIONES = {
       { id: "cantLotes", label: "Lotes", flex: 1 },
     ],
   },
-  lotes: {
-    nombre: "Manzanas y lotes", icono: "🧩", coleccion: "desarrollos_manzanas",
-    orden: "nombre",
-    campos: [
-      { id: "nombre", label: "Manzana", tipo: "text", req: true, ph: "Ej: Manzana A" },
-      { id: "etapa", label: "Etapa", tipo: "text", ph: "Ej: Etapa 1" },
-      { id: "totalLotes", label: "Lotes totales", tipo: "number", def: 0, min: 0 },
-      { id: "vendidos", label: "Lotes vendidos", tipo: "number", def: 0, min: 0 },
-      { id: "estado", label: "Estado", tipo: "select", opciones: ESTADOS_OBRA, def: "Planificado" },
-      { id: "notas", label: "Notas", tipo: "textarea", ph: "Observaciones..." },
-    ],
-    columnas: [
-      { id: "nombre", label: "Manzana", flex: 2 },
-      { id: "etapa", label: "Etapa", flex: 1 },
-      { id: "totalLotes", label: "Lotes", flex: 1 },
-      { id: "vendidos", label: "Vendidos", flex: 1 },
-      { id: "estado", label: "Estado", tipo: "badge" },
-    ],
-  },
+  // "lotes" (Manzanas y lotes) tiene su propia pantalla: DesarrollosLotes.js
   avance: {
     nombre: "Avance de obra", icono: "🚧", coleccion: "desarrollos_avance",
     orden: "nombre",

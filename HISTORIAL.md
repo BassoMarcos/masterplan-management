@@ -213,6 +213,13 @@
 - El asistente de Administración queda **de respaldo**: la entrada del área lo pide solo si Administración no está configurada (ej. se activó después).
 - Probado: simulación de navegador (7 casos).
 
+## 2026-09-26 — MasterPlan: qué se configura en cada área + Lotes pasan a Desarrollos
+- Acordado con Marcos qué va en la Configuración de cada área (Administración, Desarrollos, Comercial, Legales, Empresa); detalle en ESQUEMA_ADMIN_FYJ.md §13 (fuera del repo). Regla: cada área configura TODO lo suyo; lo compartido se carga en un lugar y las demás lo leen.
+- **Lotes → Desarrollos**: nueva pantalla `DesarrollosLotes.js` (Desarrollos → Manzanas y lotes) con el editor `components/EditorLotes.js`, sobre la lista única `proyectos/{id}/lotes`. Reemplaza la tabla escrita a mano (`desarrollos_manzanas`): esos registros viejos se muestran abajo, sin borrarse solos.
+- Administración ya no tiene la sección Lotes; en **Cajas separadas** se eligen los lotes de cada caja y hay link a Desarrollos (o a la configuración del proyecto si no usa Desarrollos).
+- Guardado de lotes: `diffLotes` ahora escribe solo los campos que cambiaron (`update`), así Desarrollos (etapa/manzana/número) y Administración (caja) no se pisan. Si otro borró el lote mientras se editaba, avisa claro y no guarda a medias.
+- Probado: simulación de navegador (7 casos nuevos + asistente).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
