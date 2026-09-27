@@ -7,26 +7,47 @@ import ThemeSelector from "../components/ThemeSelector";
 import { AREAS_DEFAULT, areasVisibles, estructuraInicial, PANELES_SIEMPRE } from "../config/appConfig";
 import {
   completarConfig, validar, validarLotes, normalizar, loteLimpio, nuevoId,
-  lotesDesdeEstructura, sincronizarLotes, TIPOS_INCREMENTO, MONEDAS, textoCalendario,
+  lotesDesdeEstructura, sincronizarLotes, TIPOS_INCREMENTO, MONEDAS, textoCalendario, administracionConfigurada,
 } from "../config/adminConfigLogica";
 import {
   SeccionFinanciacion, SeccionMora, SeccionTransferencias, SeccionDistribucion, SeccionCajas, SelectorPartes,
   Campo, guardarConfigYLotes, estilosConfig as s,
 } from "./AdministracionConfig";
 
-// Asistente de configuración de un proyecto. Se abre solo al crear un proyecto nuevo, y
-// después se puede volver a abrir desde el proyecto (⚙️ Configuración del proyecto).
-// Hace las preguntas paso a paso con barra de progreso y guarda todo junto al terminar:
-//   - proyectos/{id}.estructura    → qué áreas y paneles usa el proyecto
-//   - proyectos/{id}.adminConfig   → financiación, mora, transferencias, dueños, cajas (si usa Administración)
-//   - proyectos/{id}/lotes         → los lotes que salen de la estructura del loteo
-//   - proyectos/{id}.asistente     → { completo, paso, borrador } para poder pausar y retomar
+// Asistente de configuración, en dos modos (acordado con Marcos: el inicio no se sobrecarga y cada
+// área configura lo suyo la primera vez que se usa):
+//
+// modo "proyecto" — se abre solo al crear un proyecto (y desde ⚙️ Configuración del proyecto):
+//   Bienvenida → Áreas y paneles → Lotes → Datos del proyecto → Resumen. Guarda:
+//   - proyectos/{id}.estructura  → qué áreas y paneles usa el proyecto
+//   - proyectos/{id}/lotes       → los lotes que salen de la estructura del loteo
+//   - proyectos/{id}.datos       → tipo, dirección, localidad, provincia
+//   - proyectos/{id}.asistente   → { completo, paso, borrador } para pausar y retomar
+//
+// modo "administracion" — la PRIMERA vez que se entra a Administración (y después para repasar):
+//   Bienvenida → Financiación → Mora → Transferencias → Dueños → Cajas → Resumen. Guarda:
+//   - proyectos/{id}.adminConfig     → reglas de Administración
+//   - proyectos/{id}/lotes           → la caja de cada lote
+//   - proyectos/{id}.adminAsistente  → { completo, paso, borrador }
+//
 // Reusa las mismas pantallas de Administración → Configuración, así se valida todo igual.
+
+const TIPOS_PROYECTO = ["Loteo", "Barrio cerrado", "Condominio", "Edificio", "Otro"];
+const PROVINCIAS = [
+  "Buenos Aires", "Ciudad de Buenos Aires", "Catamarca", "Chaco", "Chubut", "Córdoba", "Corrientes",
+  "Entre Ríos", "Formosa", "Jujuy", "La Pampa", "La Rioja", "Mendoza", "Misiones", "Neuquén", "Río Negro",
+  "Salta", "San Juan", "San Luis", "Santa Cruz", "Santa Fe", "Santiago del Estero", "Tierra del Fuego", "Tucumán",
+];
+function datosIniciales(p) {
+  const d = (p && p.datos) || {};
+  return { tipo: d.tipo || "Loteo", direccion: d.direccion || "", localidad: d.localidad || "", provincia: d.provincia || "" };
+}
 
 const INFO_PASOS = {
   bienvenida: { titulo: "Bienvenida" },
   areas: { titulo: "Áreas del proyecto", pregunta: "¿Qué áreas va a usar este proyecto?" },
   lotes: { titulo: "Lotes", pregunta: "¿Cómo está armado el loteo?" },
+  datos: { titulo: "Datos del proyecto", pregunta: "¿Qué tipo de proyecto es y dónde está?" },
   financiacion: { titulo: "Financiación", pregunta: "¿Cómo son las cuotas de este proyecto?" },
   mora: { titulo: "Mora", pregunta: "¿Hasta qué día se paga la cuota, y qué interés tiene el atraso?" },
   transferencias: { titulo: "Transferencias", pregunta: "Si el cliente paga por transferencia, ¿qué porcentaje se suma sobre el valor base?" },
@@ -45,7 +66,9 @@ function manzanaVacia(n, modelo) {
   return { id: nuevoId(), nombre: `M${n}`, desde: modelo ? modelo.desde : "1", hasta: modelo ? modelo.hasta : "", letras: modelo ? modelo.letras : "" };
 }
 
-export default function AsistenteProyecto() {
+export default function AsistenteProyecto({ modo = "proyecto" }) {
+  const esAdm = modo === "administracion";
+  const campoAsistente = esAdm ? "adminAsistente" : "asistente";
   const { proyectoId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
@@ -59,6 +82,7 @@ export default function AsistenteProyecto() {
   const [lotesIni, setLotesIni] = useState([]);
   const [lotes, setLotes] = useState([]);
   const [etapas, setEtapas] = useState([]);
+  const [datos, setDatos] = useState(null);
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
 
@@ -77,8 +101,10 @@ export default function AsistenteProyecto() {
         const lotesDb = lotesSnap.docs.map(d => loteLimpio(d.id, d.data()));
         if (!vivo) return;
         // Si quedó a mitad de camino, se retoma donde se dejó.
-        const b = p.asistente && !p.asistente.completo ? p.asistente.borrador : null;
+        const asis = p[esAdm ? "adminAsistente" : "asistente"];
+        const b = asis && !asis.completo ? asis.borrador : null;
         setProyecto(p);
+        setDatos(b && b.datos ? b.datos : datosIniciales(p));
         setEstructura(b && b.estructura ? b.estructura : estructuraInicial(p, areasVisibles(empresaData)));
         setCfg(completarConfig(b && b.cfg ? b.cfg : p.adminConfig));
         setLotesIni(lotesDb);
@@ -101,20 +127,23 @@ export default function AsistenteProyecto() {
   }, [proyectoId, empresaUid, navigate]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!esAdminEfectivo) {
-    return <Pantalla navigate={navigate} logout={logout} proyectoId={proyectoId}><p style={s.nota}>Solo el dueño de la empresa o alguien con acceso total puede configurar el proyecto.</p></Pantalla>;
+    return <Pantalla esAdm={esAdm} navigate={navigate} logout={logout} proyectoId={proyectoId}><p style={s.nota}>Solo el dueño de la empresa o alguien con acceso total puede hacer esta configuración.</p></Pantalla>;
   }
-  if (cargando || !estructura || !cfg) {
-    return <Pantalla navigate={navigate} logout={logout} proyectoId={proyectoId}><p style={s.nota}>{error || "Cargando…"}</p></Pantalla>;
+  if (cargando || !estructura || !cfg || !datos) {
+    return <Pantalla esAdm={esAdm} navigate={navigate} logout={logout} proyectoId={proyectoId}><p style={s.nota}>{error || "Cargando…"}</p></Pantalla>;
   }
 
-  // "Nuevo" = recién creado y todavía sin terminar el asistente (se puede pausar y retomar).
-  // Los proyectos viejos o ya configurados abren el asistente para repasar y cambiar respuestas.
-  const esNuevo = !!(proyecto.asistente && !proyecto.asistente.completo);
+  // "Nuevo" = todavía sin terminar este asistente (se puede pausar y retomar).
+  // Si ya estaba configurado, el asistente sirve para repasar y cambiar respuestas.
+  const esNuevo = esAdm ? !administracionConfigurada(proyecto) : !!(proyecto.asistente && !proyecto.asistente.completo);
   const yaConfigurado = !esNuevo;
   const act = (id) => !!(estructura.areas[id] && estructura.areas[id].activa);
-  const conAdmin = act("administracion");
-  const conLotes = conAdmin || act("comercial") || act("desarrollos");
-  const pasos = ["bienvenida", "areas", conLotes && "lotes", conAdmin && "financiacion", conAdmin && "mora", conAdmin && "transferencias", conAdmin && "duenos", conAdmin && "cajas", "resumen"].filter(Boolean);
+  const conAdmin = esAdm;
+  const conLotes = act("administracion") || act("comercial") || act("desarrollos");
+  const pasos = esAdm
+    ? ["bienvenida", "financiacion", "mora", "transferencias", "duenos", "cajas", "resumen"]
+    : ["bienvenida", "areas", conLotes && "lotes", "datos", "resumen"].filter(Boolean);
+  const volverA = esAdm ? `/proyecto/${proyectoId}/administracion` : `/proyecto/${proyectoId}`;
   let idx = pasos.indexOf(paso);
   if (idx < 0) idx = 1;
   const pasoActual = pasos[idx];
@@ -161,8 +190,10 @@ export default function AsistenteProyecto() {
   async function guardarBorrador(pasoSig, lotesAct) {
     if (yaConfigurado) return;
     try {
-      const borrador = JSON.parse(JSON.stringify({ estructura, cfg, etapas, lotes: lotesAct, paso: pasoSig }));
-      await updateDoc(doc(db, "proyectos", proyectoId), { asistente: { completo: false, paso: pasoSig, borrador } });
+      const borrador = JSON.parse(JSON.stringify(esAdm
+        ? { cfg, lotes: lotesAct, paso: pasoSig }
+        : { estructura, etapas, lotes: lotesAct, datos, paso: pasoSig }));
+      await updateDoc(doc(db, "proyectos", proyectoId), { [campoAsistente]: { completo: false, paso: pasoSig, borrador } });
     } catch (e) {
       // Sin conexión: el borrador es solo una ayuda, no frena el asistente.
     }
@@ -199,6 +230,25 @@ export default function AsistenteProyecto() {
     if (e) { setError(e.mensaje); return; }
     setGuardando(true);
     setError("");
+    if (esAdm) {
+      try {
+        await guardarConfigYLotes({
+          proyectoId,
+          limpia: normalizar(cfg),
+          cambioCfg: true,
+          lotesIni,
+          lotes,
+          extra: { adminAsistente: { completo: true, fecha: serverTimestamp() } },
+        });
+        navigate(volverA);
+      } catch (err) {
+        setError(err && err.code === "permission-denied"
+          ? "No se pudo guardar: falta permiso en las reglas de Firebase. Avisale a Mark."
+          : "No se pudo guardar. Revisá tu conexión e intentá de nuevo.");
+      }
+      setGuardando(false);
+      return;
+    }
     try {
       const estructuraLimpia = { areas: {} };
       AREAS_DEFAULT.forEach(a => {
@@ -209,13 +259,19 @@ export default function AsistenteProyecto() {
           paneles: x ? a.paneles.map(p => p.id).filter(id => x.paneles.includes(id) || (PANELES_SIEMPRE[a.id] || []).includes(id)) : [],
         };
       });
+      const datosLimpios = {
+        tipo: datos.tipo || "Loteo",
+        direccion: String(datos.direccion || "").trim(),
+        localidad: String(datos.localidad || "").trim(),
+        provincia: datos.provincia || "",
+      };
       await guardarConfigYLotes({
         proyectoId,
-        limpia: conAdmin ? normalizar(cfg) : null,
-        cambioCfg: conAdmin,
+        limpia: null,
+        cambioCfg: false,
         lotesIni,
         lotes,
-        extra: { estructura: estructuraLimpia, asistente: { completo: true, fecha: serverTimestamp() } },
+        extra: { estructura: estructuraLimpia, datos: datosLimpios, asistente: { completo: true, fecha: serverTimestamp() } },
       });
       navigate(`/proyecto/${proyectoId}`);
     } catch (err) {
@@ -230,12 +286,13 @@ export default function AsistenteProyecto() {
 
   return (
     <Pantalla
+      esAdm={esAdm}
       navigate={navigate}
       logout={logout}
       proyectoId={proyectoId}
       proyecto={proyecto}
       botonSalir={yaConfigurado
-        ? <button style={est.headerBtn} onClick={() => navigate(`/proyecto/${proyectoId}`)}>Cancelar</button>
+        ? <button style={est.headerBtn} onClick={() => navigate(volverA)}>Cancelar</button>
         : <button style={est.headerBtn} onClick={salirYSeguirDespues}>Salir y seguir después</button>}
     >
       <div style={est.progresoMeta}>
@@ -249,12 +306,20 @@ export default function AsistenteProyecto() {
 
         {pasoActual === "bienvenida" && (
           <div>
-            <div style={{ fontSize: 44, marginBottom: 8 }}>{yaConfigurado ? "⚙️" : "🎉"}</div>
-            <h2 style={est.pregunta}>{yaConfigurado ? `Configuración de ${proyecto.nombre}` : "¡Buenas noticias! Acabamos de crear tu proyecto nuevo"}</h2>
+            <div style={{ fontSize: 44, marginBottom: 8 }}>{esAdm ? "📊" : (yaConfigurado ? "⚙️" : "🎉")}</div>
+            <h2 style={est.pregunta}>
+              {esAdm
+                ? (yaConfigurado ? `Configuración de Administración · ${proyecto.nombre}` : "Antes de usar Administración, configuremos cómo se cobra")
+                : (yaConfigurado ? `Configuración de ${proyecto.nombre}` : "¡Buenas noticias! Acabamos de crear tu proyecto nuevo")}
+            </h2>
             <p style={est.texto}>
-              {yaConfigurado
-                ? "Vas a repasar todas las respuestas de la configuración. Cambiá lo que necesites y al final guardá."
-                : `Felicidades. Antes de continuar, vamos a configurar todo el sistema de "${proyecto.nombre}". Son unas preguntas cortas; después podés cambiar cualquier respuesta desde la configuración.`}
+              {esAdm
+                ? (yaConfigurado
+                  ? "Vas a repasar las reglas de Administración. Cambiá lo que necesites y al final guardá."
+                  : "Son unas preguntas sobre las cuotas, la mora, las transferencias, los dueños y las cajas. Se hacen una sola vez; después podés cambiar todo desde Administración → Configuración.")
+                : (yaConfigurado
+                  ? "Vas a repasar la configuración general del proyecto. Cambiá lo que necesites y al final guardá."
+                  : `Felicidades. Antes de continuar, configuremos lo general de "${proyecto.nombre}": sus áreas, sus lotes y sus datos. Cada área después pide lo suyo la primera vez que se usa.`)}
             </p>
           </div>
         )}
@@ -266,6 +331,8 @@ export default function AsistenteProyecto() {
         {pasoActual === "lotes" && (
           <PasoLotes etapas={etapas} setEtapas={e => { setError(""); setEtapas(e); }} lotesGuardados={lotesIni} />
         )}
+
+        {pasoActual === "datos" && <PasoDatos datos={datos} setDatos={d => { setError(""); setDatos(d); }} />}
 
         {pasoActual === "financiacion" && (
           <div>
@@ -284,7 +351,7 @@ export default function AsistenteProyecto() {
         )}
 
         {pasoActual === "resumen" && (
-          <PasoResumen estructura={estructura} habilitadas={habilitadas} cfg={cfg} lotes={lotes} lotesIni={lotesIni} conAdmin={conAdmin} />
+          <PasoResumen estructura={estructura} habilitadas={habilitadas} cfg={cfg} lotes={lotes} lotesIni={lotesIni} conAdmin={conAdmin} datos={esAdm ? null : datos} />
         )}
 
         {error && <p style={est.error}>{error}</p>}
@@ -306,13 +373,41 @@ export default function AsistenteProyecto() {
   );
 }
 
-function Pantalla({ children, navigate, logout, proyectoId, proyecto, botonSalir }) {
+function PasoDatos({ datos, setDatos }) {
+  const set = (k, v) => setDatos({ ...datos, [k]: v });
+  return (
+    <div>
+      <p style={est.texto}>Datos generales del proyecto. Después los van a usar todas las áreas (reservas, boletos, recibos).</p>
+      <div style={s.grid}>
+        <Campo label="Tipo de proyecto">
+          <select style={s.input} value={datos.tipo} onChange={e => set("tipo", e.target.value)}>
+            {TIPOS_PROYECTO.map(t => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </Campo>
+        <Campo label="Dirección">
+          <input style={s.input} placeholder="Ej: Ruta 5 km 12" value={datos.direccion} onChange={e => set("direccion", e.target.value)} />
+        </Campo>
+        <Campo label="Localidad">
+          <input style={s.input} placeholder="Ej: Luján" value={datos.localidad} onChange={e => set("localidad", e.target.value)} />
+        </Campo>
+        <Campo label="Provincia">
+          <select style={s.input} value={datos.provincia} onChange={e => set("provincia", e.target.value)}>
+            <option value="">Elegí…</option>
+            {PROVINCIAS.map(p => <option key={p} value={p}>{p}</option>)}
+          </select>
+        </Campo>
+      </div>
+    </div>
+  );
+}
+
+function Pantalla({ children, navigate, logout, proyectoId, proyecto, botonSalir, esAdm }) {
   return (
     <div style={est.container}>
       <header style={est.header}>
         <div style={est.headerLeft}>
           <div>
-            <h1 style={est.headerTitle}>⚙️ Configuración del proyecto</h1>
+            <h1 style={est.headerTitle}>{esAdm ? "📊 Configuración de Administración" : "⚙️ Configuración del proyecto"}</h1>
             <p style={est.headerSub}>{proyecto ? proyecto.nombre : ""}</p>
           </div>
         </div>
@@ -499,7 +594,7 @@ function PasoLotes({ etapas, setEtapas, lotesGuardados }) {
   );
 }
 
-function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin }) {
+function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin, datos }) {
   const areas = AREAS_DEFAULT.filter(a => habilitadas.some(h => h.id === a.id) && estructura.areas[a.id] && estructura.areas[a.id].activa);
   const nuevos = lotes.filter(l => !lotesIni.some(x => x.id === l.id)).length;
   const m = cfg.cobranza.mora;
@@ -519,6 +614,8 @@ function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin }
   return (
     <div>
       <p style={est.texto}>Revisá que esté todo bien. Cualquier cosa la podés cambiar después.</p>
+      {!conAdmin && (
+        <>
       <Fila titulo="Áreas">
         {areas.length ? areas.map(a => {
           const fijos = PANELES_SIEMPRE[a.id] || [];
@@ -527,6 +624,13 @@ function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin }
         }) : "—"}
       </Fila>
       <Fila titulo="Lotes">{lotes.length} lote(s){nuevos ? ` (${nuevos} nuevos)` : ""}</Fila>
+      {datos && (
+        <Fila titulo="Proyecto">
+          {datos.tipo}{[datos.direccion, datos.localidad, datos.provincia].filter(x => String(x || "").trim()).length ? " · " + [datos.direccion, datos.localidad, datos.provincia].filter(x => String(x || "").trim()).join(", ") : ""}
+        </Fila>
+      )}
+        </>
+      )}
       {conAdmin && (
         <>
           <Fila titulo="Financiación">

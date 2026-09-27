@@ -520,3 +520,9 @@ export function sincronizarLotes(actuales, idsGuardados, generados) {
   });
   return guardados.concat(nuevos);
 }
+
+// ¿Ya se configuró Administración en este proyecto? La primera vez que se entra al área hay que
+// pasar por su asistente. Los proyectos que ya tenían adminConfig cuentan como configurados.
+export function administracionConfigurada(p) {
+  return !!(p && (p.adminConfig || (p.adminAsistente && p.adminAsistente.completo)));
+}
