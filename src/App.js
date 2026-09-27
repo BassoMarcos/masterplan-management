@@ -9,6 +9,7 @@ import Empleados from "./pages/Empleados";
 import ProyectoPilares from "./pages/ProyectoPilares";
 import AreaSecciones from "./pages/AreaSecciones";
 import DesarrollosSecciones from "./pages/DesarrollosSecciones";
+import DesarrollosLotes from "./pages/DesarrollosLotes";
 import AdministracionHub from "./pages/AdministracionHub";
 import AdministracionPanel from "./pages/AdministracionPanel";
 import AsistenteProyecto from "./pages/AsistenteProyecto";
@@ -162,6 +163,7 @@ function AppRoutes() {
       <Route path="/proyecto/:proyectoId/comercial/filtrado" element={<PrivateRoute><ComercialFiltrado /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/comercial/ventas" element={<PrivateRoute><ComercialVentas /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/desarrollos/lotes" element={<PrivateRoute><DesarrollosLotes /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/desarrollos/:seccionId" element={<PrivateRoute><DesarrollosSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId/:seccionId" element={<PrivateRoute><SeccionPlaceholder /></PrivateRoute>} />
       <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />

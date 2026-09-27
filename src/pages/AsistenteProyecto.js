@@ -11,7 +11,7 @@ import {
 } from "../config/adminConfigLogica";
 import {
   SeccionFinanciacion, SeccionMora, SeccionTransferencias, SeccionDistribucion, SeccionCajas, SelectorPartes,
-  Campo, guardarConfigYLotes, estilosConfig as s,
+  Campo, guardarConfigYLotes, mensajeErrorGuardar, estilosConfig as s,
 } from "./AdministracionConfig";
 
 // Asistente de configuración, en dos modos (la bienvenida pregunta todo de una; Administración tiene
@@ -244,9 +244,7 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
         });
         navigate(volverA);
       } catch (err) {
-        setError(err && err.code === "permission-denied"
-          ? "No se pudo guardar: falta permiso en las reglas de Firebase. Avisale a Mark."
-          : "No se pudo guardar. Revisá tu conexión e intentá de nuevo.");
+        setError(mensajeErrorGuardar(err));
       }
       setGuardando(false);
       return;
@@ -282,9 +280,7 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
       });
       navigate(`/proyecto/${proyectoId}`);
     } catch (err) {
-      setError(err && err.code === "permission-denied"
-        ? "No se pudo guardar: falta permiso en las reglas de Firebase. Avisale a Mark."
-        : "No se pudo guardar. Revisá tu conexión e intentá de nuevo.");
+      setError(mensajeErrorGuardar(err));
     }
     setGuardando(false);
   }
@@ -354,7 +350,10 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
         {pasoActual === "transferencias" && <SeccionTransferencias cfg={cfg} editar={editar} dis={false} />}
         {pasoActual === "duenos" && <SeccionDistribucion cfg={cfg} editar={editar} dis={false} />}
         {pasoActual === "cajas" && (
-          <SeccionCajas cfg={cfg} editar={editar} dis={false} lotes={lotes} editarLotes={editarLotes} lotesCargando={false} />
+          <SeccionCajas
+            cfg={cfg} editar={editar} dis={false} lotes={lotes} editarLotes={editarLotes} lotesCargando={false}
+            avisoLotes={esAdm ? "Los lotes se cargan en Desarrollos → Manzanas y lotes." : "Los lotes se cargan en el paso Lotes."}
+          />
         )}
 
         {pasoActual === "resumen" && (
