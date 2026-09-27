@@ -220,6 +220,16 @@
 - Guardado de lotes: `diffLotes` ahora escribe solo los campos que cambiaron (`update`), así Desarrollos (etapa/manzana/número) y Administración (caja) no se pisan. Si otro borró el lote mientras se editaba, avisa claro y no guarda a medias.
 - Probado: simulación de navegador (7 casos nuevos + asistente).
 
+## 2026-09-26 — MasterPlan: Configuración de Administración completa (lo que tenía fyj)
+- Secciones nuevas (`AdministracionConfigCobros.js`), agrupadas en la lista: **Cuotas** (Financiación, Mora + tope de interés, Avisos de mora, Adelantos, Transferencias) · **Cobros** (Permisos de cobro, Diferencias al cobrar, Recibos, Cierre del mes) · **Casos** (Casos especiales, Lotes terminados) · **Plata** (Dueños, Cajas separadas).
+- Adelantos: se permiten / cancelan las últimas, las próximas o lo elige quien cobra / aprobación. Si cancelan las próximas y hay aumento en el medio: **opción** "quedan al precio de hoy" o "paga la diferencia" (se deja configurable en vez de decidirlo).
+- Avisos de mora: grupos por cantidad de cuotas (por defecto 1 · 2-3 · 4-6 · 7+) con color y mensaje de WhatsApp, saludo y firma, variables {nombre} {lote} {cuotas} {meses} {monto} {cuotapura} y vista previa.
+- Permisos de cobro (Cobranzas / con aprobación / solo Administración): cobrar todo por transferencia, otro interés o descuento, anular, marcar sin cobrar.
+- Diferencias (se ignoran hasta $X; el saldo se aplica solo en el próximo pago o no), recibos (título, número inicial, pie, WhatsApp), cierre (respaldos, simulador), casos especiales (primera cuota futura, escalonado, refinanciación, préstamos, la empresa paga), certificado de lotes terminados con pasos editables.
+- Estilos compartidos pasan a `components/configUI.js` (con `Opciones` y `SiNo`). Configs viejas abren sin cambios (valores por defecto al leer).
+- Todavía no mueven plata: las van a usar los cobros.
+- Probado: simulación de navegador (6 casos nuevos + lotes + asistente).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
