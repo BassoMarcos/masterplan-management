@@ -100,7 +100,9 @@ export default function AdministracionHub() {
                 <div
                   key={p.id}
                   style={styles.card}
-                  onClick={() => navigate(`/proyecto/${proyectoId}/administracion/${p.id}`)}
+                  onClick={() => navigate(p.id === "configuracion"
+                    ? `/proyecto/${proyectoId}/configuracion/administracion/financiacion`
+                    : `/proyecto/${proyectoId}/administracion/${p.id}`, { state: { desde: `/proyecto/${proyectoId}/administracion` } })}
                   onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-3px)")}
                   onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
                 >

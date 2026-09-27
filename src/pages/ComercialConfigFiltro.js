@@ -15,7 +15,8 @@ const TIPOS = [
 
 // Configurador del FORMULARIO DE FILTRO (Comercial).
 // El admin arma las preguntas que el filtrador completará sobre cada dato.
-export default function ComercialConfigFiltro() {
+// embebido: se muestra dentro de ⚙️ Configuración del proyecto (sin encabezado propio).
+export default function ComercialConfigFiltro({ embebido }) {
   const { proyectoId } = useParams();
   const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const navigate = useNavigate();
@@ -121,8 +122,8 @@ export default function ComercialConfigFiltro() {
   if (loading) return <div style={styles.loading}>Cargando...</div>;
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
+    <div style={embebido ? undefined : styles.container}>
+      {!embebido && <header style={styles.header}>
         <div style={styles.headerLeft}>
           <button style={styles.backBtn} onClick={() => navigate(`/proyecto/${proyectoId}/comercial`)}>← Volver</button>
           <div>
@@ -134,9 +135,9 @@ export default function ComercialConfigFiltro() {
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>
-      </header>
+      </header>}
 
-      <main style={styles.main}>
+      <main style={embebido ? undefined : styles.main}>
         <p style={styles.intro}>
           Estas son las preguntas que el filtrador va a completar sobre cada dato en el primer llamado.
           Armá el formulario a tu gusto.

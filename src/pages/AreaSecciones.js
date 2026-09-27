@@ -5,46 +5,13 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
-import { areasVisibles, areasVisiblesEmpleado, empleadoNivelArea, areaActivaEnProyecto, panelActivoEnProyecto } from "../config/appConfig";
+import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, empleadoNivelPanel, areaActivaEnProyecto, panelActivoEnProyecto } from "../config/appConfig";
 
-// Definición de cada área y sus secciones
-const AREAS = {
-  administracion: {
-    nombre: "Administración", icono: "📊",
-    vacia: true, // se integrará con FJ App
-    secciones: [],
-  },
-  comercial: {
-    nombre: "Comercial", icono: "🤝",
-    secciones: [
-      { id: "reservas", nombre: "Reservas", icono: "📝", desc: "Señas y reservas de lotes" },
-      { id: "boletos", nombre: "Boletos de compraventa", icono: "📄", desc: "Boletos firmados" },
-      { id: "interesados", nombre: "Clientes / interesados", icono: "👥", desc: "Base de contactos y seguimiento" },
-      { id: "disponibles", nombre: "Lotes disponibles", icono: "🗺️", desc: "Stock a la venta" },
-      { id: "vendedores", nombre: "Vendedores y comisiones", icono: "💼", desc: "Equipo comercial y comisiones" },
-    ],
-  },
-  legales: {
-    nombre: "Legales", icono: "⚖️",
-    secciones: [
-      { id: "contratos", nombre: "Contratos", icono: "📑", desc: "Contratos y adendas" },
-      { id: "escrituras", nombre: "Escrituras", icono: "🖋️", desc: "Escrituración de lotes" },
-      { id: "documentacion", nombre: "Documentación de clientes", icono: "🗂️", desc: "Documentos por cliente" },
-      { id: "verificaciones", nombre: "Verificaciones", icono: "✅", desc: "Chequeos y validaciones" },
-      { id: "estados", nombre: "Estados legales de lotes", icono: "🏷️", desc: "Situación legal de cada lote" },
-    ],
-  },
-  desarrollos: {
-    nombre: "Desarrollos y Obras", icono: "🏗️",
-    secciones: [
-      { id: "etapas", nombre: "Etapas", icono: "📐", desc: "Etapas del desarrollo" },
-      { id: "lotes", nombre: "Manzanas y lotes", icono: "🧩", desc: "Estructura de manzanas y lotes" },
-      { id: "avance", nombre: "Avance de obra", icono: "🚧", desc: "Progreso de la obra" },
-      { id: "infraestructura", nombre: "Infraestructura", icono: "🔌", desc: "Agua, luz, calles" },
-      { id: "agrimensura", nombre: "Agrimensura", icono: "📏", desc: "Mensuras y planos" },
-    ],
-  },
-};
+// Entrada de las áreas que no tienen pantalla propia (hoy: Legales y Desarrollos y Obras).
+// Administración y Comercial tienen su propia entrada (AdministracionHub / ComercialHub).
+// Las tarjetas salen de AREAS_DEFAULT (appConfig.js): la misma lista que usan los permisos
+// de Empleados y ⚙️ Configuración → Áreas y paneles, así nunca quedan desparejas.
+const CON_PANTALLA_GENERICA = ["legales", "desarrollos"];
 
 export default function AreaSecciones() {
   const { proyectoId, pilarId } = useParams();
@@ -53,12 +20,12 @@ export default function AreaSecciones() {
   const [proyecto, setProyecto] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const area = AREAS[pilarId];
+  const area = CON_PANTALLA_GENERICA.includes(pilarId) ? AREAS_DEFAULT.find(a => a.id === pilarId) : null;
   const visibles = esEmpleado
     ? areasVisiblesEmpleado(empresaData, empleadoData, proyectoId)
     : areasVisibles(empresaData);
   const areaPermitida = visibles.some(a => a.id === pilarId);
-  const soloLectura = esEmpleado && empleadoNivelArea(empleadoData, proyectoId, pilarId) === "ver";
+  const nivelPanel = (panelId) => (esEmpleado ? empleadoNivelPanel(empleadoData, proyectoId, pilarId, panelId) : "editar");
 
   useEffect(() => {
     async function cargar() {
@@ -90,6 +57,9 @@ export default function AreaSecciones() {
     );
   }
 
+  // Solo los paneles que usa el proyecto y que la persona tiene permitidos.
+  const secciones = area.paneles.filter(p => panelActivoEnProyecto(proyecto, pilarId, p.id) && nivelPanel(p.id) !== "ninguno");
+
   return (
     <div style={styles.container}>
       <header style={styles.header}>
@@ -99,7 +69,7 @@ export default function AreaSecciones() {
             <span style={{ fontSize: "26px" }}>{area.icono}</span>
             <div>
               <h1 style={styles.headerTitle}>{area.nombre}</h1>
-              <p style={styles.headerSub}>{proyecto?.nombre}{soloLectura && " · 👁️ Solo lectura"}</p>
+              <p style={styles.headerSub}>{proyecto?.nombre}</p>
             </div>
           </div>
         </div>
@@ -110,17 +80,11 @@ export default function AreaSecciones() {
       </header>
 
       <main style={styles.main}>
-        {area.vacia ? (
-          <div style={styles.emptyCard}>
-            <span style={{ fontSize: "48px" }}>🔧</span>
-            <h2 style={styles.emptyTitle}>Área en preparación</h2>
-            <p style={styles.emptyText}>
-              Acá se va a integrar el sistema de administración (FJ App): planes de pago, cobros, mora, cajas, cierres e ICC.
-            </p>
-          </div>
+        {secciones.length === 0 ? (
+          <p style={{ color: "var(--text2)", fontSize: "14px" }}>No tenés secciones habilitadas en esta área.</p>
         ) : (
           <div style={styles.grid}>
-            {area.secciones.filter(sec => panelActivoEnProyecto(proyecto, pilarId, sec.id)).map(s => (
+            {secciones.map(s => (
               <div
                 key={s.id}
                 style={styles.card}
@@ -131,6 +95,7 @@ export default function AreaSecciones() {
                 <span style={styles.cardIcono}>{s.icono}</span>
                 <h3 style={styles.cardNombre}>{s.nombre}</h3>
                 <p style={styles.cardDesc}>{s.desc}</p>
+                {nivelPanel(s.id) === "ver" && <p style={styles.soloVer}>👁️ Solo lectura</p>}
               </div>
             ))}
           </div>
@@ -156,6 +121,7 @@ const styles = {
   card: { borderRadius: "12px", padding: "32px 24px", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s", position: "relative", background: "var(--card)", border: "1.5px solid var(--border)", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" },
   cardIcono: { fontSize: "40px", display: "block", marginBottom: "16px" },
   cardNombre: { fontSize: "17px", fontWeight: "700", color: "var(--text)", margin: "0 0 8px" },
+  soloVer: { fontSize: "12px", color: "var(--text2)", margin: "10px 0 0" },
   cardDesc: { fontSize: "13px", color: "var(--text2)", margin: 0, lineHeight: "1.5" },
   emptyWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "80px 24px" },
   emptyCard: { maxWidth: "480px", margin: "40px auto", textAlign: "center", background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: "16px", padding: "48px 32px" },

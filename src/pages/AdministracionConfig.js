@@ -1,5 +1,4 @@
-import { useState, useEffect, Fragment } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { db } from "../firebase/config";
 import { doc, collection, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
 import { areaActivaEnProyecto } from "../config/appConfig";
@@ -52,8 +51,9 @@ import {
 // guarda junto con la configuración (mismo botón, misma tanda).
 
 // Las secciones que aparecen en la lista de la izquierda.
-// "grupo" arma los títulos chicos de la lista.
-const SECCIONES = [
+// Secciones de Administración. La lista la dibuja ⚙️ Configuración del proyecto (ConfiguracionProyecto.js);
+// "grupo" arma los títulos chicos de esa lista.
+export const SECCIONES_ADMIN = [
   { grupo: "Cuotas", id: "financiacion", icono: "💳", nombre: "Financiación", resumen: "Monedas e incrementos" },
   { grupo: "Cuotas", id: "mora", icono: "⚠️", nombre: "Mora", resumen: "Interés por atraso" },
   { grupo: "Cuotas", id: "avisosMora", icono: "📲", nombre: "Avisos de mora", resumen: "Grupos de morosos y WhatsApp" },
@@ -106,12 +106,13 @@ export function mensajeErrorGuardar(e) {
   return "No se pudo guardar. Revisá tu conexión e intentá de nuevo.";
 }
 
-export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado }) {
+// seccion / onSeccion: qué sección se ve (la elige la lista de la pantalla central).
+// onSucio(true|false): avisa si hay cambios sin guardar. irALotes(): lleva a donde se cargan los lotes.
+export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado, seccion, onSeccion, onSucio, irALotes }) {
   const [inicial, setInicial] = useState(() => completarConfig(proyecto?.adminConfig));
   // Arranca desde el MISMO objeto que "inicial": si se armara dos veces, los ids nuevos
   // saldrían distintos y aparecería "cambios sin guardar" sin haber tocado nada.
   const [cfg, setCfg] = useState(inicial);
-  const [activa, setActiva] = useState("financiacion");
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -121,10 +122,8 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
   const [lotesErrorCarga, setLotesErrorCarga] = useState("");
 
   const proyectoId = proyecto.id;
-  const navigate = useNavigate();
-  const rutaLotes = areaActivaEnProyecto(proyecto, "desarrollos")
-    ? `/proyecto/${proyectoId}/desarrollos/lotes`
-    : `/proyecto/${proyectoId}/configurar`;
+  const activa = SECCIONES_ADMIN.some(x => x.id === seccion) ? seccion : "financiacion";
+  const setActiva = (id) => { if (onSeccion) onSeccion(id); };
 
   useEffect(() => {
     let vivo = true;
@@ -150,6 +149,8 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
   const cambioLotes = JSON.stringify(lotes) !== JSON.stringify(lotesIni);
   const cambio = cambioCfg || cambioLotes;
   const dis = !puedeEditar;
+
+  useEffect(() => { if (onSucio) onSucio(cambio); }, [cambio, onSucio]);
 
   function editar(fn) {
     setOk(false);
@@ -202,69 +203,32 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
 
   return (
     <div style={s.wrap}>
-      <div style={s.intro}>
-        Acá definís cómo funciona la administración de este proyecto. Cada empresa arma sus reglas.
-        {!puedeEditar && <b> Solo lectura: no tenés permiso para cambiar estas opciones.</b>}
-        {puedeEditar && (
-          <div style={{ marginTop: 8 }}>
-            Repasar con preguntas:{" "}
-            <button type="button" style={s.linkBtnInline} onClick={() => navigate(`/proyecto/${proyectoId}/administracion/configurar`)}>
-              asistente de Administración
-            </button>
-            {" · "}Áreas, lotes y datos del proyecto:{" "}
-            <button type="button" style={s.linkBtnInline} onClick={() => navigate(`/proyecto/${proyectoId}/configurar`)}>
-              configuración del proyecto
-            </button>
-          </div>
+      {!puedeEditar && <p style={{ ...s.nota, marginTop: 0 }}><b>Solo lectura:</b> no tenés permiso para cambiar estas opciones.</p>}
+      <div>
+        {activa === "financiacion" && <SeccionFinanciacion cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "mora" && <SeccionMora cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "avisosMora" && <SeccionAvisosMora cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "adelantos" && <SeccionAdelantos cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "transferencias" && <SeccionTransferencias cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "permisos" && <SeccionPermisos cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "diferencias" && <SeccionDiferencias cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "recibos" && <SeccionRecibos cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "cierre" && <SeccionCierre cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "especiales" && <SeccionEspeciales cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "terminados" && <SeccionTerminados cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "distribucion" && <SeccionDistribucion cfg={cfg} editar={editar} dis={dis} />}
+        {activa === "cajas" && (
+          <SeccionCajas
+            cfg={cfg} editar={editar} dis={dis} lotes={lotes} editarLotes={editarLotes} lotesCargando={lotesCargando}
+            errorLotes={lotesErrorCarga}
+            avisoLotes={<>
+              Los lotes se cargan en{" "}
+              <button type="button" style={s.linkBtnInline} onClick={() => irALotes && irALotes()}>
+                {areaActivaEnProyecto(proyecto, "desarrollos") ? "Desarrollos → Manzanas y lotes" : "Proyecto → Lotes"}
+              </button>.
+            </>}
+          />
         )}
-      </div>
-
-      <div style={s.layout}>
-        <nav style={s.lista}>
-          {SECCIONES.map((sec, i) => (
-            <Fragment key={sec.id}>
-              {(i === 0 || SECCIONES[i - 1].grupo !== sec.grupo) && <div style={s.grupoLista}>{sec.grupo}</div>}
-              <button
-                type="button"
-                onClick={() => setActiva(sec.id)}
-                style={{ ...s.item, ...(activa === sec.id ? s.itemActivo : {}) }}
-              >
-                <span style={s.itemIcono}>{sec.icono}</span>
-                <span style={{ minWidth: 0 }}>
-                  <div style={s.itemNombre}>{sec.nombre}</div>
-                  <div style={s.itemResumen}>{sec.resumen}</div>
-                </span>
-              </button>
-            </Fragment>
-          ))}
-        </nav>
-
-        <div style={s.detalle}>
-          {activa === "financiacion" && <SeccionFinanciacion cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "mora" && <SeccionMora cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "avisosMora" && <SeccionAvisosMora cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "adelantos" && <SeccionAdelantos cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "transferencias" && <SeccionTransferencias cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "permisos" && <SeccionPermisos cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "diferencias" && <SeccionDiferencias cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "recibos" && <SeccionRecibos cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "cierre" && <SeccionCierre cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "especiales" && <SeccionEspeciales cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "terminados" && <SeccionTerminados cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "distribucion" && <SeccionDistribucion cfg={cfg} editar={editar} dis={dis} />}
-          {activa === "cajas" && (
-            <SeccionCajas
-              cfg={cfg} editar={editar} dis={dis} lotes={lotes} editarLotes={editarLotes} lotesCargando={lotesCargando}
-              errorLotes={lotesErrorCarga}
-              avisoLotes={<>
-                Los lotes se cargan en{" "}
-                <button type="button" style={s.linkBtnInline} onClick={() => navigate(rutaLotes)}>
-                  {areaActivaEnProyecto(proyecto, "desarrollos") ? "Desarrollos → Manzanas y lotes" : "la configuración del proyecto"}
-                </button>.
-              </>}
-            />
-          )}
-        </div>
       </div>
 
       <p style={s.nota}>

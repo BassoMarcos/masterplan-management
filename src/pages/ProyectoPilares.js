@@ -58,7 +58,7 @@ export default function ProyectoPilares() {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           {esAdminEfectivo && (
-            <button style={styles.logoutBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configurar`)}>⚙️ Configuración del proyecto</button>
+            <button style={styles.logoutBtn} onClick={() => navigate(`/proyecto/${proyectoId}/configuracion`)}>⚙️ Configuración</button>
           )}
           <Notificaciones />
           <ThemeSelector />
@@ -79,7 +79,7 @@ export default function ProyectoPilares() {
           </div>
         )}
         {areasDelProyecto(PILARES, proyecto).length === 0 && (
-          <p style={{ color: "var(--text2)", fontSize: "14px" }}>Este proyecto no tiene áreas activas.{esAdminEfectivo ? " Activalas desde ⚙️ Configuración del proyecto." : ""}</p>
+          <p style={{ color: "var(--text2)", fontSize: "14px" }}>Este proyecto no tiene áreas activas.{esAdminEfectivo ? " Activalas desde ⚙️ Configuración → Áreas y paneles." : ""}</p>
         )}
         <div style={styles.grid}>
           {areasDelProyecto(PILARES, proyecto).map(p => (
