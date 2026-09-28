@@ -7,11 +7,11 @@
 - Plataforma **SaaS multi-tenant** para empresas inmobiliarias.
 - Stack: **React + Firebase (Firestore)**, deploy vía **GitHub Actions → Firebase Hosting** (`masterplanproyects.web.app`, project `masterplanmanagement-01`).
 - Cuatro pilares: **Administración, Comercial, Legales, Desarrollos y Obras**.
-- Marcos es **empleado administrativo** de F&J Desarrollos (no el dueño). Creó **ambas** apps (fj-app y masterplan) desde cero junto con Claude. Sin formación técnica: depende de Claude para todo el código. Español rioplatense, directo y analítico.
+- **Autor: Marcos Basso.** Creó **ambas** apps (la App de Administración —repo `fj-app`, antes "FJ App"— y MasterPlan) desde cero junto con Claude. El código lleva sus marcas de autoría: no borrarlas. Sin formación técnica: depende de Claude para todo el código. Español rioplatense, directo y analítico.
 
 ## Arco estratégico
 
-- FJ App (repo `BassoMarcos/fj-app`) migrará módulo por módulo al pilar **Administración** de MasterPlan. Primero se terminan las features de FJ App, después se integra.
+- La App de Administración (repo `BassoMarcos/fj-app`) migrará módulo por módulo al pilar **Administración** de MasterPlan. Primero se terminan sus features, después se integra.
 - Una venta en **Comercial** debe fluir automáticamente por **Legales** para activar un cliente en **Administración**.
 - Mapa neuronal interactivo (`mapa.html` + `mapa-data.json`, fuente única de verdad en este repo) conecta ambos sistemas. **En MasterPlan es SOLO del SuperAdmin** (2026-09-28): SuperAdmin → 🧠 → `/superadmin/mapa`. Ya no se publica `/mapa.html` (lo veían todas las empresas); `scripts/generar-mapa.js` lo mete en la app con los datos adentro (corre solo antes de build/start/test; para el build estricto local: `node scripts/generar-mapa.js` primero). fyj tiene su propia copia en su repo.
 
@@ -67,7 +67,7 @@
 
 - Resolver los 12 lotes de Etapa 4 mal asignados a Azul (deberían ser Rosa; `calcTrimestrePorCuota` asigna mal el trimestre al cargar).
 - Construir los pilares **Legales** y **Desarrollos y Obras** (todavía no existen).
-- Pilar **Administración** intencionalmente vacío — espera la migración de FJ App.
+- Pilar **Administración** intencionalmente vacío — espera la migración de la App de Administración.
 - **Almacenamiento de archivos**: decidido integrar la cuenta de Google Drive de cada empresa directamente (en vez de Cloudinary o Firebase Storage), para que cada empresa pague su propio storage y conserve sus archivos. Se acepta el mayor tiempo de desarrollo. Setup arranca desde Google Cloud Console.
 - **Plano de lotes para Comercial**: subir la imagen del plano del loteo, el admin marca cada lote, el vendedor elige el lote clickeándolo al completar la reserva, y el lote queda como reservado/vendido.
 

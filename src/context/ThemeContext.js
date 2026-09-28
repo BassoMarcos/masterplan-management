@@ -4,7 +4,7 @@ import { db } from "../firebase/config";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { useAuth } from "./AuthContext";
 
-// Los 10 temas portados de FJ App
+// Los 10 temas portados de la App de Administración
 export const THEMES = [
   { id: "gris-oscuro", name: "Gris oscuro", dot: "#888888",
     bg: "#222222", surf: "#2d2d2d", card: "#363636", hov: "#404040", bor: "#444444", bor2: "#4e4e4e",
