@@ -8,7 +8,7 @@
     {"key":"mp","name":"MasterPlan","ids":["mp","multi","fire","login","perm","aprob","super","temas","piza","asist","mp_lotes","mp_cfg"]},
     {"key":"hub","name":"Pilares","ids":["admin","adm_ger","adm_adm","adm_cob","adm_cfg","comer","legal","obras"]},
     {"key":"mig","name":"Migración","ids":["mig"]},
-    {"key":"fj","name":"FJ App","ids":["fj","rtdb","clie","agri","lotes","presta","cob","gpagos","caja","cierr","mora","transf","colab","icc","robot","stats","rend","mapa","termin","public"]}
+    {"key":"fj","name":"App de Administración","ids":["fj","rtdb","clie","agri","lotes","presta","cob","gpagos","caja","cierr","mora","transf","colab","icc","robot","stats","rend","mapa","termin","public"]}
   ],
   "nodos": [
     {"id":"mp","col":"mp","s":"done","l":"MasterPlan","d":"React · Firestore · SaaS multi-tenant","x":0,"y":-380,"z":40,"w":11,"hub":1},
@@ -20,7 +20,7 @@
     {"id":"super","col":"mp","s":"done","l":"SuperAdmin","d":"Panel de control global","x":275,"y":-210,"z":-30,"w":4},
     {"id":"temas","col":"mp","s":"done","l":"Temas","d":"10 colores · preferencia por usuario","x":-60,"y":-470,"z":30,"w":3},
     {"id":"piza","col":"mp","s":"done","l":"Pizarra","d":"Whiteboard real-time · notas draggables","x":60,"y":-470,"z":30,"w":4},
-    {"id":"admin","col":"hub","s":"wip","l":"Administración","d":"PILAR · acá se absorbe FJ App entera","x":0,"y":-120,"z":60,"w":9,"hub":1},
+    {"id":"admin","col":"hub","s":"wip","l":"Administración","d":"PILAR · acá se absorbe la App de Administración entera","x":0,"y":-120,"z":60,"w":9,"hub":1},
     {"id":"adm_ger","col":"plan","s":"plan","l":"Gerencia","d":"Administración · control en vivo (se define con el gerente)","x":-110,"y":-40,"z":30,"w":4},
     {"id":"adm_adm","col":"plan","s":"plan","l":"Administración (sección)","d":"Clientes, cuotas, mora, cajas, cierres e ICC","x":0,"y":-30,"z":-10,"w":5},
     {"id":"adm_cob","col":"plan","s":"plan","l":"Cobranzas","d":"El cajero busca al cliente y cobra","x":110,"y":-40,"z":30,"w":4},
@@ -31,8 +31,8 @@
     {"id":"comer","col":"plan","s":"plan","l":"Comercial","d":"PILAR · reservas → flujo a Legales","x":-260,"y":-120,"z":-20,"w":6},
     {"id":"legal","col":"plan","s":"plan","l":"Legales","d":"PILAR · activa cliente en Administración","x":260,"y":-120,"z":-20,"w":6},
     {"id":"obras","col":"plan","s":"plan","l":"Desarrollos y Obras","d":"PILAR · archivos vía Cloudinary","x":260,"y":0,"z":-50,"w":6},
-    {"id":"mig","col":"mig","s":"plan","l":"Migración","d":"FJ App → Administración, módulo a módulo","x":0,"y":90,"z":100,"w":8,"hub":1},
-    {"id":"fj","col":"fj","s":"done","l":"FJ App","d":"index.html single-file · Firebase RTDB","x":0,"y":320,"z":60,"w":10,"hub":1},
+    {"id":"mig","col":"mig","s":"plan","l":"Migración","d":"App de Administración → Administración, módulo a módulo","x":0,"y":90,"z":100,"w":8,"hub":1},
+    {"id":"fj","col":"fj","s":"done","l":"App de Administración","d":"index.html single-file · Firebase RTDB","x":0,"y":320,"z":60,"w":10,"hub":1},
     {"id":"rtdb","col":"fj","s":"done","l":"Firebase RTDB","d":"fj-app-44df3 · pagoStore, BASE, balances","x":0,"y":430,"z":-40,"w":6},
     {"id":"clie","col":"fj","s":"done","l":"Clientes","d":"285 activos · 266 cobrables · array BASE","x":-120,"y":250,"z":90,"w":5},
     {"id":"agri","col":"fj","s":"done","l":"Agrimensores","d":"Set dinámico de lotes · 18 lotes","x":-240,"y":230,"z":30,"w":4},
