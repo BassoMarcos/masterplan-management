@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -14,6 +15,7 @@ const PANEL_INFO = {
   ventas: { icono: "💰", desc: "Trabajar datos filtrados y reportar" },
 };
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ComercialHub() {
   const { proyectoId } = useParams();
   const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -137,3 +139,6 @@ const styles = {
   soloVer: { marginTop: "10px", fontSize: "11px", color: "var(--text2)", background: "var(--surface)", padding: "3px 8px", borderRadius: "20px", display: "inline-block" },
   empty: { color: "var(--text2)", fontSize: "14px" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ComercialHub.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -98,6 +99,7 @@ const SECCIONES = {
 };
 
 // Colores de badge según el texto del estado
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function badgeColor(estado) {
   const e = (estado || "").toLowerCase();
   if (["finalizado", "habilitado", "aprobado"].includes(e)) return { bg: "#16a34a22", fg: "#16a34a" };
@@ -106,6 +108,7 @@ function badgeColor(estado) {
   return { bg: "#64748b22", fg: "#64748b" }; // planificado / sin iniciar / pendiente
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function DesarrollosSecciones() {
   const { proyectoId, seccionId } = useParams();
   const { empresaUid, esEmpleado, empleadoData, logout } = useAuth();
@@ -390,3 +393,6 @@ const styles = {
   cancelBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   saveBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+DesarrollosSecciones.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

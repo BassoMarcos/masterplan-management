@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // Reglas de la configuración administrativa de un proyecto (sin pantallas).
 // Las usan Administración → Configuración y el asistente de proyecto nuevo, así las dos
 // pantallas validan, convierten y guardan exactamente igual.
@@ -25,6 +26,7 @@ export const CADA_MESES_MAX = 12;
 
 // Financiación del PROYECTO: una regla por moneda (¿se usa? ¿aumenta? ¿cómo y cada cuánto?).
 // La cantidad de cuotas y el valor de la cuota NO van acá: se ponen al firmar cada lote.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function monedaDefault(id) {
   return { habilitada: id === "ARS", incremento: { tipo: "no", cadaMeses: 3, porcentaje: 0, modo: "grupos", mesInicio: 1 }, grupos: [] };
 }
@@ -32,6 +34,7 @@ function monedaDefault(id) {
 // ── Opciones de cobranza (2026-09-26): lo que en fyj era regla fija pasa a ser opción ──
 // Categorías de mora: cada una arranca en "desde" cuotas atrasadas y llega hasta la siguiente.
 export const VARIABLES_MENSAJE = ["{nombre}", "{lote}", "{cuotas}", "{meses}", "{monto}", "{cuotapura}"];
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function categoriasDefault() {
   return [
     { id: "c1", desde: 1, nombre: "Recordatorio", color: "#BA7517", mensaje: "Te escribimos por el lote {lote}. Figura pendiente la cuota de {meses}, por un total de {monto} (con intereses al día de hoy). Si ya la pagaste, desestimá este mensaje." },
@@ -62,6 +65,7 @@ export const CASOS_ESPECIALES = [
   { id: "empresaPaga", label: "La empresa paga", ayuda: "Lotes cuya cuota la paga la propia empresa." },
 ];
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function extrasDefault() {
   return {
     // cuotas: "ultimas" (como fyj) | "proximas" | "elige" (lo elige quien cobra).
@@ -82,6 +86,7 @@ function extrasDefault() {
 }
 
 // Rango de cuotas de cada categoría de mora, en orden: "1 cuota", "2 a 3 cuotas", "7 o más cuotas".
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function rangosCategorias(categorias) {
   const orden = (categorias || []).slice().sort((a, b) => num(a.desde) - num(b.desde));
   return orden.map((c, i) => {
@@ -122,6 +127,7 @@ export const MODOS_AUMENTO = [
 ];
 
 // Meses fijos (1-12) del modo calendario. Si N no divide a 12, cambian de un año a otro → null.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function mesesCalendario(mesInicio, n) {
   const m0 = num(mesInicio);
   if (!(n >= 1 && n <= 12) || 12 % n !== 0 || !(m0 >= 1 && m0 <= 12)) return null;
@@ -130,6 +136,7 @@ export function mesesCalendario(mesInicio, n) {
   return out.sort((a, b) => a - b);
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function textoCalendario(mesInicio, n) {
   const meses = mesesCalendario(mesInicio, n);
   if (meses) return meses.map(m => MESES_CORTO[m - 1]).join(" · ");
@@ -141,6 +148,7 @@ export function textoCalendario(mesInicio, n) {
 // mes k y aumenta cada N meses. Así todos los meses aumenta un grupo distinto y cada cliente aumenta
 // cada N meses. Ej. cada 3: G1 Ene-Abr-Jul-Oct, G2 Feb-May-Ago-Nov, G3 Mar-Jun-Sep-Dic.
 // A qué grupo va cada cliente se decide al firmar su lote (según el mes de la primera cuota).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function ajustarGrupos(grupos, n) {
   const cant = Number.isInteger(num(n)) && num(n) >= 1 && num(n) <= CADA_MESES_MAX ? num(n) : 0;
   const out = [];
@@ -157,6 +165,7 @@ export function ajustarGrupos(grupos, n) {
 
 // Meses (1-12) en que aumenta el grupo k (1..N). Si N no divide a 12 (ej. cada 5), los meses cambian
 // de un año a otro: devuelve null y se muestra "arranca en tal mes y sigue cada N meses".
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function mesesDelGrupo(k, n) {
   if (!(n >= 1 && n <= 12) || 12 % n !== 0) return null;
   const out = [];
@@ -164,12 +173,14 @@ export function mesesDelGrupo(k, n) {
   return out;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function textoGrupo(k, n) {
   const meses = mesesDelGrupo(k, n);
   if (meses) return meses.map(m => MESES_CORTO[m - 1]).join(" · ");
   return `Arranca en ${MESES_CORTO[(k - 1) % 12]} y sigue cada ${n} meses (los meses cambian de un año a otro)`;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function completarMoneda(id, guardada) {
   const d = monedaDefault(id);
   const x = guardada || {};
@@ -185,6 +196,7 @@ function completarMoneda(id, guardada) {
 
 // Compatibilidad: antes la financiación eran "planes" (o un único plan con moneda/cuotas/incremento).
 // Se toma, de cada moneda, el primer plan como la regla de esa moneda.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function completarFinanciacion(fg) {
   const f = fg || {};
   if (f.ARS || f.USD) return { ARS: completarMoneda("ARS", f.ARS), USD: completarMoneda("USD", f.USD) };
@@ -208,8 +220,11 @@ export const BASES_MORA = [
 // que la persona NO tocó. Si ya tocó a todos, se usa el que tocó hace más tiempo.
 // Ej. con 3: A = 20 → B y C = 40 y 40; después B = 50 → solo C cambia (30).
 // "tocados" = ids en el orden en que se editaron (el más viejo primero).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function redondear2(x) { return Math.round(x * 100) / 100; }
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function pct(d) { const v = num(d.porcentaje); return Number.isFinite(v) ? v : 0; }
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function repartir(lista, ids, total) {
   if (!ids.length) return;
   const parte = redondear2(total / ids.length);
@@ -220,6 +235,7 @@ function repartir(lista, ids, total) {
     lista.find(d => d.id === id).porcentaje = val;
   });
 }
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function rebalancearDuenos(duenos, id, valorTexto, tocados) {
   const lista = duenos.map(d => ({ ...d }));
   const i = lista.findIndex(d => d.id === id);
@@ -243,6 +259,7 @@ export function rebalancearDuenos(duenos, id, valorTexto, tocados) {
   return { duenos: lista, tocados: orden.filter(t => !candidatos.includes(t)).concat(id) };
 }
 // Al quitar un dueño, su % se reparte entre los no tocados (o entre todos si ya se tocaron todos).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function quitarDueno(duenos, id, tocados) {
   const quitado = duenos.find(d => d.id === id);
   const lista = duenos.filter(d => d.id !== id).map(d => ({ ...d }));
@@ -255,6 +272,7 @@ export function quitarDueno(duenos, id, tocados) {
 }
 
 // Pasa el reparto viejo (parte A / parte B) a la lista de dueños.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function duenosDesdeRepartoViejo(r) {
   const a = Number(r.parteA);
   if (!Number.isFinite(a)) return null;
@@ -264,11 +282,13 @@ export function duenosDesdeRepartoViejo(r) {
   return lista.length ? lista : null;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function nuevoId() {
   return Math.random().toString(36).slice(2, 9);
 }
 
 // Mezcla lo guardado con los valores iniciales, así un campo nuevo nunca rompe una config vieja.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function completarConfig(guardada) {
   const g = guardada || {};
   const d = CONFIG_ADMIN_DEFAULT;
@@ -296,6 +316,7 @@ export function completarConfig(guardada) {
   };
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function completarExtras(g) {
   const d = extrasDefault();
   const mezclar = (k) => ({ ...d[k], ...(g[k] || {}) });
@@ -316,12 +337,14 @@ function completarExtras(g) {
   };
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function num(v) {
   const n = Number(String(v).replace(",", "."));
   return Number.isFinite(n) ? n : NaN;
 }
 
 // Devuelve {mensaje, seccion} del primer error encontrado (o null si está todo bien).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function validar(cfg) {
   const encendidas = MONEDAS.filter(({ id }) => cfg.financiacion[id] && cfg.financiacion[id].habilitada);
   if (!encendidas.length) return { mensaje: "Elegí al menos una moneda para las cuotas.", seccion: "financiacion" };
@@ -366,6 +389,7 @@ export function validar(cfg) {
   return validarExtras(cfg);
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function validarExtras(cfg) {
   const me = cfg.moraExtra;
   if (!me.categorias.length) return { mensaje: "Tiene que haber al menos una categoría de mora.", seccion: "avisosMora" };
@@ -392,6 +416,7 @@ function validarExtras(cfg) {
 // ── Lotes ─────────────────────────────────────────────────────
 
 // Forma única de un lote (la misma al leer de la base, al comparar y al guardar).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function loteLimpio(id, d) {
   return {
     id,
@@ -402,25 +427,30 @@ export function loteLimpio(id, d) {
   };
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function nuevoIdLote() {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 }
 
 // Dos lotes con la misma etapa + manzana + número son el mismo lote.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function claveLote(l) {
   return [l.etapa, l.manzana, l.numero].map(x => String(x || "").trim().toLowerCase()).join("|");
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function etiquetaLote(l) {
   return `${l.etapa}${l.manzana ? " · " + l.manzana : ""} · Lote ${l.numero}`;
 }
 
 // Orden "humano": 2 antes que 10, y 4A antes que 4B.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function cmpNatural(a, b) {
   return String(a).localeCompare(String(b), "es", { numeric: true, sensitivity: "base" });
 }
 
 // Sin "cfg" (ej. desde Desarrollos, que no maneja cajas) no se revisan las cajas.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function validarLotes(lotes, cfg) {
   const cajaIds = cfg ? new Set(cfg.cajasEspeciales.map(c => c.id)) : null;
   const vistos = new Set();
@@ -437,6 +467,7 @@ export function validarLotes(lotes, cfg) {
 }
 
 // Letras de lotes partidos. Acepta "A,B", "A B", "a, b" o rangos "A-D". Devuelve {letras, error}.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function parseLetras(txt) {
   const t = String(txt || "").trim();
   if (!t) return { letras: [], error: "" };
@@ -470,6 +501,7 @@ export const OPCIONES_PARTES = [
 ];
 
 // Números de lote para un alta "del N al M", con letras opcionales: 1..4 + [A,B] → 1A,1B,2A,2B,3A,3B,4A,4B.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function numerosDeRango(desde, hasta, letras) {
   const out = [];
   for (let n = desde; n <= hasta; n++) {
@@ -482,6 +514,7 @@ export function numerosDeRango(desde, hasta, letras) {
 // Despliega un lote en letras: el 2 (o el 2A) + [A,B,C] → 2A, 2B, 2C en la misma etapa/manzana,
 // con la misma caja. Si el lote original era el número solo (sin letra), se reemplaza.
 // Devuelve {lotes, creados, reemplazado}.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function partirLote(lotes, id, letras) {
   const orig = lotes.find(l => l.id === id);
   if (!orig || !letras.length) return { lotes, creados: 0, reemplazado: false };
@@ -503,6 +536,7 @@ export function partirLote(lotes, id, letras) {
 // Lote nuevo → "set" con todo. Lote que ya existía → "upd" SOLO con los campos que cambiaron:
 // así Desarrollos (etapa/manzana/número) y Administración (caja) pueden tocar el mismo lote
 // sin pisarse lo que cambió el otro.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function diffLotes(ini, act) {
   const previos = new Map(ini.map(l => [l.id, loteLimpio(l.id, l)]));
   const siguen = new Set(act.map(l => l.id));
@@ -521,6 +555,7 @@ export function diffLotes(ini, act) {
 }
 
 // Deja los números como números (los inputs los manejan como texto).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function normalizar(cfg) {
   return {
     financiacion: Object.fromEntries(MONEDAS.map(({ id }) => {
@@ -555,6 +590,7 @@ export function normalizar(cfg) {
 }
 
 const unoDe = (v, opciones, def) => (opciones.includes(v) ? v : def);
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function normalizarExtras(cfg) {
   const a = cfg.adelantos;
   const me = cfg.moraExtra;
@@ -593,6 +629,7 @@ function normalizarExtras(cfg) {
 
 
 // Agrupa lotes por etapa → manzana, en orden "humano". Devuelve [{etapa, manzanas: [{manzana, lotes}]}].
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function agruparLotes(lotes) {
   const porEtapa = new Map();
   lotes.forEach(l => {
@@ -616,6 +653,7 @@ export function agruparLotes(lotes) {
 // ── Estructura del loteo (asistente de proyecto nuevo) ─────────
 // etapas: [{ nombre, conManzanas, desde, hasta, letras, manzanas: [{ nombre, desde, hasta, letras }] }]
 // Devuelve { lotes: [{etapa, manzana, numero}], error }. Cada manzana puede tener otra cantidad de lotes.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function lotesDesdeEstructura(etapas) {
   const out = [];
   const vistos = new Set();
@@ -663,6 +701,7 @@ export function lotesDesdeEstructura(etapas) {
 // - Si un lote de la estructura ya estaba en la lista (misma etapa/manzana/número), se conserva ese,
 //   con la caja que se le haya asignado.
 // - Los lotes que había generado el asistente y ya no están en la estructura, se sacan.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function sincronizarLotes(actuales, idsGuardados, generados) {
   const guardados = actuales.filter(l => idsGuardados.has(l.id));
   const porClave = new Map(actuales.map(l => [claveLote(l), l]));
@@ -679,6 +718,10 @@ export function sincronizarLotes(actuales, idsGuardados, generados) {
 
 // ¿Ya se configuró Administración en este proyecto? La primera vez que se entra al área hay que
 // pasar por su asistente. Los proyectos que ya tenían adminConfig cuentan como configurados.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function administracionConfigurada(p) {
   return !!(p && (p.adminConfig || (p.adminAsistente && p.adminAsistente.completo)));
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+rangosCategorias.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

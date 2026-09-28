@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState } from "react";
 import {
   nuevoIdLote,
@@ -13,6 +14,7 @@ import { Campo, SelectorPartes, SeccionTitulo, estilosConfig as s } from "../pag
 // Editor de la lista única de lotes del proyecto (proyectos/{id}/lotes): etapas, manzanas y números.
 // Vive en Desarrollos → Manzanas y lotes. No maneja cajas: eso es de Administración (Cajas separadas).
 // Solo edita en memoria ("editarLotes"); guardar lo hace la pantalla que lo usa.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function EditorLotes({ lotes, editarLotes, dis, cargando, errorCarga }) {
   // Formulario de alta
   const [modo, setModo] = useState("rango");
@@ -267,3 +269,6 @@ export default function EditorLotes({ lotes, editarLotes, dis, cargando, errorCa
     </div>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+EditorLotes.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

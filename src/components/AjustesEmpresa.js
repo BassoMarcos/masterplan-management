@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
@@ -10,6 +11,7 @@ import { s, SeccionTitulo } from "./configUI";
 // Se ven en la configuración central de cada proyecto y en la de la empresa (pantalla de proyectos):
 // es la misma pieza y los mismos datos, así que siempre están sincronizadas.
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function CuentaEmpresa() {
   const { currentUser, empresaData, empleadoData } = useAuth();
   const [msg, setMsg] = useState("");
@@ -53,6 +55,7 @@ export function CuentaEmpresa() {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function CodigoEmpresa() {
   const { empresaData, empresaUid } = useAuth();
   const [codigoLocal, setCodigoLocal] = useState(null);
@@ -115,6 +118,7 @@ export function CodigoEmpresa() {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function DriveEmpresa() {
   const { empresaUid } = useAuth();
   const [ok, setOk] = useState(false);
@@ -190,3 +194,6 @@ const st = {
   valor: { fontSize: 15, fontWeight: 700, color: "var(--text)", marginTop: 4, wordBreak: "break-all" },
   codigo: { fontSize: 28, fontWeight: 800, color: "var(--acc)", letterSpacing: 1, fontFamily: "monospace" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+CuentaEmpresa.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

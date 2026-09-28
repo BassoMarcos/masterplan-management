@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {

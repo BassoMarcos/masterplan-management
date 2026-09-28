@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { s, Campo, SeccionTitulo, Opciones, SiNo } from "../components/configUI";
 import {
   COLORES,
@@ -16,6 +17,7 @@ import {
 // casos especiales y lotes terminados. Todas editan proyectos/{id}.adminConfig.
 // Todavía no mueven plata: las usan los cobros cuando se armen.
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function TopeMora({ cfg, editar, dis }) {
   const t = cfg.moraExtra.tope;
   return (
@@ -41,6 +43,7 @@ export function TopeMora({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionAvisosMora({ cfg, editar, dis }) {
   const me = cfg.moraExtra;
   // Se muestran en el orden en que están (ordenar mientras se escribe haría saltar la lista);
@@ -139,6 +142,7 @@ export function SeccionAvisosMora({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionAdelantos({ cfg, editar, dis }) {
   const a = cfg.adelantos;
   const hayAumentos = MONEDAS.some(m => cfg.financiacion[m.id].habilitada && cfg.financiacion[m.id].incremento.tipo !== "no");
@@ -188,6 +192,7 @@ export function SeccionAdelantos({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionPermisos({ cfg, editar, dis }) {
   return (
     <div>
@@ -207,6 +212,7 @@ export function SeccionPermisos({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionDiferencias({ cfg, editar, dis }) {
   const d = cfg.diferencias;
   const hasta = num(d.ignorarHasta);
@@ -240,6 +246,7 @@ export function SeccionDiferencias({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionRecibos({ cfg, editar, dis }) {
   const r = cfg.recibos;
   return (
@@ -266,6 +273,7 @@ export function SeccionRecibos({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionCierre({ cfg, editar, dis }) {
   const c0 = cfg.cierre;
   return (
@@ -289,6 +297,7 @@ export function SeccionCierre({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionEspeciales({ cfg, editar, dis }) {
   return (
     <div>
@@ -300,6 +309,7 @@ export function SeccionEspeciales({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionTerminados({ cfg, editar, dis }) {
   const t = cfg.terminados;
   function mover(i, d) {
@@ -349,3 +359,6 @@ export function SeccionTerminados({ cfg, editar, dis }) {
     </div>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+TopeMora.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

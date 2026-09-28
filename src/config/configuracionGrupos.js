@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // QUÉ SE CONFIGURA EN CADA ÁREA (sin pantallas).
 // Es la lista que usan ⚙️ Configuración (central, de un área o de la empresa) y los botones ⚙️
 // de cada área. Para sumar una opción nueva a un área, se agrega acá como un ítem de su grupo
@@ -68,6 +69,7 @@ const item = (id, icono, nombre, resumen, extra) => ({ id, icono, nombre, resume
 const pronto = (area) => item("pronto", "🔜", "Lo que viene", "Opciones que se suman más adelante", { lista: LO_QUE_VIENE[area] || [] });
 
 // Empresa: vale para TODOS los proyectos (cuenta, código para empleados, Drive, empleados).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function grupoEmpresa() {
   return {
     id: "empresa", icono: "🏢", nombre: "Empresa", resumen: "Cuenta, empleados, Drive", puedeEditar: true,
@@ -82,6 +84,7 @@ export function grupoEmpresa() {
 }
 
 // Opciones de cada área dentro de un proyecto (según permisos). [] = esa persona no configura nada ahí.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function itemsDeArea(areaId, { proyecto, esAdminEf, nivel }) {
   const items = [];
   if (areaId === "desarrollos") {
@@ -104,6 +107,7 @@ function itemsDeArea(areaId, { proyecto, esAdminEf, nivel }) {
 
 // Todos los grupos de ⚙️ Configuración de un proyecto: Proyecto, cada área activa (en el orden
 // de AREAS_DEFAULT) y Empresa. nivel(area, panel) → "ninguno" | "ver" | "editar".
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function armarGrupos({ proyecto, empresaData, esAdminEf, nivel }) {
   const habil = areasVisibles(empresaData).map(a => a.id);
   const activa = (id) => habil.includes(id) && areaActivaEnProyecto(proyecto, id);
@@ -131,6 +135,10 @@ export function armarGrupos({ proyecto, empresaData, esAdminEf, nivel }) {
 }
 
 // ¿Esta persona tiene algo para configurar en esa área? (para mostrar el ⚙️ en la entrada del área)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function tieneConfiguracion(areaId, ctx) {
   return armarGrupos(ctx).some(g => g.id === areaId);
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+grupoEmpresa.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

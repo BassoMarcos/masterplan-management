@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { createContext, useContext, useEffect, useState, useCallback } from "react";
 import { db } from "../firebase/config";
 import { doc, getDoc, setDoc } from "firebase/firestore";
@@ -59,6 +60,7 @@ export const THEMES = [
 
 const DEFAULT_THEME_ID = "azul-marino";
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function applyTheme(t) {
   const r = document.documentElement.style;
   r.setProperty("--bg", t.bg);
@@ -86,10 +88,12 @@ function applyTheme(t) {
 
 const ThemeContext = createContext();
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function useTheme() {
   return useContext(ThemeContext);
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function ThemeProvider({ children }) {
   const { currentUser } = useAuth();
   const [themeId, setThemeId] = useState(() => {
@@ -142,3 +146,6 @@ export function ThemeProvider({ children }) {
     <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+useTheme.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

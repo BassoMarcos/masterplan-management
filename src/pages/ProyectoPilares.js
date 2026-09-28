@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -9,6 +10,7 @@ import PizarraFlotante from "../components/PizarraFlotante";
 import { areasVisibles, areasVisiblesEmpleado, areasDelProyecto } from "../config/appConfig";
 
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ProyectoPilares() {
   const { proyectoId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -150,3 +152,6 @@ const styles = {
     padding: "3px 8px", borderRadius: "20px", fontWeight: "600"
   }
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ProyectoPilares.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

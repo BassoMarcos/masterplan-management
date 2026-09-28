@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 /**
  * Funciones de servidor para MasterPlan.
  * Integración con Google Drive: cada empresa conecta su cuenta una vez y
@@ -17,12 +18,14 @@ const db = admin.firestore();
 const OAUTH_CLIENT_ID = defineSecret("OAUTH_CLIENT_ID");
 const OAUTH_CLIENT_SECRET = defineSecret("OAUTH_CLIENT_SECRET");
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function nuevoOAuthClient(clientId, clientSecret) {
   // "postmessage" es el redirect que usa el flujo de código desde el navegador
   return new google.auth.OAuth2(clientId, clientSecret, "postmessage");
 }
 
 /** Verifica que quien llama esté logueado y devuelve el uid de su empresa. */
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 async function empresaDelUsuario(uid) {
   // ¿Es dueño de empresa?
   const emp = await db.collection("empresas").doc(uid).get();
@@ -105,6 +108,7 @@ exports.driveDesconectar = onCall({ region: "us-central1" }, async (request) => 
 });
 
 /** Busca o crea una carpeta dentro del Drive de la empresa. */
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 async function buscarOCrearCarpeta(drive, nombre, padreId) {
   const qPadre = padreId ? ` and '${padreId}' in parents` : "";
   const res = await drive.files.list({

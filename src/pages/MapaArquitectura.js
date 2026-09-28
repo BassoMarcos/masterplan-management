@@ -1,9 +1,11 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useNavigate } from "react-router-dom";
 import { MAPA_HTML } from "../generado/mapaArquitectura";
 
 // 🧠 Mapa de arquitectura (FJ App + MasterPlan) — SOLO SuperAdmin (ruta protegida en App.js).
 // Se carga aparte (lazy) y trae los datos adentro: ya no existe /mapa.html público.
 // Fuente: mapa.html + mapa-data.json en la raíz del repo (ver scripts/generar-mapa.js).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function MapaArquitectura() {
   const navigate = useNavigate();
   return (
@@ -23,3 +25,6 @@ export default function MapaArquitectura() {
     </div>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+MapaArquitectura.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

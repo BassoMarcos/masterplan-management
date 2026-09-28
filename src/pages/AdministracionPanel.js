@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams, Navigate } from "react-router-dom";
@@ -57,6 +58,7 @@ export const PANELES_ADMINISTRACION = {
 
 // Portada de una sección de Administración (en construcción). "Configuración" tiene su propia
 // ruta (/proyecto/:id/administracion/configuracion → Configuracion.js, modo área).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function AdministracionPanel() {
   const { proyectoId, panelId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -158,3 +160,6 @@ const styles = {
   item: { fontSize: "14px", color: "var(--text)", lineHeight: "1.7" },
   emptyWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "80px 24px" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+AdministracionPanel.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

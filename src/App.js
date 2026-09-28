@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
@@ -24,6 +25,7 @@ import SuperAdmin from "./pages/SuperAdmin";
 // El mapa de arquitectura se baja aparte y solo lo abre el SuperAdmin.
 const MapaArquitectura = lazy(() => import("./pages/MapaArquitectura"));
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function VerificarEmailPage() {
   const { currentUser, logout } = useAuth();
   const [enviado, setEnviado] = useState(false);
@@ -53,6 +55,7 @@ function VerificarEmailPage() {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function CargandoPage() {
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg, #0f172a)", color: "var(--text, #fff)", fontFamily: "sans-serif", fontSize: "15px" }}>
@@ -61,6 +64,7 @@ function CargandoPage() {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function PendientePage() {
   const { logout } = useAuth();
   return (
@@ -88,11 +92,13 @@ const pageStyle = {
   link: { background: "none", border: "none", color: "#94a3b8", fontSize: "13px", cursor: "pointer", marginTop: "8px", display: "block", textDecoration: "underline" },
 };
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function IrAConfiguracion({ area, seccion }) {
   const { proyectoId } = useParams();
   return <Navigate to={`/proyecto/${proyectoId}/${area}/configuracion/${seccion}`} replace />;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function SeccionPlaceholder() {
   const { proyectoId, pilarId, seccionId } = useParams();
   const navigate = useNavigate();
@@ -115,6 +121,7 @@ function SeccionPlaceholder() {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function PrivateRoute({ children }) {
   const { currentUser, isSuperAdmin, empresaData, empleadoData, cargandoDatos } = useAuth();
   if (!currentUser) return <Navigate to="/" />;
@@ -130,6 +137,7 @@ function PrivateRoute({ children }) {
   return <PendientePage />;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function SuperAdminRoute({ children }) {
   const { currentUser, isSuperAdmin } = useAuth();
   if (!currentUser) return <Navigate to="/" />;
@@ -137,6 +145,7 @@ function SuperAdminRoute({ children }) {
   return children;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function PublicRoute({ children }) {
   const { currentUser, isSuperAdmin, empresaData, empleadoData, cargandoDatos } = useAuth();
   if (!currentUser) return children;
@@ -151,6 +160,7 @@ function PublicRoute({ children }) {
   return <PendientePage />;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function AppRoutes() {
   return (
     <Routes>
@@ -187,6 +197,7 @@ function AppRoutes() {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function App() {
   return (
     <BrowserRouter>
@@ -199,3 +210,6 @@ export default function App() {
   );
 }
 // redeploy 1789585560
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+App.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

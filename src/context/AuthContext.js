@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { createContext, useContext, useEffect, useState } from "react";
 import { auth, db } from "../firebase/config";
 import {
@@ -12,6 +13,7 @@ import { doc, getDoc, setDoc, collection, query, where, getDocs } from "firebase
 const SUPERADMIN_EMAIL = "marky.basso98@gmail.com";
 
 // Genera un código de empresa tipo "gru.rom.6942" (4 dígitos aleatorios, sin patrón)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function generarCodigoEmpresa() {
   const n = Math.floor(1000 + Math.random() * 9000); // 1000-9999
   return "gru.rom." + n;
@@ -19,10 +21,12 @@ function generarCodigoEmpresa() {
 
 const AuthContext = createContext();
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function useAuth() {
   return useContext(AuthContext);
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [empresaData, setEmpresaData] = useState(null);
@@ -196,3 +200,6 @@ export function AuthProvider({ children }) {
     </AuthContext.Provider>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+useAuth.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

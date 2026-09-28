@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/config";
@@ -5,6 +6,7 @@ import { collection, query, getDocs, doc, setDoc, getDoc } from "firebase/firest
 import { panelesVisiblesEmpleado } from "../config/appConfig";
 
 // Campanita de notificaciones: novedades del sistema + avisos de trabajo.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function Notificaciones() {
   const { currentUser, empleadoData, empresaUid, esEmpleado } = useAuth();
   const [abierto, setAbierto] = useState(false);
@@ -184,3 +186,6 @@ const styles = {
   detTexto: { fontSize: "14px", color: "var(--text)", lineHeight: "1.6", textAlign: "left", background: "var(--surface)", padding: "14px", borderRadius: "10px", whiteSpace: "pre-wrap" },
   detBtn: { marginTop: "18px", background: "var(--acc)", color: "#fff", border: "none", padding: "11px 24px", borderRadius: "9px", cursor: "pointer", fontSize: "14px", fontWeight: "700", width: "100%" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+Notificaciones.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

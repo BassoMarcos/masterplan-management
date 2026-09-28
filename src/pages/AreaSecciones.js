@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -15,6 +16,7 @@ import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, empleadoNivelPanel
 // de Empleados y ⚙️ Configuración → Áreas y paneles, así nunca quedan desparejas.
 const CON_PANTALLA_GENERICA = ["legales", "desarrollos"];
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function AreaSecciones() {
   const { proyectoId, pilarId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -132,3 +134,6 @@ const styles = {
   emptyTitle: { fontSize: "20px", fontWeight: "700", color: "var(--text)", margin: "16px 0 8px" },
   emptyText: { fontSize: "14px", color: "var(--text2)", lineHeight: "1.6", margin: 0 },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+AreaSecciones.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

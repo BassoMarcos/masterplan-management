@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -12,6 +13,7 @@ import { administracionConfigurada } from "../config/adminConfigLogica";
 
 // Entrada del pilar Administración: 3 secciones que comparten los mismos datos.
 // Lo que ve cada empleado depende de sus permisos por panel (ver Empleados).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function AdministracionHub() {
   const { proyectoId } = useParams();
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -143,3 +145,6 @@ const styles = {
   btnConfigurar: { background: "var(--acc)", color: "#fff", border: "none", borderRadius: "10px", padding: "12px 22px", fontSize: "15px", fontWeight: "700", cursor: "pointer" },
   emptyWrap: { display: "flex", flexDirection: "column", alignItems: "center", gap: "16px", padding: "80px 24px" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+AdministracionHub.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

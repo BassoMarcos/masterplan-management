@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -11,11 +12,13 @@ import { crearNotificacion } from "../utils/notificar";
 // Etapas del recorrido del contacto (mismo orden que en Ventas)
 // Clave para comparar teléfonos: solo los últimos 8 dígitos.
 // Así 1130088898 y 5491130088898 se detectan como el mismo número.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function clave8(num) {
   const soloNum = String(num || "").replace(/[^\d]/g, "");
   return soloNum.length >= 8 ? soloNum.slice(-8) : soloNum;
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function pasosAutomaticos(d) {
   const hechos = { contacto: true };
   const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || ["filtrado", "en_venta", "vendido"].includes(d.estado);
@@ -25,6 +28,7 @@ function pasosAutomaticos(d) {
 }
 
 // Índice de la etapa actual (última alcanzada) de un dato, según el recorrido dado
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function etapaActualIdx(d, recorrido) {
   const auto = pasosAutomaticos(d);
   const rec = d.recorrido || {};
@@ -37,6 +41,7 @@ function etapaActualIdx(d, recorrido) {
 
 // Panel de DATOS (Comercial): los dateros cargan contactos crudos (nombre + número).
 // Cada dato guarda quién lo cargó. Estado inicial: "crudo".
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ComercialDatos() {
   const { proyectoId } = useParams();
   const { currentUser, empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -719,3 +724,6 @@ const styles = {
   estadoTag: { fontSize: "11px", background: "var(--surface)", color: "var(--text2)", padding: "2px 10px", borderRadius: "20px", border: "1px solid var(--border)", textTransform: "capitalize" },
   delBtn: { background: "transparent", border: "1px solid #fca5a5", color: "#dc2626", width: "26px", height: "26px", borderRadius: "6px", cursor: "pointer", fontSize: "12px" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ComercialDatos.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";
