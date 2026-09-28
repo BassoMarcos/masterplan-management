@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -21,6 +21,8 @@ import ComercialDisenoReserva from "./pages/ComercialDisenoReserva";
 import ComercialFiltrado from "./pages/ComercialFiltrado";
 import ComercialVentas from "./pages/ComercialVentas";
 import SuperAdmin from "./pages/SuperAdmin";
+// El mapa de arquitectura se baja aparte y solo lo abre el SuperAdmin.
+const MapaArquitectura = lazy(() => import("./pages/MapaArquitectura"));
 
 function VerificarEmailPage() {
   const { currentUser, logout } = useAuth();
@@ -179,6 +181,7 @@ function AppRoutes() {
       <Route path="/proyecto/:proyectoId/desarrollos/:seccionId" element={<PrivateRoute><DesarrollosSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId/:seccionId" element={<PrivateRoute><SeccionPlaceholder /></PrivateRoute>} />
       <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
+      <Route path="/superadmin/mapa" element={<SuperAdminRoute><Suspense fallback={<CargandoPage />}><MapaArquitectura /></Suspense></SuperAdminRoute>} />
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>
   );

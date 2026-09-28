@@ -105,6 +105,7 @@ export default function SuperAdmin() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <button style={styles.logoutBtn} onClick={() => navigate("/superadmin/mapa")}>🧠 Mapa de arquitectura</button>
           <ThemeSelector />
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>
         </div>

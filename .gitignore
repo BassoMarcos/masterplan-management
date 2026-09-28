@@ -1,3 +1,6 @@
+# Generado por scripts/generar-mapa.js (antes de build/start/test)
+/src/generado/
+
 # Logs
 logs
 *.log

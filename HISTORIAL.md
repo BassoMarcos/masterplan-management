@@ -256,6 +256,11 @@
 - Administración: "Configuración" deja de ser una tarjeta y pasa al ⚙️ de arriba, como en las demás áreas.
 - Probado: simulación de navegador (38 casos) + captura visual de la central y de Comercial.
 
+## 2026-09-28 — MasterPlan: el mapa de arquitectura pasa a ser solo del SuperAdmin
+- Marcos se dio cuenta de que /mapa.html lo podía abrir cualquier empresa (y el botón estaba en Configuración → Empresa → Cuenta).
+- Se saca `public/mapa.html` (y su rewrite en firebase.json) y el botón de Cuenta. Nueva ruta protegida `/superadmin/mapa` (botón 🧠 en el panel SuperAdmin) que muestra el mapa con los datos ADENTRO (`scripts/generar-mapa.js` arma `src/generado/mapaArquitectura.js` antes de build/start/test; carga aparte, solo al abrirlo).
+- Contexto: Marcos cree que hay competencia armando algo parecido a MasterPlan (no a M2). Pendiente de su ok: pasar el repo a privado (el código y las notas siguen públicos en GitHub).
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### FJ App
