@@ -13,7 +13,7 @@
 
 - FJ App (repo `BassoMarcos/fj-app`) migrará módulo por módulo al pilar **Administración** de MasterPlan. Primero se terminan las features de FJ App, después se integra.
 - Una venta en **Comercial** debe fluir automáticamente por **Legales** para activar un cliente en **Administración**.
-- Mapa neuronal interactivo (`mapa.html` + `mapa-data.json`, fuente única de verdad en este repo) conecta ambos sistemas; accesible desde ambas apps con el botón 🧠.
+- Mapa neuronal interactivo (`mapa.html` + `mapa-data.json`, fuente única de verdad en este repo) conecta ambos sistemas. **En MasterPlan es SOLO del SuperAdmin** (2026-09-28): SuperAdmin → 🧠 → `/superadmin/mapa`. Ya no se publica `/mapa.html` (lo veían todas las empresas); `scripts/generar-mapa.js` lo mete en la app con los datos adentro (corre solo antes de build/start/test; para el build estricto local: `node scripts/generar-mapa.js` primero). fyj tiene su propia copia en su repo.
 
 ## Gate de build (CRÍTICO)
 

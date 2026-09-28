@@ -49,9 +49,6 @@ export function CuentaEmpresa() {
         </button>
         {msg && <p style={s.nota}>{msg}</p>}
       </div>
-      <div style={{ marginTop: 22 }}>
-        <button type="button" style={s.btnSec} onClick={() => window.open("/mapa.html", "_blank")}>🧠 Mapa de arquitectura</button>
-      </div>
     </div>
   );
 }
