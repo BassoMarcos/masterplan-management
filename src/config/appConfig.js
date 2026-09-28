@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // Configuración central de MasterPlan.
 //
 // Cómo funciona:
@@ -58,12 +59,14 @@ export const AREAS_DEFAULT = [
 ];
 
 // Devuelve los sub-paneles de un área por su id.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function panelesDeArea(areaId) {
   const a = AREAS_DEFAULT.find(x => x.id === areaId);
   return (a && a.paneles) ? a.paneles : [];
 }
 
 // Devuelve las áreas que una empresa concreta debe ver, según su config.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function areasVisibles(empresaData) {
   const config = empresaData?.config || {};
   const ocultas = Array.isArray(config.areasOcultas) ? config.areasOcultas : [];
@@ -71,6 +74,7 @@ export function areasVisibles(empresaData) {
 }
 
 // Helper: ¿esta empresa tiene la personalización activada?
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function esPersonalizada(empresaData) {
   return !!(empresaData?.config?.personalizada);
 }
@@ -97,14 +101,17 @@ export function esPersonalizada(empresaData) {
 // ───────────────────────────────────────────────────────────────
 
 const RANK = { ninguno: 0, ver: 1, editar: 2 };
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function maxNivel(a, b) { return (RANK[a] || 0) >= (RANK[b] || 0) ? (a || "ninguno") : (b || "ninguno"); }
 
 // Lee el permiso crudo de un área dentro de un proyecto (puede ser string viejo u objeto nuevo)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function permisoAreaCrudo(empleadoData, proyectoId, areaId) {
   return empleadoData?.permisos?.proyectos?.[proyectoId]?.[areaId];
 }
 
 // Nivel del atajo "toda el área"
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function nivelAtajoArea(empleadoData, proyectoId, areaId) {
   const raw = permisoAreaCrudo(empleadoData, proyectoId, areaId);
   if (!raw) return "ninguno";
@@ -113,6 +120,7 @@ function nivelAtajoArea(empleadoData, proyectoId, areaId) {
 }
 
 // Nivel de acceso del empleado a un SUB-PANEL: combina el atajo de área con el permiso puntual
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function empleadoNivelPanel(empleadoData, proyectoId, areaId, panelId) {
   if (!empleadoData) return "ninguno";
   if (empleadoData.accesoTotal) return "editar";
@@ -124,6 +132,7 @@ export function empleadoNivelPanel(empleadoData, proyectoId, areaId, panelId) {
 }
 
 // Nivel de acceso del empleado a un ÁREA (el mayor entre el atajo y cualquiera de sus paneles)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function empleadoNivelArea(empleadoData, proyectoId, areaId) {
   if (!empleadoData) return "ninguno";
   if (empleadoData.accesoTotal) return "editar";
@@ -135,6 +144,7 @@ export function empleadoNivelArea(empleadoData, proyectoId, areaId) {
 }
 
 // ¿El empleado puede ver este proyecto? (tiene al menos un área/panel con acceso)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function empleadoPuedeVerProyecto(empleadoData, proyectoId) {
   if (!empleadoData) return false;
   if (empleadoData.accesoTotal) return true;
@@ -142,6 +152,7 @@ export function empleadoPuedeVerProyecto(empleadoData, proyectoId) {
 }
 
 // Áreas visibles para un empleado dentro de un proyecto (respeta también las ocultas de la empresa)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function areasVisiblesEmpleado(empresaData, empleadoData, proyectoId) {
   const base = areasVisibles(empresaData);
   if (!empleadoData) return base;
@@ -163,12 +174,14 @@ export function areasVisiblesEmpleado(empresaData, empleadoData, proyectoId) {
 // Paneles que no se pueden apagar mientras el área esté activa.
 export const PANELES_SIEMPRE = { administracion: ["configuracion"] };
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function areaActivaEnProyecto(proyecto, areaId) {
   const areas = proyecto?.estructura?.areas;
   if (!areas) return true;
   return !!(areas[areaId] && areas[areaId].activa);
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function panelActivoEnProyecto(proyecto, areaId, panelId) {
   if (!areaActivaEnProyecto(proyecto, areaId)) return false;
   if ((PANELES_SIEMPRE[areaId] || []).includes(panelId)) return true;
@@ -178,16 +191,19 @@ export function panelActivoEnProyecto(proyecto, areaId, panelId) {
   return a.paneles.includes(panelId);
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function areasDelProyecto(areas, proyecto) {
   return areas.filter(a => areaActivaEnProyecto(proyecto, a.id));
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function panelesDelProyecto(paneles, proyecto, areaId) {
   return paneles.filter(p => panelActivoEnProyecto(proyecto, areaId, p.id));
 }
 
 // Punto de partida del asistente: lo que ya tenga el proyecto o, si es nuevo,
 // todas las áreas que la empresa tiene habilitadas, con todos sus paneles.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function estructuraInicial(proyecto, areasHabilitadas) {
   const areas = {};
   areasHabilitadas.forEach(a => {
@@ -201,6 +217,7 @@ export function estructuraInicial(proyecto, areasHabilitadas) {
 }
 
 // "" si está bien, o el problema (lo usan el asistente y ⚙️ Configuración → Áreas y paneles).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function validarEstructura(estructura, areasHabilitadas) {
   const activas = Object.keys(estructura.areas).filter(id => estructura.areas[id].activa && areasHabilitadas.some(a => a.id === id));
   if (!activas.length) return "Elegí al menos un área.";
@@ -213,6 +230,7 @@ export function validarEstructura(estructura, areasHabilitadas) {
 }
 
 // Lo que se guarda en proyectos/{id}.estructura: todas las áreas, en orden, solo las habilitadas.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function limpiarEstructura(estructura, areasHabilitadas) {
   const out = { areas: {} };
   AREAS_DEFAULT.forEach(a => {
@@ -228,6 +246,7 @@ export function limpiarEstructura(estructura, areasHabilitadas) {
 }
 
 // Sub-paneles visibles para un empleado dentro de un área/proyecto
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function panelesVisiblesEmpleado(empleadoData, proyectoId, areaId) {
   const todos = panelesDeArea(areaId);
   if (!empleadoData || empleadoData.accesoTotal) return todos;
@@ -235,6 +254,7 @@ export function panelesVisiblesEmpleado(empleadoData, proyectoId, areaId) {
 }
 
 // Devuelve el uid de empresa efectivo (dueño = su uid; empleado = empresaId)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function uidEmpresaEfectivo(currentUser, empleadoData) {
   return empleadoData?.empresaId || currentUser?.uid || null;
 }
@@ -258,6 +278,7 @@ export const RECORRIDO_BASE = [
 
 // Combina las etapas base con las personalizadas guardadas en la config.
 // etapasExtra: array de { id, label } guardado en comercial_config.recorridoExtra
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function construirRecorrido(etapasExtra) {
   const extra = Array.isArray(etapasExtra) ? etapasExtra.map(e => ({
     id: e.id, label: e.label, icono: e.icono || "📌", auto: false, base: false,
@@ -266,6 +287,7 @@ export function construirRecorrido(etapasExtra) {
 }
 
 // Qué pasos automáticos (contacto/filtro/llamado) tiene un dato según su pipeline
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function pasosAutomaticosDe(d) {
   const hechos = { contacto: true };
   const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || ["filtrado", "en_venta", "vendido"].includes(d.estado);
@@ -275,6 +297,7 @@ export function pasosAutomaticosDe(d) {
 }
 
 // Índice de la etapa actual (última alcanzada) de un dato, dado un recorrido
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function etapaActualIdxDe(d, recorrido) {
   const auto = pasosAutomaticosDe(d);
   const rec = d.recorrido || {};
@@ -286,6 +309,7 @@ export function etapaActualIdxDe(d, recorrido) {
 }
 
 // Etiqueta de la etapa actual de un dato (para mostrar el mismo estado en todos lados)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function etiquetaEtapa(d, etapasExtra) {
   const recorrido = construirRecorrido(etapasExtra);
   const idx = etapaActualIdxDe(d, recorrido);
@@ -295,3 +319,5 @@ export function etiquetaEtapa(d, etapasExtra) {
   return paso ? paso.label : "Contacto";
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+panelesDeArea.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

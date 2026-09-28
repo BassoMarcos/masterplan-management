@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback, Fragment } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
@@ -33,6 +34,7 @@ import { armarGrupos, grupoEmpresa } from "../config/configuracionGrupos";
 // Dentro de Administración todas las pestañas son una misma pieza (un solo botón de guardar).
 const piezaDe = (g, i) => (g === "administracion" ? "administracion" : `${g}/${i}`);
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function Configuracion({ modo = "proyecto", area }) {
   const params = useParams();
   const proyectoId = params.proyectoId;
@@ -245,6 +247,7 @@ export default function Configuracion({ modo = "proyecto", area }) {
 
 // Las opciones del grupo elegido, como pestañas arriba del recuadro. Si tienen "subgrupo"
 // (Administración: Cuotas / Cobros / Casos / Plata), se muestra el título chico antes de cada tanda.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function Pestanas({ items, activo, onElegir }) {
   return (
     <div style={st.pestanas}>
@@ -268,6 +271,7 @@ function Pestanas({ items, activo, onElegir }) {
 }
 
 // ── Proyecto → Datos del proyecto ──
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function CuerpoDatos({ proyecto, onSucio, onGuardado }) {
   const [ini, setIni] = useState(() => datosIniciales(proyecto));
   const [datos, setDatos] = useState(ini);
@@ -293,6 +297,7 @@ function CuerpoDatos({ proyecto, onSucio, onGuardado }) {
 }
 
 // ── Proyecto → Áreas y paneles ──
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function CuerpoAreas({ proyecto, empresaData, onSucio, onGuardado }) {
   const habilitadas = areasVisibles(empresaData);
   const [ini, setIni] = useState(() => estructuraInicial(proyecto, habilitadas));
@@ -320,6 +325,7 @@ function CuerpoAreas({ proyecto, empresaData, onSucio, onGuardado }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function BarraGuardar({ cambio, onGuardar, onDescartar, validar }) {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -369,3 +375,6 @@ const st = {
   soloVer: { display: "inline-block", fontSize: "12px", color: "var(--text2)", border: "1px solid var(--border2)", borderRadius: "20px", padding: "3px 10px", marginBottom: "12px" },
   lista: { margin: "0", paddingLeft: "20px", color: "var(--text)", fontSize: "14px", lineHeight: 1.9 },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+Configuracion.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

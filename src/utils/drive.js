@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // Integración con Google Drive.
 // La empresa conecta su cuenta UNA vez; el permiso queda guardado en el servidor
 // y cualquier empleado puede subir archivos al Drive de la empresa. Ver REGLAS.md.
@@ -15,6 +16,7 @@ const fnDesconectar = httpsCallable(functions, "driveDesconectar");
 const fnSubir = httpsCallable(functions, "driveSubir");
 
 // Carga el script de Google Identity Services una sola vez
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function cargarGIS() {
   return new Promise((resolve, reject) => {
     if (window.google?.accounts?.oauth2) return resolve();
@@ -31,6 +33,7 @@ function cargarGIS() {
 }
 
 /** Abre la ventana de Google para que la empresa autorice su Drive. */
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export async function conectarDrive() {
   await cargarGIS();
   const code = await new Promise((resolve, reject) => {
@@ -51,6 +54,7 @@ export async function conectarDrive() {
 }
 
 /** Consulta si la empresa tiene Drive conectado. */
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export async function estadoDrive() {
   try {
     const r = await fnEstado();
@@ -61,11 +65,13 @@ export async function estadoDrive() {
 }
 
 /** Desconecta el Drive de la empresa. */
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export async function desconectarDrive() {
   await fnDesconectar();
 }
 
 /** Sube un archivo al Drive de la empresa (pasa por el servidor). */
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export async function subirArchivo(file, subcarpeta = "General") {
   const base64 = await new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -81,3 +87,6 @@ export async function subirArchivo(file, subcarpeta = "General") {
   });
   return r.data; // { id, nombre, link, verUrl }
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+conectarDrive.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

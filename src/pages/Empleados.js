@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -13,6 +14,7 @@ const NIVELES = [
 ];
 const RANK = { ninguno: 0, ver: 1, editar: 2 };
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function Empleados() {
   const { empresaData, empresaUid, logout } = useAuth();
   const navigate = useNavigate();
@@ -377,6 +379,7 @@ export default function Empleados() {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function resumenPermisos(permisos) {
   const proys = permisos?.proyectos;
   if (!proys) return "Sin acceso";
@@ -448,3 +451,6 @@ const styles = {
   cancelBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "10px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   confirmBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "10px 24px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+Empleados.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

@@ -1,8 +1,10 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { db } from "../firebase/config";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 
 // Crea una notificación. Ver REGLAS.md del repo.
 // tipo: "actualizacion" | "trabajo"
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export async function crearNotificacion({ tipo = "trabajo", titulo, detalle, areas = [], paneles = [], soloEmpresaId = null, paraUid = null }) {
   try {
     await addDoc(collection(db, "notificaciones"), {
@@ -16,3 +18,6 @@ export async function crearNotificacion({ tipo = "trabajo", titulo, detalle, are
     console.error("No se pudo crear la notificación:", e);
   }
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+crearNotificacion.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

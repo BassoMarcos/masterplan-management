@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/config";
@@ -12,8 +13,10 @@ const LEYENDA_DEFAULT = [
   { color: "#f0a0c0", texto: "Urgente" },
 ];
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function nowStr() { return new Date().toISOString(); }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function fmtFecha(iso) {
   if (!iso) return "";
   const d = new Date(iso);
@@ -23,6 +26,7 @@ function fmtFecha(iso) {
 
 // contextoId: identifica QUÉ pizarra es (general, proyecto_ABC, area_administracion...)
 // titulo: nombre visible de la pizarra
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function PizarraFlotante({ contextoId, titulo }) {
   const { currentUser } = useAuth();
 
@@ -299,3 +303,6 @@ const B = {
   legAdd: { marginTop: "5px", background: "transparent", border: "1px dashed var(--border2)", color: "var(--text2)", borderRadius: "6px", padding: "3px 6px", fontSize: "10px", cursor: "pointer", width: "100%" },
   winResizer: { position: "absolute", right: 0, bottom: 0, width: "18px", height: "18px", cursor: "nwse-resize", background: "linear-gradient(135deg, transparent 45%, var(--text3) 45%, var(--text3) 55%, transparent 55%)" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+PizarraFlotante.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

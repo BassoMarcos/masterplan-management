@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // Arma src/generado/mapaArquitectura.js a partir de mapa.html + mapa-data.json (raíz del repo).
 // El mapa de arquitectura es solo para el SuperAdmin: ya NO se publica como archivo suelto
 // (/mapa.html lo podía abrir cualquier empresa). Va dentro de la app, en /superadmin/mapa,

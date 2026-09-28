@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -22,6 +23,7 @@ const ANCHOS = [
 
 const TITULAR_DEFAULT = ["Apellido y Nombre", "DNI", "Nacionalidad", "Estado civil", "Domicilio", "N°", "Localidad", "Partido", "Contacto"];
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ComercialDisenoReserva() {
   const { proyectoId } = useParams();
   const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -402,3 +404,6 @@ const styles = {
   previewLabel: { display: "block", fontSize: "11px", fontWeight: "600", color: "var(--text2)", marginBottom: "4px" },
   previewInput: { height: "34px", borderRadius: "9px", border: "1.5px solid var(--border)", background: "var(--bg)" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ComercialDisenoReserva.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

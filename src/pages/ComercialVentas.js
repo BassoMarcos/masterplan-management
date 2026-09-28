@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -18,6 +19,7 @@ const ESTADOS_VENTA = [
 // Recorrido del contacto: de conseguirlo hasta la firma.
 // Los 3 primeros son automáticos (se derivan del pipeline). Del 4º en adelante los marca el vendedor.
 // Calcula hasta qué paso automático llegó un dato según su estado del pipeline
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function pasosAutomaticos(d) {
   const hechos = { contacto: true }; // si existe el dato, ya hay contacto
   const filtrado = (d.respuestasFiltro && Object.keys(d.respuestasFiltro).length > 0) || d.filtradoEn || d.estado === "filtrado" || d.estado === "en_venta" || d.estado === "vendido";
@@ -29,6 +31,7 @@ function pasosAutomaticos(d) {
 // Panel de VENTAS (Comercial).
 // - Admin: reparte datos FILTRADOS a vendedores y ve el progreso.
 // - Vendedor: ve sus datos con toda la info del filtro, contacta y reporta el resultado.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ComercialVentas() {
   const { proyectoId } = useParams();
   const { currentUser, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -992,12 +995,14 @@ export default function ComercialVentas() {
 }
 
 // Formatea un monto: solo dígitos, con puntos cada 3 (18.360.000)
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function formatearMonto(v) {
   const soloNum = String(v).replace(/[^\d]/g, "");
   if (!soloNum) return "";
   return "$ " + soloNum.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function estadoLabel(e) {
   const m = { crudo: "Crudo", en_filtro: "En filtro", filtrado: "Filtrado", en_venta: "En venta", vendido: "Vendido", descartado: "Descartado" };
   return m[e] || e;
@@ -1183,3 +1188,6 @@ const styles = {
   fsCancelBtn: { background: "transparent", border: "1.5px solid var(--border)", color: "var(--text2)", padding: "14px 28px", borderRadius: "10px", cursor: "pointer", fontSize: "15px", fontWeight: "600" },
   fsGuardarBtn: { background: "#16a34a", color: "#fff", border: "none", padding: "14px 36px", borderRadius: "10px", cursor: "pointer", fontSize: "15px", fontWeight: "700" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ComercialVentas.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

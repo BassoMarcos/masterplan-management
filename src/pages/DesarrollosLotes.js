@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -11,6 +12,7 @@ import { empleadoNivelPanel, panelActivoEnProyecto } from "../config/appConfig";
 
 // Desarrollos → Manzanas y lotes: la lista única de lotes del proyecto (ver LotesProyecto).
 // La misma pieza aparece en ⚙️ Configuración del proyecto.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function DesarrollosLotes() {
   const { proyectoId } = useParams();
   const { empresaUid, esEmpleado, empleadoData, logout } = useAuth();
@@ -88,3 +90,6 @@ const st = {
   logoutBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", padding: "8px 16px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   main: { maxWidth: "1100px", margin: "0 auto", padding: "32px 24px" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+DesarrollosLotes.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

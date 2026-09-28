@@ -1,6 +1,8 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // Piezas visuales compartidas por las pantallas de configuración (Administración, asistente,
 // Desarrollos): estilos, título de sección y campo con etiqueta.
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionTitulo({ icono, nombre, desc }) {
   return (
     <div style={{ marginBottom: 18 }}>
@@ -10,6 +12,7 @@ export function SeccionTitulo({ icono, nombre, desc }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function Campo({ label, children }) {
   return (
     <label style={s.campo}>
@@ -77,6 +80,7 @@ export const s = {
 };
 
 // Botones para elegir una opción (como pestañas chicas).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function Opciones({ valor, opciones, onCambiar, dis }) {
   return (
     <div style={{ ...s.modoFila, margin: "4px 0 0" }}>
@@ -96,6 +100,7 @@ export function Opciones({ valor, opciones, onCambiar, dis }) {
 }
 
 // Sí / No con una explicación corta.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SiNo({ label, ayuda, valor, onCambiar, dis }) {
   return (
     <div style={{ margin: "0 0 14px" }}>
@@ -105,3 +110,6 @@ export function SiNo({ label, ayuda, valor, onCambiar, dis }) {
     </div>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+SeccionTitulo.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

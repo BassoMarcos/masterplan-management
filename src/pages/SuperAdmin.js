@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -17,6 +18,7 @@ const ESTADO_COLOR = {
   inactivo: { bg: "#fee2e2", color: "#991b1b", label: "Inactivo" },
 };
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function SuperAdmin() {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -263,3 +265,6 @@ const styles = {
   seccionTitulo: { fontSize: "14px", fontWeight: "700", color: "var(--text)", marginBottom: "4px" },
   areaRow: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+SuperAdmin.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

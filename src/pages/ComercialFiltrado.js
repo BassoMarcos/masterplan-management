@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -11,6 +12,7 @@ import { crearNotificacion } from "../utils/notificar";
 // Panel de FILTRADO (Comercial).
 // - Admin: reparte datos crudos a filtradores (a mano o por cantidad) y ve el progreso.
 // - Filtrador: ve sus datos asignados (o los que cargó) y completa el formulario de filtro.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ComercialFiltrado() {
   const { proyectoId } = useParams();
   const { currentUser, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -463,3 +465,6 @@ const styles = {
   miniBtn: { background: "transparent", border: "1px solid var(--border2)", color: "var(--text2)", width: "28px", height: "28px", borderRadius: "6px", cursor: "pointer", fontSize: "13px" },
   empty: { color: "var(--text2)", fontSize: "14px" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ComercialFiltrado.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

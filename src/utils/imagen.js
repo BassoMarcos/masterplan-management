@@ -1,7 +1,9 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // Achica una imagen antes de guardarla en Firestore (límite: 1 MB por registro).
 // Un logo se muestra a 64 px: con 256 px de lado se ve nítido incluso en pantallas de alta
 // definición, y pesa ~10-30 KB en vez de los megas de una foto de celular.
 // Usa WebP (liviano y con transparencia); si el navegador no lo soporta, PNG.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function comprimirImagen(file, ladoMax = 256, calidad = 0.85) {
   return new Promise((resolve, reject) => {
     if (!file || !file.type || !file.type.startsWith("image/")) {
@@ -30,3 +32,6 @@ export function comprimirImagen(file, ladoMax = 256, calidad = 0.85) {
     img.src = url;
   });
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+comprimirImagen.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

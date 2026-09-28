@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -40,6 +41,7 @@ const PROVINCIAS = [
   "Entre Ríos", "Formosa", "Jujuy", "La Pampa", "La Rioja", "Mendoza", "Misiones", "Neuquén", "Río Negro",
   "Salta", "San Juan", "San Luis", "Santa Cruz", "Santa Fe", "Santiago del Estero", "Tierra del Fuego", "Tucumán",
 ];
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function limpiarDatos(datos) {
   return {
     tipo: datos.tipo || "Loteo",
@@ -48,6 +50,7 @@ export function limpiarDatos(datos) {
     provincia: datos.provincia || "",
   };
 }
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function datosIniciales(p) {
   const d = (p && p.datos) || {};
   return { tipo: d.tipo || "Loteo", direccion: d.direccion || "", localidad: d.localidad || "", provincia: d.provincia || "" };
@@ -69,13 +72,16 @@ const INFO_PASOS = {
 // En qué sección de la validación cae cada paso.
 const SECCION_DE_PASO = { financiacion: "financiacion", mora: "mora", transferencias: "transferencias", duenos: "distribucion", cajas: "cajas" };
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function etapaVacia(n) {
   return { id: nuevoId(), nombre: `Etapa ${n}`, conManzanas: true, desde: "1", hasta: "", letras: "", manzanas: [] };
 }
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function manzanaVacia(n, modelo) {
   return { id: nuevoId(), nombre: `M${n}`, desde: modelo ? modelo.desde : "1", hasta: modelo ? modelo.hasta : "", letras: modelo ? modelo.letras : "" };
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function AsistenteProyecto({ modo = "proyecto" }) {
   const esAdm = modo === "administracion";
   const campoAsistente = esAdm ? "adminAsistente" : "asistente";
@@ -365,6 +371,7 @@ export default function AsistenteProyecto({ modo = "proyecto" }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function PasoDatos({ datos, setDatos, dis }) {
   const set = (k, v) => setDatos({ ...datos, [k]: v });
   return (
@@ -393,6 +400,7 @@ export function PasoDatos({ datos, setDatos, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function Pantalla({ children, navigate, logout, proyectoId, proyecto, botonSalir, esAdm }) {
   return (
     <div style={est.container}>
@@ -414,6 +422,7 @@ function Pantalla({ children, navigate, logout, proyectoId, proyecto, botonSalir
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function PasoAreas({ estructura, setEstructura, habilitadas, dis }) {
   function cambiar(fn) {
     const copia = JSON.parse(JSON.stringify(estructura));
@@ -481,6 +490,7 @@ export function PasoAreas({ estructura, setEstructura, habilitadas, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function PasoLotes({ etapas, setEtapas, lotesGuardados }) {
   function cambiar(fn) {
     const copia = JSON.parse(JSON.stringify(etapas));
@@ -587,6 +597,7 @@ function PasoLotes({ etapas, setEtapas, lotesGuardados }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function PasoResumen({ estructura, habilitadas, cfg, lotes, lotesIni, conAdmin, datos, mostrarProyecto }) {
   const areas = AREAS_DEFAULT.filter(a => habilitadas.some(h => h.id === a.id) && estructura.areas[a.id] && estructura.areas[a.id].activa);
   const nuevos = lotes.filter(l => !lotesIni.some(x => x.id === l.id)).length;
@@ -672,3 +683,6 @@ const est = {
   resFila: { display: "grid", gridTemplateColumns: "150px 1fr", gap: 12, padding: "10px 0", borderTop: "1px solid var(--border)" },
   resTitulo: { fontSize: 13, fontWeight: 700, color: "var(--text2)" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+AsistenteProyecto.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

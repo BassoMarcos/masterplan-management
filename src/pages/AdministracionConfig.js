@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { db } from "../firebase/config";
 import { doc, collection, getDocs, writeBatch, serverTimestamp } from "firebase/firestore";
@@ -58,6 +59,7 @@ import {
 // - "extra": otros campos del documento del proyecto que se guardan en la misma tanda.
 // Firestore acepta hasta 500 escrituras por tanda: si entra todo en una, se guarda todo junto
 // (o nada); si son muchos lotes, se parte y el documento del proyecto va en la última.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export async function guardarConfigYLotes({ proyectoId, limpia, cambioCfg, lotesIni, lotes, extra }) {
   const ops = diffLotes(lotesIni, lotes);
   const col = collection(db, "proyectos", proyectoId, "lotes");
@@ -84,6 +86,7 @@ export async function guardarConfigYLotes({ proyectoId, limpia, cambioCfg, lotes
 }
 
 // Mensaje claro según por qué falló el guardado (lo usan también el asistente y Desarrollos).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function mensajeErrorGuardar(e) {
   if (e && e.code === "permission-denied") return "No se pudo guardar: falta permiso en las reglas de Firebase. Avisale a Mark.";
   if (e && e.code === "not-found") return "Alguien borró uno de estos lotes mientras editabas. Recargá la página y volvé a hacer el cambio.";
@@ -92,6 +95,7 @@ export function mensajeErrorGuardar(e) {
 
 // seccion / onSeccion: qué sección se ve (la elige la lista de la pantalla central).
 // onSucio(true|false): avisa si hay cambios sin guardar. irALotes(): lleva a donde se cargan los lotes.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado, seccion, onSeccion, onSucio, irALotes }) {
   const [inicial, setInicial] = useState(() => completarConfig(proyecto?.adminConfig));
   // Arranca desde el MISMO objeto que "inicial": si se armara dos veces, los ids nuevos
@@ -237,6 +241,7 @@ export default function AdministracionConfig({ proyecto, puedeEditar, onGuardado
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionFinanciacion({ cfg, editar, dis, sinTitulo }) {
   const encendidas = MONEDAS.filter(m => cfg.financiacion[m.id].habilitada);
   return (
@@ -273,6 +278,7 @@ export function SeccionFinanciacion({ cfg, editar, dis, sinTitulo }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function ReglaMoneda({ id, nombre, f, editar, dis }) {
   const inc = f.incremento;
   const n = num(inc.cadaMeses);
@@ -387,6 +393,7 @@ function ReglaMoneda({ id, nombre, f, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionMora({ cfg, editar, dis }) {
   const m = cfg.cobranza.mora;
   return (
@@ -427,6 +434,7 @@ export function SeccionMora({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionTransferencias({ cfg, editar, dis }) {
   const t = cfg.cobranza.transferencia;
   return (
@@ -446,6 +454,7 @@ export function SeccionTransferencias({ cfg, editar, dis }) {
   );
 }
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionDistribucion({ cfg, editar, dis }) {
   // Orden en que la persona fue tocando los %: los que NO tocó absorben la diferencia.
   const [tocados, setTocados] = useState([]);
@@ -517,6 +526,7 @@ export function SeccionDistribucion({ cfg, editar, dis }) {
 
 // Grilla para marcar lotes (se usa en Cajas especiales; más adelante también en el asistente).
 // estado(l) → "on" (marcado), "otro" (tomado por otra cosa; se muestra con aviso) u "off".
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SelectorLotes({ lotes, estado, textoOtro, onCambiar, dis }) {
   const grupos = agruparLotes(lotes);
   return (
@@ -569,6 +579,7 @@ export function SelectorLotes({ lotes, estado, textoOtro, onCambiar, dis }) {
 }
 
 // "avisoLotes": dónde se cargan los lotes (cambia según la pantalla que la usa).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SeccionCajas({ cfg, editar, dis, lotes, editarLotes, lotesCargando, avisoLotes, errorLotes }) {
   const [abierta, setAbierta] = useState(null);
 
@@ -658,6 +669,7 @@ export function SeccionCajas({ cfg, editar, dis, lotes, editarLotes, lotesCargan
 
 // "¿En cuántas partes está partido cada lote?" → se guarda como rango de letras ("A-C" = A, B, C).
 // Si viene algo escrito a mano de antes (ej. "A, D"), se muestra como opción aparte para no perderlo.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function SelectorPartes({ value, onChange, sinEntero, disabled }) {
   const opciones = OPCIONES_PARTES.filter(o => !(sinEntero && o.v === ""));
   const conocido = opciones.some(o => o.v === (value || ""));
@@ -673,3 +685,6 @@ export function SelectorPartes({ value, onChange, sinEntero, disabled }) {
 
 // Estilos compartidos con el asistente de proyecto nuevo y Desarrollos.
 export { s as estilosConfig, Campo, SeccionTitulo };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+AdministracionConfig.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

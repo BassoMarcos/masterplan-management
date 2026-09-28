@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -8,6 +9,7 @@ import { empleadoNivelPanel, RECORRIDO_BASE } from "../config/appConfig";
 
 // Configuración de la Estrategia de Ventas: etapas del recorrido + mensaje de WhatsApp.
 // embebido: se muestra dentro de ⚙️ Configuración del proyecto (sin encabezado propio).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ComercialConfigEstrategia({ embebido }) {
   const { proyectoId } = useParams();
   const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -198,3 +200,6 @@ const styles = {
   disenarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "12px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
   guardarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "12px 28px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ComercialConfigEstrategia.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect } from "react";
 import { db } from "../firebase/config";
 import { doc, getDocs, collection, deleteDoc } from "firebase/firestore";
@@ -15,6 +16,7 @@ import { loteLimpio, validarLotes } from "../config/adminConfigLogica";
 // totales a mano). Esos registros no se borran solos: se muestran abajo para no perder nada.
 //
 // onSucio(true|false): avisa si hay cambios sin guardar (para preguntar antes de salir).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function LotesProyecto({ proyectoId, puedeEditar, onSucio }) {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState("");
@@ -148,3 +150,6 @@ export default function LotesProyecto({ proyectoId, puedeEditar, onSucio }) {
     </div>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+LotesProyecto.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

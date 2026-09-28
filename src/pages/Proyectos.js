@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -11,6 +12,7 @@ import { comprimirImagen } from "../utils/imagen";
 
 const ICONOS = ["🏘️","🏗️","🌳","🏡","🏢","🌆","🏖️","🏔️","🌾","🏙️","🏠","🌿"];
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function Proyectos() {
   const { empresaData, empleadoData, empresaUid, esEmpleado, logout } = useAuth();
   const esAdminEfectivo = !esEmpleado || empleadoData?.accesoTotal;
@@ -385,3 +387,6 @@ const styles = {
   error: { background: "#fef2f2", color: "#dc2626", padding: "10px 14px", borderRadius: "8px", fontSize: "13px", margin: 0 },
   crearBtn: { padding: "13px", background: "var(--acc)", color: "#fff", border: "none", borderRadius: "8px", fontSize: "15px", fontWeight: "600", cursor: "pointer" }
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+Proyectos.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

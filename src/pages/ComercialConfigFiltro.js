@@ -1,3 +1,4 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useParams } from "react-router-dom";
@@ -16,6 +17,7 @@ const TIPOS = [
 // Configurador del FORMULARIO DE FILTRO (Comercial).
 // El admin arma las preguntas que el filtrador completará sobre cada dato.
 // embebido: se muestra dentro de ⚙️ Configuración del proyecto (sin encabezado propio).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ComercialConfigFiltro({ embebido }) {
   const { proyectoId } = useParams();
   const { empleadoData, empresaUid, esEmpleado, logout } = useAuth();
@@ -294,3 +296,6 @@ const styles = {
   addBtn: { background: "transparent", border: "1.5px dashed var(--border2)", color: "var(--text)", padding: "12px 20px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "600" },
   guardarBtn: { background: "var(--acc)", color: "#fff", border: "none", padding: "12px 24px", borderRadius: "8px", cursor: "pointer", fontSize: "14px", fontWeight: "700" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ComercialConfigFiltro.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

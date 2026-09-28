@@ -1,6 +1,8 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../context/ThemeContext";
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function ThemeSelector() {
   const { themeId, cambiarTema, themes } = useTheme();
   const [open, setOpen] = useState(false);
@@ -101,3 +103,6 @@ export default function ThemeSelector() {
     </div>
   );
 }
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+ThemeSelector.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";

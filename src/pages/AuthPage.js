@@ -1,8 +1,10 @@
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { sendPasswordResetEmail } from "firebase/auth";
 import { auth } from "../firebase/config";
 
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export default function AuthPage() {
   // vista: "personal" (equipo) | "empresa" (dueños)
   const [vista, setVista] = useState("personal");
@@ -257,3 +259,6 @@ const styles = {
   successTitle: { textAlign: "center", fontSize: "22px", fontWeight: "700", color: "#0f172a", margin: "0 0 12px" },
   successText: { textAlign: "center", fontSize: "14px", color: "#64748b", lineHeight: "1.6", margin: "0 0 24px" },
 };
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+AuthPage.__a = "6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse";
