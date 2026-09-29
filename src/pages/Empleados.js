@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { db } from "../firebase/config";
 import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
-import { AREAS_DEFAULT, areasVisibles } from "../config/appConfig";
+import { AREAS_DEFAULT, areasVisibles, nivelBibliotecaProyecto } from "../config/appConfig";
 
 const NIVELES = [
   { id: "ninguno", label: "Sin acceso", color: "#94a3b8" },
@@ -73,8 +73,11 @@ export default function Empleados() {
         (a.paneles || []).forEach(p => { if (!(p.id in obj)) obj[p.id] = "ninguno"; });
         permIni.proyectos[proy.id][a.id] = obj;
       });
+      // 📚 Biblioteca del proyecto (para todas las áreas). Si nunca se guardó, arranca con lo que
+      // tenía por Legales → Biblioteca de documentos, así al guardar no pierde el acceso.
+      permIni.proyectos[proy.id]._biblioteca = nivelBibliotecaProyecto({ ...emp, accesoTotal: false }, proy.id);
     });
-    // Biblioteca general de la empresa (las de cada proyecto van en Legales → Biblioteca de documentos)
+    // Biblioteca general de la empresa (la de cada proyecto va en cada proyecto: _biblioteca)
     permIni.bibliotecaGeneral = emp.permisos?.bibliotecaGeneral || "ninguno";
     setPermisos(permIni);
     setAccesoTotal(!!emp.accesoTotal);
@@ -92,6 +95,14 @@ export default function Empleados() {
         },
       };
     });
+  }
+
+  // 📚 Biblioteca del proyecto
+  function setNivelBiblioteca(proyId, nivel) {
+    setPermisos(prev => ({
+      ...prev,
+      proyectos: { ...prev.proyectos, [proyId]: { ...(prev.proyectos?.[proyId] || {}), _biblioteca: nivel } },
+    }));
   }
 
   // Setea el nivel de un sub-panel puntual
@@ -322,6 +333,23 @@ export default function Empleados() {
                       <div style={styles.proyectoBoxTitle}>
                         {proy.logo ? <img src={proy.logo} alt="" style={styles.proyMini} /> : <span>{proy.icono || "📁"}</span>}
                         {proy.nombre}
+                      </div>
+                      <div style={{ ...styles.permisoRow, ...styles.areaBloque }}>
+                        <div style={styles.permisoArea}>📚 Biblioteca del proyecto <span style={styles.todaLabel}>(archivos de todas las áreas)</span></div>
+                        <div style={styles.nivelesRow}>
+                          {NIVELES.map(n => (
+                            <button
+                              key={n.id}
+                              onClick={() => setNivelBiblioteca(proy.id, n.id)}
+                              style={{
+                                ...styles.nivelBtn,
+                                ...((permProy._biblioteca || "ninguno") === n.id ? { background: n.color, color: "#fff", borderColor: n.color } : {}),
+                              }}
+                            >
+                              {n.label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
                       {areasEmpresa.map(a => {
                         const permArea = permProy[a.id] || {};

@@ -43,7 +43,8 @@ export const AREAS_DEFAULT = [
       { id: "contratos", nombre: "Contratos", icono: "📑", desc: "Boletos, cesiones y adendas" },
       { id: "escrituras", nombre: "Escrituras", icono: "🖋️", desc: "Escrituración de lotes" },
       { id: "verificaciones", nombre: "Verificaciones / trámites", icono: "✅", desc: "Chequeos y trámites legales" },
-      { id: "documentacion", nombre: "Biblioteca de documentos", icono: "🗂️", desc: "Carpetas y archivos para todos" },
+      // (2026-09-29) La "Biblioteca de documentos" salió de Legales: ahora es 📚 Biblioteca del proyecto,
+      // en la pantalla del proyecto, para todas las áreas (ver nivelBibliotecaProyecto).
     ],
   },
   {
@@ -143,12 +144,35 @@ export function empleadoNivelArea(empleadoData, proyectoId, areaId) {
   return nivel;
 }
 
-// ¿El empleado puede ver este proyecto? (tiene al menos un área/panel con acceso)
+// ── BIBLIOTECA DEL PROYECTO (2026-09-29) ──
+// Está afuera de las áreas (la usan todas) y tiene su propio permiso por proyecto:
+//   permisos.proyectos["<proyectoId>"]._biblioteca = "ninguno" | "ver" | "editar"
+// Mientras ese permiso no se guarde, vale el viejo (Legales → Biblioteca de documentos), así nadie
+// pierde el acceso que tenía. Misma regla en el servidor: functions/biblioteca/permisos.js.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+export function nivelBibliotecaViejo(empleadoData, proyectoId) {
+  const raw = permisoAreaCrudo(empleadoData, proyectoId, "legales");
+  if (!raw) return "ninguno";
+  const nivelArea = typeof raw === "string" ? raw : (raw._area || "ninguno");
+  const nivelPanel = (typeof raw === "object" && raw.documentacion) ? raw.documentacion : "ninguno";
+  return maxNivel(nivelArea, nivelPanel);
+}
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+export function nivelBibliotecaProyecto(empleadoData, proyectoId) {
+  if (!empleadoData) return "ninguno";
+  if (empleadoData.accesoTotal) return "editar";
+  const guardado = empleadoData?.permisos?.proyectos?.[proyectoId]?._biblioteca;
+  if (typeof guardado === "string") return RANK[guardado] ? guardado : "ninguno";
+  return nivelBibliotecaViejo(empleadoData, proyectoId);
+}
+
+// ¿El empleado puede ver este proyecto? (tiene al menos un área/panel con acceso, o la biblioteca)
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export function empleadoPuedeVerProyecto(empleadoData, proyectoId) {
   if (!empleadoData) return false;
   if (empleadoData.accesoTotal) return true;
-  return AREAS_DEFAULT.some(a => empleadoNivelArea(empleadoData, proyectoId, a.id) !== "ninguno");
+  return AREAS_DEFAULT.some(a => empleadoNivelArea(empleadoData, proyectoId, a.id) !== "ninguno")
+    || nivelBibliotecaProyecto(empleadoData, proyectoId) !== "ninguno";
 }
 
 // Áreas visibles para un empleado dentro de un proyecto (respeta también las ocultas de la empresa)

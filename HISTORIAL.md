@@ -273,6 +273,11 @@
 - Marcos conectó su Drive (se había vencido: Google corta la conexión a los 7 días mientras la app está "en prueba"; ahora ⚙️ Configuración → Google Drive avisa y deja reconectar).
 - Pidió ver las fotos de un vistazo y que abran más rápido: miniaturas en las tarjetas (y en la lista), la foto se empieza a traer al pasar el mouse, lo ya abierto queda guardado, la vista previa muestra la miniatura mientras llega la foto entera. Servidor: arranca más rápido (@googleapis/drive) y reusa la conexión con Drive.
 
+## 2026-09-29 — La biblioteca del proyecto sale de Legales
+- Pedido de Marcos: que la biblioteca de cada proyecto no esté adentro de Legales, porque otras áreas también la necesitan.
+- Ahora es la tarjeta **📚 Biblioteca del proyecto** en la pantalla del proyecto (al lado de las áreas), con su propio permiso por proyecto en Empleados. Quien tenía acceso por Legales lo conserva hasta que se le guarden los permisos de nuevo. No depende de que Legales esté prendida.
+- Marcos va a ajustar después cómo se da el acceso.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### App de Administración

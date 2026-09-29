@@ -7,7 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import PizarraFlotante from "../components/PizarraFlotante";
-import { areasVisibles, areasVisiblesEmpleado, areasDelProyecto } from "../config/appConfig";
+import { areasVisibles, areasVisiblesEmpleado, areasDelProyecto, nivelBibliotecaProyecto } from "../config/appConfig";
 
 
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
@@ -22,6 +22,8 @@ export default function ProyectoPilares() {
   const PILARES = esEmpleado
     ? areasVisiblesEmpleado(empresaData, empleadoData, proyectoId)
     : areasVisibles(empresaData);
+  // 📚 Biblioteca del proyecto: afuera de las áreas, para todas (su permiso va aparte en Empleados).
+  const nivelBiblioteca = esEmpleado ? nivelBibliotecaProyecto(empleadoData, proyectoId) : "editar";
 
   useEffect(() => {
     async function cargar() {
@@ -81,7 +83,10 @@ export default function ProyectoPilares() {
           </div>
         )}
         {areasDelProyecto(PILARES, proyecto).length === 0 && (
-          <p style={{ color: "var(--text2)", fontSize: "14px" }}>Este proyecto no tiene áreas activas.{esAdminEfectivo ? " Activalas desde ⚙️ Configuración → Áreas y paneles." : ""}</p>
+          <p style={{ color: "var(--text2)", fontSize: "14px" }}>
+            {esEmpleado && !esAdminEfectivo ? "No tenés áreas habilitadas en este proyecto." : "Este proyecto no tiene áreas activas."}
+            {esAdminEfectivo ? " Activalas desde ⚙️ Configuración → Áreas y paneles." : ""}
+          </p>
         )}
         <div style={styles.grid}>
           {areasDelProyecto(PILARES, proyecto).map(p => (
@@ -97,6 +102,19 @@ export default function ProyectoPilares() {
               <p style={styles.cardDesc}>{p.desc}</p>
             </div>
           ))}
+          {nivelBiblioteca !== "ninguno" && (
+            <div
+              style={{ ...styles.card, ...styles.cardActivo, ...styles.cardBiblioteca }}
+              onClick={() => navigate(`/proyecto/${proyectoId}/biblioteca`)}
+              onMouseEnter={e => (e.currentTarget.style.transform = "translateY(-4px)")}
+              onMouseLeave={e => (e.currentTarget.style.transform = "translateY(0)")}
+            >
+              <span style={styles.cardIcono}>📚</span>
+              <h3 style={styles.cardNombre}>Biblioteca del proyecto</h3>
+              <p style={styles.cardDesc}>Documentos, planos y archivos de todas las áreas</p>
+              {nivelBiblioteca === "ver" && <span style={styles.proximamente}>👁️ Solo ver</span>}
+            </div>
+          )}
         </div>
       </main>
 
@@ -139,6 +157,7 @@ const styles = {
     background: "var(--card)", border: "1.5px solid var(--border)",
     boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
   },
+  cardBiblioteca: { borderStyle: "dashed" },
   cardInactivo: {
     background: "var(--surface)", border: "1.5px solid var(--border)",
     cursor: "default", opacity: 0.6
