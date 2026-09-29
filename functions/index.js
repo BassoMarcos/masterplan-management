@@ -67,7 +67,7 @@ exports.drivePorConectar = onCall(
       throw new HttpsError("invalid-argument", "Google rechazó la autorización: " + (e?.response?.data?.error_description || e?.message || "desconocido"));
     }
     if (!tokens.refresh_token) {
-      throw new HttpsError("failed-precondition", "Google no devolvió un permiso renovable. Probá desconectar y conectar de nuevo.");
+      throw new HttpsError("failed-precondition", "Google no devolvió un permiso renovable. Entrá a myaccount.google.com/permissions, quitale el acceso a MasterPlan y volvé a conectar.");
     }
 
     // Traer el email de la cuenta conectada
@@ -90,13 +90,28 @@ exports.drivePorConectar = onCall(
   }
 );
 
-/** Devuelve si la empresa tiene Drive conectado y con qué cuenta. */
-exports.driveEstado = onCall({ region: "us-central1" }, async (request) => {
+/**
+ * Devuelve si la empresa tiene Drive conectado y con qué cuenta.
+ * (2026-09-29) Además PRUEBA la conexión con Google: si se venció (en modo "prueba" Google la corta
+ * a los 7 días) o la sacaron desde la cuenta de Google, avisa con vencida: true para volver a conectar.
+ */
+exports.driveEstado = onCall({ secrets: [OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET], region: "us-central1" }, async (request) => {
   if (!request.auth) throw new HttpsError("unauthenticated", "Tenés que iniciar sesión.");
   const empresaId = await empresaDelUsuario(request.auth.uid);
   const snap = await db.collection("drive_conexiones").doc(empresaId).get();
   if (!snap.exists) return { conectado: false };
-  return { conectado: true, email: snap.data().email || null };
+  const email = snap.data().email || null;
+  try {
+    const oauth2 = nuevoOAuthClient(OAUTH_CLIENT_ID.value(), OAUTH_CLIENT_SECRET.value());
+    oauth2.setCredentials({ refresh_token: snap.data().refreshToken });
+    await google.drive({ version: "v3", auth: oauth2 }).about.get({ fields: "user(emailAddress)" });
+    return { conectado: true, email };
+  } catch (e) {
+    const txt = String(e?.message || "") + " " + JSON.stringify(e?.response?.data || {});
+    console.error("driveEstado: la prueba de la conexión falló:", txt.slice(0, 300));
+    if (/invalid_grant/.test(txt)) return { conectado: true, vencida: true, email };
+    return { conectado: true, email, problema: "Google Drive no respondió bien: " + (e?.message || "error desconocido") };
+  }
 });
 
 /** Desconecta el Drive de la empresa. */

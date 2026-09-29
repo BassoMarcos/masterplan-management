@@ -499,7 +499,7 @@ export default function Biblioteca({ general = false }) {
         <div style={{ ...st.aviso, ...(aviso.tipo === "error" ? st.avisoError : {}) }} role="status">
           <span>{aviso.texto}</span>
           {aviso.tipo === "error" && aviso.code === "failed-precondition" && esAdminApp && (
-            <button type="button" style={st.btnPri} onClick={() => navigate("/configuracion/drive")}>Conectar Drive</button>
+            <button type="button" style={st.btnPri} onClick={() => navigate("/configuracion/drive")}>🔄 Reconectar Drive</button>
           )}
           {aviso.tipo === "error" && <button type="button" style={st.limpiar} onClick={() => setAviso(null)} aria-label="Cerrar">✕</button>}
         </div>
