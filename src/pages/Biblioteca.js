@@ -12,13 +12,17 @@ import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
-import { bib, subirABiblioteca, traerArchivo, descargarArchivo, tipoVista, iconoArchivo, tamanoLegible, fechaCorta, MAX_MB } from "../utils/biblioteca";
+import { bib, subirABiblioteca, traerArchivo, descargarArchivo, tipoVista, iconoArchivo, tamanoLegible, fechaCorta, MAX_MB, hacerMiniatura } from "../utils/biblioteca";
 
 const TIPO_INTERNO = "application/x-mp-biblioteca"; // lo que se arrastra DENTRO de la biblioteca (mover)
 const tiposDe = (e) => Array.from((e.dataTransfer && e.dataTransfer.types) || []);
 const esInterno = (e) => tiposDe(e).includes(TIPO_INTERNO);
 const esDeLaCompu = (e) => tiposDe(e).includes("Files");
 const porNombre = (a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" });
+// Se traen solos (al pasar el mouse / el anterior y el siguiente): los que se muestran tal cual, sin convertir.
+const rapidoDeTraer = (mime) => ["imagen", "pdf", "texto"].includes(tipoVista(mime));
+// Los que pueden tener miniatura (fotos, PDF, documentos, videos).
+const conMiniatura = (mime) => ["imagen", "pdf", "documento", "video"].includes(tipoVista(mime));
 
 // Lo que se suelta desde la compu: archivos sueltos o carpetas enteras (con lo de adentro).
 // Devuelve [{ file, ruta: ["Carpeta", "Sub"] }]; file null = carpeta vacía (igual se crea).
@@ -210,25 +214,91 @@ export default function Biblioteca({ general = false }) {
   }
 
   // ── Vista previa ──
+  // Lo que ya se trajo (al abrirlo, al pasar el mouse o al armar la miniatura) queda guardado mientras
+  // estás en la biblioteca: volver a abrirlo o pasar con las flechas es instantáneo.
+  const traidos = useRef(new Map()); // id → Promise<{ blob, url, texto }>
+  useEffect(() => {
+    const mapa = traidos.current;
+    return () => { mapa.forEach(p => p.then(r => r.url && URL.revokeObjectURL(r.url)).catch(() => {})); mapa.clear(); };
+  }, []);
+  const traer = useCallback((archivo) => {
+    const ya = traidos.current.get(archivo.id);
+    if (ya) return ya;
+    const tv = tipoVista(archivo.mime);
+    const p = traerArchivo(archivo.id, "ver").then(async ({ blob }) => ({
+      blob,
+      texto: tv === "texto" ? (await blob.text()).slice(0, 200000) : null,
+      url: tv === "texto" ? null : URL.createObjectURL(blob),
+    }));
+    p.catch(() => traidos.current.delete(archivo.id)); // si falló, la próxima vez se reintenta
+    traidos.current.set(archivo.id, p);
+    if (traidos.current.size > 40) { // no guardar más de 40: se sueltan los más viejos
+      const [viejo, pv] = traidos.current.entries().next().value;
+      traidos.current.delete(viejo);
+      pv.then(r => r.url && URL.revokeObjectURL(r.url)).catch(() => {});
+    }
+    return p;
+  }, []);
   const abrirVista = useCallback(async (archivo, lista) => {
     vistaActual.current = archivo.id;
     const tv = tipoVista(archivo.mime);
-    setVista({ archivo, lista: lista || [], tv, cargando: !!tv });
+    const l = lista || [];
+    setVista({ archivo, lista: l, tv, cargando: !!tv });
     if (!tv) return;
     try {
-      const { blob } = await traerArchivo(archivo.id, "ver");
+      const r = await traer(archivo);
       if (vistaActual.current !== archivo.id) return;
-      const texto = tv === "texto" ? (await blob.text()).slice(0, 200000) : null;
-      const url = tv === "texto" ? null : URL.createObjectURL(blob);
-      if (vistaActual.current !== archivo.id) { if (url) URL.revokeObjectURL(url); return; }
-      setVista({ archivo, lista: lista || [], tv, cargando: false, url, texto });
+      setVista({ archivo, lista: l, tv, cargando: false, url: r.url, texto: r.texto });
+      // Ya se van trayendo el siguiente y el anterior, para pasar con las flechas sin esperar.
+      const i = l.findIndex(a => a.id === archivo.id);
+      [l[i + 1], l[i - 1]].forEach(x => { if (x && rapidoDeTraer(x.mime)) traer(x).catch(() => {}); });
     } catch (e) {
-      if (vistaActual.current === archivo.id) setVista({ archivo, lista: lista || [], tv, cargando: false, error: e.message });
+      if (vistaActual.current === archivo.id) setVista({ archivo, lista: l, tv, cargando: false, error: e.message });
     }
-  }, []);
+  }, [traer]);
   const cerrarVista = useCallback(() => { vistaActual.current = null; setVista(null); }, []);
-  const urlVista = vista ? vista.url : null;
-  useEffect(() => () => { if (urlVista) URL.revokeObjectURL(urlVista); }, [urlVista]);
+  // Al pasar el mouse por una foto o PDF se empieza a traer: cuando hacés clic ya está (o casi).
+  const precargaTimer = useRef(null);
+  const precargar = (archivo) => {
+    clearTimeout(precargaTimer.current);
+    if (!rapidoDeTraer(archivo.mime)) return;
+    precargaTimer.current = setTimeout(() => { traer(archivo).catch(() => {}); }, 150);
+  };
+
+  // ── Miniaturas ──
+  // Las que faltan se piden al servidor (las saca del Drive). Las fotos que igual no tengan, las arma
+  // la app bajándolas una vez; quedan guardadas para todos y además listas para abrirlas al toque.
+  const intentadas = useRef(new Set());
+  const carpetaActual = useRef("");
+  useEffect(() => { carpetaActual.current = alcance + "|" + (carpetaId || ""); }, [alcance, carpetaId]);
+  const archivosCargados = datos ? datos.archivos : null;
+  useEffect(() => {
+    if (!archivosCargados) return;
+    const faltan = archivosCargados.filter(a => !a.miniatura && !intentadas.current.has(a.id) && conMiniatura(a.mime));
+    if (!faltan.length) return;
+    faltan.forEach(a => intentadas.current.add(a.id));
+    const aca = alcance + "|" + (carpetaId || "");
+    const poner = (m) => setDatos(d => (d ? { ...d, archivos: d.archivos.map(a => (m[a.id] ? { ...a, miniatura: m[a.id] } : a)) } : d));
+    (async () => {
+      let delServidor = {};
+      const ids = faltan.filter(a => !a.sinMiniatura).map(a => a.id).slice(0, 24);
+      if (ids.length) {
+        try { delServidor = (await bib("miniaturas", { alcance, ids })).miniaturas || {}; } catch (e) { delServidor = {}; }
+        if (Object.keys(delServidor).length) poner(delServidor);
+      }
+      const fotos = faltan.filter(a => !delServidor[a.id] && /^image\/(jpeg|png|webp|gif|bmp)$/i.test(a.mime || "")).slice(0, 30);
+      for (const a of fotos) {
+        if (carpetaActual.current !== aca) return; // se fue a otra carpeta
+        try {
+          const { blob } = await traer(a);
+          const m = await hacerMiniatura(blob);
+          if (!m) continue;
+          poner({ [a.id]: m });
+          bib("guardarMiniatura", { alcance, id: a.id, miniatura: m }).catch(() => {});
+        } catch (e) { /* queda el ícono */ }
+      }
+    })();
+  }, [archivosCargados, alcance, carpetaId, traer]);
   useEffect(() => {
     if (!vista) return undefined;
     const tecla = (e) => {
@@ -335,11 +405,12 @@ export default function Biblioteca({ general = false }) {
       onContextMenu: (e) => abrirMenu(e, tipo, item),
       title: item.nombre,
       "data-item": item.nombre,
-      ...(esCarpeta ? destino(item.id, item.id) : {}),
+      ...(esCarpeta ? destino(item.id, item.id) : { onMouseEnter: () => precargar(item), onMouseLeave: () => clearTimeout(precargaTimer.current) }),
     };
     const icono = esCarpeta ? "📁" : iconoArchivo(item.mime, item.nombre);
+    const mini = !esCarpeta && item.miniatura ? item.miniatura : null;
     const botonMenu = (
-      <button type="button" aria-label="Opciones" style={modoLista ? { ...st.masBtn, position: "static", flexShrink: 0, width: 30 } : st.masBtn} onClick={(e) => abrirMenu(e, tipo, item)}>⋯</button>
+      <button type="button" aria-label="Opciones" style={modoLista ? { ...st.masBtn, position: "static", flexShrink: 0, width: 30 } : mini ? { ...st.masBtn, ...st.masBtnSobreFoto } : st.masBtn} onClick={(e) => abrirMenu(e, tipo, item)}>⋯</button>
     );
     const meta = esCarpeta
       ? (detalle || "Carpeta")
@@ -347,7 +418,7 @@ export default function Biblioteca({ general = false }) {
     if (modoLista) {
       return (
         <div key={clave} {...comun} style={{ ...st.fila, ...(resaltado ? st.resaltado : {}) }}>
-          <span style={st.filaIcono}>{icono}</span>
+          <span style={st.filaIcono}>{mini ? <img src={mini} alt="" draggable={false} style={st.filaMini} /> : icono}</span>
           <span style={st.filaNombre}>{item.nombre}{item.restringida && <span title="Solo la ven algunas personas"> 🔒</span>}</span>
           <span style={st.filaMeta}>{esCarpeta ? (detalle || "Carpeta") : (item.subidoPorNombre || "")}</span>
           <span style={st.filaMeta}>{esCarpeta ? "" : fechaCorta(item.creadoEn)}</span>
@@ -359,7 +430,9 @@ export default function Biblioteca({ general = false }) {
     return (
       <div key={clave} {...comun} style={{ ...st.tarjeta, ...(resaltado ? st.resaltado : {}) }}>
         {botonMenu}
-        <div style={st.tarjetaIcono}>{icono}{item.restringida && <span style={st.candado} title="Solo la ven algunas personas">🔒</span>}</div>
+        {mini
+          ? <div style={st.miniCaja}><img src={mini} alt="" draggable={false} style={st.miniImg} /></div>
+          : <div style={st.tarjetaIcono}>{icono}{item.restringida && <span style={st.candado} title="Solo la ven algunas personas">🔒</span>}</div>}
         <div style={st.tarjetaNombre}>{item.nombre}</div>
         <div style={st.tarjetaMeta}>{meta}</div>
       </div>
@@ -545,6 +618,10 @@ function VistaPrevia({ vista, onCerrar, onDescargar, onIr }) {
   const sig = i >= 0 && i < lista.length - 1 ? lista[i + 1] : null;
   let cuerpo;
   if (!tv) cuerpo = <div style={st.vistaMensaje}><div style={{ fontSize: 56 }}>{iconoArchivo(archivo.mime, archivo.nombre)}</div><p>Este tipo de archivo no tiene vista previa.</p><button type="button" style={st.btnPri} onClick={onDescargar}>⬇️ Descargar</button></div>;
+  else if (cargando && tv === "imagen" && archivo.miniatura) {
+    // Mientras llega la foto entera, se muestra la miniatura agrandada (se ve algo al instante).
+    cuerpo = <div style={st.vistaEspera}><img src={archivo.miniatura} alt={archivo.nombre} style={{ ...st.vistaImagen, filter: "blur(1.5px)", width: "min(100%, 720px)" }} /><span style={st.vistaCargando}>Cargando…</span></div>;
+  }
   else if (cargando) cuerpo = <div style={st.vistaMensaje}><p>{tv === "documento" ? "Preparando la vista previa… (la primera vez puede tardar unos segundos)" : "Cargando…"}</p></div>;
   else if (error) cuerpo = <div style={st.vistaMensaje}><div style={{ fontSize: 42 }}>⚠️</div><p>{error}</p><button type="button" style={st.btnPri} onClick={onDescargar}>⬇️ Probar descargarlo</button></div>;
   else if (tv === "imagen") cuerpo = <img src={url} alt={archivo.nombre} style={st.vistaImagen} />;
@@ -797,6 +874,12 @@ const st = {
   fila: { position: "relative", display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderBottom: "1px solid var(--border)", cursor: "pointer", userSelect: "none" },
   filaTitulos: { display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderBottom: "1.5px solid var(--border)", fontSize: 11, fontWeight: 700, color: "var(--text2)", textTransform: "uppercase", letterSpacing: 0.4, background: "var(--nav)" },
   filaIcono: { width: 26, fontSize: 20, textAlign: "center", flexShrink: 0 },
+  vistaEspera: { position: "relative", display: "flex", alignItems: "center", justifyContent: "center", width: "100%", height: "100%" },
+  vistaCargando: { position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.6)", color: "#fff", padding: "4px 12px", borderRadius: 20, fontSize: 13 },
+  masBtnSobreFoto: { background: "rgba(0,0,0,0.5)", color: "#fff", zIndex: 1, top: 6, right: 6 },
+  filaMini: { width: 26, height: 26, objectFit: "cover", borderRadius: 4, verticalAlign: "middle", display: "inline-block" },
+  miniCaja: { height: 96, margin: "-6px 0 8px", borderRadius: 8, overflow: "hidden", background: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center" },
+  miniImg: { width: "100%", height: "100%", objectFit: "contain", display: "block" },
   filaNombre: { flex: 1, minWidth: 0, fontSize: 14, color: "var(--text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
   filaMeta: { width: 130, fontSize: 12, color: "var(--text2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flexShrink: 0 },
   menu: { position: "fixed", zIndex: 50, background: "var(--card)", border: "1.5px solid var(--border)", borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.3)", padding: 6, minWidth: 210 },

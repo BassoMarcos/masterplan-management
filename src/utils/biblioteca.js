@@ -57,8 +57,61 @@ export async function subirABiblioteca(alcance, carpetaId, file, origen) {
   if (file.size > MAX_MB * 1024 * 1024) {
     throw new Error(`"${file.name}" pesa más de ${MAX_MB} MB. Por ahora se pueden subir archivos de hasta ${MAX_MB} MB.`);
   }
-  const base64 = await leerBase64(file);
-  return bib("subir", { alcance, carpetaId: carpetaId || null, nombre: file.name, mime: file.type || "", base64, origen });
+  const [base64, miniatura] = await Promise.all([leerBase64(file), hacerMiniatura(file).catch(() => null)]);
+  return bib("subir", { alcance, carpetaId: carpetaId || null, nombre: file.name, mime: file.type || "", base64, origen, miniatura });
+}
+
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+function cargarImagen(blob) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("imagen")); };
+    img.src = url;
+  });
+}
+
+/**
+ * Miniatura de una foto (≈220 px) para ver las fotos de un vistazo sin bajarlas enteras.
+ * Devuelve una imagen como texto ("data:image/...") o null si no se puede.
+ * Con transparencia (logos PNG) usa WebP para no perderla; si el navegador no puede, JPEG con fondo blanco.
+ */
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+export async function hacerMiniatura(blob, lado = 220) {
+  const tipo = String((blob && blob.type) || "").toLowerCase();
+  if (!/^image\/(jpeg|png|webp|gif|bmp)$/.test(tipo)) return null;
+  let fuente;
+  try {
+    // Nunca más de 5 segundos: la miniatura no puede trabar una subida.
+    const decodificar = typeof createImageBitmap === "function" ? createImageBitmap(blob) : cargarImagen(blob);
+    fuente = await Promise.race([decodificar, new Promise((_, rej) => setTimeout(() => rej(new Error("tarde")), 5000))]);
+  } catch (e) {
+    return null;
+  }
+  const w = fuente.width, h = fuente.height;
+  if (!w || !h) return null;
+  const k = Math.min(1, lado / Math.max(w, h));
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(w * k));
+  c.height = Math.max(1, Math.round(h * k));
+  const ctx = c.getContext("2d");
+  if (!ctx) return null;
+  const conTransparencia = tipo !== "image/jpeg";
+  let url = null;
+  if (conTransparencia) {
+    ctx.drawImage(fuente, 0, 0, c.width, c.height);
+    url = c.toDataURL("image/webp", 0.8);
+    if (!url.startsWith("data:image/webp")) url = null; // el navegador no sabe hacer WebP
+  }
+  if (!url) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(fuente, 0, 0, c.width, c.height);
+    url = c.toDataURL("image/jpeg", 0.75);
+  }
+  if (typeof fuente.close === "function") fuente.close();
+  return url.length <= 85000 && /^data:image\/(jpeg|webp);base64,/.test(url) ? url : null;
 }
 
 /** Guarda un archivo en la biblioteca, en la carpeta indicada por nombres (la crea si no existe). */

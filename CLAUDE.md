@@ -55,6 +55,7 @@
 - Servidor: `functions/biblioteca/` → función `biblioteca` (listar, crearCarpeta, subir, renombrar, mover, eliminar, restaurar, papelera, arbol, buscar, acceso, personas, asegurarRuta) y `bibArchivo` (ver/bajar con el token de la sesión; Word/Excel/PowerPoint se muestran como PDF con una copia en "Vistas previas (no tocar)"). Los archivos ya NO son públicos por link.
 - Permisos: dueño y acceso total = todo. Empleados: general → `permisos.bibliotecaGeneral` (Empleados → 📚); proyecto → panel Legales "documentacion". Cada carpeta puede ser "solo estas personas" (lo de adentro hereda).
 - **Todo lo que otra parte de MasterPlan suba tiene que ir por `guardarEnBiblioteca` (`utils/biblioteca.js`)**, así aparece siempre en la Biblioteca. `subirArchivo` de `utils/drive.js` es viejo (no aparece en la Biblioteca).
+- Miniaturas (2026-09-29): se guardan en la lista (`miniatura`, imagen chica como texto). Las fotos la traen al subirlas (`hacerMiniatura`); lo viejo, PDF y documentos se la piden a Drive (`miniaturas`); si Drive no la da, la app la arma bajando la foto una vez (`guardarMiniatura`). La pantalla guarda lo ya abierto y trae las fotos al pasar el mouse (y la siguiente/anterior en la vista previa). El servidor usa `@googleapis/drive` (no `googleapis`: tardaba 5 veces más en arrancar) y deja abierta la conexión con el Drive entre pedidos.
 - Límite: 7 MB por archivo subiendo desde la app. Papelera: Google la vacía a los 30 días. Pendiente: "Agregar desde Drive" (Google Picker) para traer archivos que ya estaban en el Drive.
 
 ## Reglas de Firestore

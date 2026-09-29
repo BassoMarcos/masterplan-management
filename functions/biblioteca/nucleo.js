@@ -88,7 +88,13 @@ const publicaCarpeta = (c, admin) => ({
 const publicaArchivo = (a) => ({
   id: a.id, nombre: a.nombre, carpetaId: a.carpetaId || null, mime: a.mime || "application/octet-stream",
   tamano: a.tamano || 0, subidoPorNombre: a.subidoPorNombre || "", creadoEn: a.creadoEn || null, origen: a.origen || "masterplan",
+  miniatura: a.miniatura || null, sinMiniatura: !!a.sinMiniatura,
 });
+
+// Miniatura = imagen chiquita (≈200 px) guardada como texto en la lista, para ver las fotos de un vistazo
+// sin bajar el archivo entero. Solo se aceptan imágenes JPEG/PNG/WebP y de poco peso.
+const MAX_MINIATURA = 90000;
+const miniaturaValida = (m) => typeof m === "string" && m.length <= MAX_MINIATURA && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+/=]+$/.test(m);
 
 // ── Operaciones ──
 
@@ -126,7 +132,7 @@ async function crearCarpeta(deps, uid, { alcance, padreId, nombre }) {
 }
 
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
-async function subir(deps, uid, { alcance, carpetaId, nombre, mime, base64, origen }) {
+async function subir(deps, uid, { alcance, carpetaId, nombre, mime, base64, origen, miniatura }) {
   const e = await entrar(deps, uid, alcance, { necesita: "editar" });
   const n = limpiarNombre(nombre);
   if (typeof base64 !== "string" || !base64) throw error("invalid-argument", "Falta el archivo.");
@@ -140,8 +146,52 @@ async function subir(deps, uid, { alcance, carpetaId, nombre, mime, base64, orig
     empresaId: e.ctx.empresaId, alcance, carpetaId: carpetaId || null, nombre: n, mime: tipo, tamano: buffer.length,
     driveId: r.driveId, subidoPor: uid, subidoPorNombre: e.ctx.nombre || "", creadoEn: deps.ahora(), eliminado: false,
     origen: origen === "sistema" ? "sistema" : "masterplan",
+    ...(miniaturaValida(miniatura) ? { miniatura } : {}),
   });
   return { id, nombre: n, tamano: buffer.length };
+}
+
+// Miniaturas que faltan (archivos viejos, PDF, documentos): se las pide al Google Drive de la empresa
+// y quedan guardadas para la próxima. Lo que Drive todavía no tiene se reintenta otro día.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+async function miniaturas(deps, uid, { alcance, ids }) {
+  const e = await entrar(deps, uid, alcance);
+  const lista = (Array.isArray(ids) ? ids : []).filter(x => typeof x === "string").slice(0, 24);
+  const out = {};
+  const hace10min = new Date(new Date(deps.ahora()).getTime() - 10 * 60 * 1000).toISOString();
+  await Promise.all(lista.map(async (id) => {
+    let item;
+    try { ({ item } = await elemento(deps, e, "archivo", id)); } catch (x) { return; }
+    if (item.miniatura) { out[id] = item.miniatura; return; }
+    if (item.sinMiniatura) return;
+    try {
+      const r = await deps.drive.miniatura(e.ctx.empresaId, item.driveId, 220);
+      if (r && r.buffer && r.buffer.length) {
+        const m = `data:${/png/.test(r.mime) ? "image/png" : /webp/.test(r.mime) ? "image/webp" : "image/jpeg"};base64,${r.buffer.toString("base64")}`;
+        if (miniaturaValida(m)) {
+          await deps.store.actualizarArchivo(id, { miniatura: m });
+          out[id] = m;
+        } else {
+          await deps.store.actualizarArchivo(id, { sinMiniatura: true }); // demasiado pesada: queda el ícono
+        }
+        return;
+      }
+      // Drive no tiene miniatura (tipo sin vista, o todavía no la generó): no insistir si ya pasó un rato.
+      if (!r && String(item.creadoEn || "") < hace10min) await deps.store.actualizarArchivo(id, { sinMiniatura: true });
+    } catch (x) { /* sin miniatura: queda el ícono */ }
+  }));
+  return { miniaturas: out };
+}
+
+// La app armó la miniatura de una foto (bajándola una vez) y la deja guardada para todos.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+async function guardarMiniatura(deps, uid, { alcance, id, miniatura }) {
+  const e = await entrar(deps, uid, alcance);
+  const { item } = await elemento(deps, e, "archivo", id);
+  if (!miniaturaValida(miniatura)) throw error("invalid-argument", "Miniatura inválida.");
+  if (!String(item.mime || "").startsWith("image/") || item.miniatura) return { ok: true, sinCambios: true };
+  await deps.store.actualizarArchivo(id, { miniatura, sinMiniatura: false });
+  return { ok: true };
 }
 
 // Busca una carpeta o archivo de esta biblioteca que la persona puede tocar.
@@ -328,7 +378,7 @@ async function asegurarRuta(deps, uid, { alcance, ruta, desdeId }) {
   return { carpetaId: padreId };
 }
 
-const ACCIONES = { listar, crearCarpeta, subir, renombrar, mover, eliminar, restaurar, papelera, arbol, buscar, acceso, personas, asegurarRuta };
+const ACCIONES = { listar, crearCarpeta, subir, renombrar, mover, eliminar, restaurar, papelera, arbol, buscar, acceso, personas, asegurarRuta, miniaturas, guardarMiniatura };
 
 module.exports = { ACCIONES, archivoPermitido, entrar, MAX_BYTES, error };
 

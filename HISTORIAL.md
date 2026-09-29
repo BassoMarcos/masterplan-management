@@ -269,6 +269,10 @@
 - Probado: 45 pruebas de reglas en el emulador, 9 del servidor, conector de Drive con un Google de mentira, y 4 recorridos de la pantalla conectada al servidor real (dueño, empleada solo lectura, sin permiso, sin Drive, archivo grande).
 - Pendiente: "Agregar desde Drive" (Google Picker) para archivos que ya estaban en el Drive; archivos de más de 7 MB.
 
+## 2026-09-29 — Biblioteca: miniaturas y más rápida
+- Marcos conectó su Drive (se había vencido: Google corta la conexión a los 7 días mientras la app está "en prueba"; ahora ⚙️ Configuración → Google Drive avisa y deja reconectar).
+- Pidió ver las fotos de un vistazo y que abran más rápido: miniaturas en las tarjetas (y en la lista), la foto se empieza a traer al pasar el mouse, lo ya abierto queda guardado, la vista previa muestra la miniatura mientras llega la foto entera. Servidor: arranca más rápido (@googleapis/drive) y reusa la conexión con Drive.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### App de Administración
