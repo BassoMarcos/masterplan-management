@@ -3,7 +3,7 @@
 // carpetas enteras), arrastrar para mover, cambiar nombre, papelera y quién ve cada carpeta.
 // Una sola pantalla para las dos bibliotecas:
 //   /biblioteca/:carpetaId?                                  → la general de la empresa
-//   /proyecto/:proyectoId/legales/documentacion/:carpetaId?  → la de cada proyecto
+//   /proyecto/:proyectoId/biblioteca/:carpetaId?             → la de cada proyecto (para todas las áreas)
 // Los archivos están en el Google Drive de CADA EMPRESA; el servidor revisa quién ve qué (utils/biblioteca.js).
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -63,7 +63,7 @@ export default function Biblioteca({ general = false }) {
   const navigate = useNavigate();
   const { empresaData, empleadoData, esEmpleado } = useAuth();
   const alcance = general ? "empresa" : `p:${proyectoId}`;
-  const base = general ? "/biblioteca" : `/proyecto/${proyectoId}/legales/documentacion`;
+  const base = general ? "/biblioteca" : `/proyecto/${proyectoId}/biblioteca`;
   const esAdminApp = !esEmpleado || !!empleadoData?.accesoTotal;
 
   const [datos, setDatos] = useState(null);
@@ -384,9 +384,9 @@ export default function Biblioteca({ general = false }) {
   }
 
   // ── Pantalla ──
-  const titulo = general ? "Biblioteca de la empresa" : "Biblioteca de documentos";
+  const titulo = general ? "Biblioteca de la empresa" : "Biblioteca del proyecto";
   const sub = general ? (empresaData?.nombre || empleadoData?.empresaNombre || "") : nombreProyecto;
-  const volver = () => navigate(general ? "/proyectos" : `/proyecto/${proyectoId}/legales`);
+  const volver = () => navigate(general ? "/proyectos" : `/proyecto/${proyectoId}`);
   const ruta = datos?.ruta || [];
   const buscando = busqueda.trim().length >= 2;
   const carpetas = datos?.carpetas || [];
@@ -446,7 +446,7 @@ export default function Biblioteca({ general = false }) {
       <header style={st.header}>
         <div style={st.headerIzq}>
           <button style={st.btnSec} onClick={volver}>← Volver</button>
-          <span style={{ fontSize: 26 }}>{general ? "📚" : "🗂️"}</span>
+          <span style={{ fontSize: 26 }}>📚</span>
           <div>
             <h1 style={st.titulo}>{titulo}</h1>
             <p style={st.sub}>{sub}{datos?.nivel === "ver" && <span style={st.soloVer}>👁️ Solo lectura</span>}</p>

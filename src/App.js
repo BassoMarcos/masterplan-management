@@ -99,6 +99,13 @@ function IrAConfiguracion({ area, seccion }) {
   return <Navigate to={`/proyecto/${proyectoId}/${area}/configuracion/${seccion}`} replace />;
 }
 
+// La biblioteca del proyecto estaba en Legales: los links viejos llevan a la nueva (2026-09-29).
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+function IrABibliotecaProyecto() {
+  const { proyectoId, carpetaId } = useParams();
+  return <Navigate to={`/proyecto/${proyectoId}/biblioteca${carpetaId ? "/" + carpetaId : ""}`} replace />;
+}
+
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function SeccionPlaceholder() {
   const { proyectoId, pilarId, seccionId } = useParams();
@@ -191,7 +198,8 @@ function AppRoutes() {
       <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/desarrollos/lotes" element={<PrivateRoute><DesarrollosLotes /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/desarrollos/:seccionId" element={<PrivateRoute><DesarrollosSecciones /></PrivateRoute>} />
-      <Route path="/proyecto/:proyectoId/legales/documentacion/:carpetaId?" element={<PrivateRoute><Biblioteca key="proyecto" /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/biblioteca/:carpetaId?" element={<PrivateRoute><Biblioteca key="proyecto" /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/legales/documentacion/:carpetaId?" element={<IrABibliotecaProyecto />} />
       <Route path="/proyecto/:proyectoId/:pilarId/:seccionId" element={<PrivateRoute><SeccionPlaceholder /></PrivateRoute>} />
       <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
       <Route path="/superadmin/mapa" element={<SuperAdminRoute><Suspense fallback={<CargandoPage />}><MapaArquitectura /></Suspense></SuperAdminRoute>} />

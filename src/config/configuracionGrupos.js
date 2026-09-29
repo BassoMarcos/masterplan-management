@@ -56,7 +56,6 @@ export const LO_QUE_VIENE = {
     "Escribanías, cuánto cobran y quién paga",
     "Mora legal: carta documento y rescisión (se sincroniza con Administración)",
     "Firma en persona o digital",
-    "Biblioteca de documentos con carpetas",
   ],
   empresa: [
     "Logo, colores, teléfono y mail de la empresa",

@@ -3,7 +3,9 @@
 //
 // Dos bibliotecas:
 //   alcance "empresa"      → la general de la empresa. Permiso del empleado: permisos.bibliotecaGeneral.
-//   alcance "p:<proyecto>" → la de cada proyecto (Legales → Biblioteca de documentos, panel "documentacion").
+//   alcance "p:<proyecto>" → la de cada proyecto (📚 en la pantalla del proyecto, para todas las áreas).
+//                            Permiso: permisos.proyectos[<proyecto>]._biblioteca. Si nunca se guardó, vale
+//                            el viejo (Legales → panel "documentacion"), así nadie pierde el acceso que tenía.
 // Niveles: "ninguno" | "ver" | "editar". Dueño de la empresa y empleados con acceso total: "editar" + admin.
 // Dentro, cada carpeta puede estar RESTRINGIDA a ciertas personas: la ven ellas (y los admin) y todo lo
 // que tiene adentro. Si una carpeta de más arriba está restringida y la persona no está, no ve nada de abajo.
@@ -50,7 +52,10 @@ function nivelEnBiblioteca(ctx, alcance, proyecto) {
   const m = /^p:(.+)$/.exec(String(alcance || ""));
   if (!m || !proyecto || proyecto.empresaId !== ctx.empresaId) return { nivel: "ninguno", admin: false };
   if (admin) return { nivel: "editar", admin };
-  if (!panelActivo(proyecto, "legales", "documentacion")) return { nivel: "ninguno", admin };
+  // (2026-09-29) La biblioteca del proyecto ya no depende de Legales (ni de que esté prendida).
+  const guardado = ctx.empleado && ctx.empleado.permisos && ctx.empleado.permisos.proyectos
+    && ctx.empleado.permisos.proyectos[m[1]] && ctx.empleado.permisos.proyectos[m[1]]._biblioteca;
+  if (typeof guardado === "string") return { nivel: RANGO[guardado] ? guardado : "ninguno", admin };
   return { nivel: nivelPanelEmpleado(ctx.empleado, m[1], "legales", "documentacion"), admin };
 }
 

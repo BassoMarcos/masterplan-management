@@ -6,7 +6,7 @@
 //
 // Dos bibliotecas:
 //   "empresa"        → la general de la empresa (📚 en Mis Proyectos)
-//   "p:<proyectoId>" → la de cada proyecto (Legales → Biblioteca de documentos)
+//   "p:<proyectoId>" → la de cada proyecto (📚 en la pantalla del proyecto, para todas las áreas)
 //
 // Para que algo que se sube desde OTRA parte de MasterPlan aparezca en la biblioteca,
 // usar guardarEnBiblioteca({ alcance, ruta: ["Comercial", "Reservas"], archivo }).
