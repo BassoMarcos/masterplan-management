@@ -1,7 +1,12 @@
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 // BIBLIOTECA — conexión real con Firestore (índice y permisos) y con el Drive de cada empresa.
-const { google } = require("googleapis");
+const { drive: driveApi } = require("@googleapis/drive"); // solo Drive: carga mucho más rápido que "googleapis"
 const { Readable } = require("stream");
+
+// Conexiones con el Drive de cada empresa que quedan abiertas entre pedidos (mientras el servidor
+// esté despierto): así no hay que pedirle a Google una llave nueva en cada foto que se abre.
+const CONEXIONES = new Map(); // empresaId → { refreshToken, drive, auth, leidaEn }
+const RELEER_MS = 5 * 60 * 1000;
 
 const CARPETA = "application/vnd.google-apps.folder";
 
@@ -50,23 +55,26 @@ function crearStore(db) {
 // Drive de la empresa, con la llave guardada al conectar (drive_conexiones/{empresaId}).
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function crearDrive(db, nuevoOAuthClient) {
-  const clientes = new Map();
   async function cliente(empresaId) {
-    if (clientes.has(empresaId)) return clientes.get(empresaId);
+    const ya = CONEXIONES.get(empresaId);
+    if (ya && Date.now() - ya.leidaEn < RELEER_MS) return ya;
     const snap = await db.collection("drive_conexiones").doc(empresaId).get();
-    if (!snap.exists) { const e = new Error("La empresa no tiene el Google Drive conectado. Conectalo en ⚙️ Configuración → Empresa → Google Drive."); e.code = "failed-precondition"; throw e; }
-    const oauth2 = nuevoOAuthClient();
-    oauth2.setCredentials({ refresh_token: snap.data().refreshToken });
-    const d = google.drive({ version: "v3", auth: oauth2 });
-    clientes.set(empresaId, d);
-    return d;
+    if (!snap.exists) { CONEXIONES.delete(empresaId); const e = new Error("La empresa no tiene el Google Drive conectado. Conectalo en ⚙️ Configuración → Empresa → Google Drive."); e.code = "failed-precondition"; throw e; }
+    const refreshToken = snap.data().refreshToken;
+    if (ya && ya.refreshToken === refreshToken) { ya.leidaEn = Date.now(); return ya; }
+    const auth = nuevoOAuthClient();
+    auth.setCredentials({ refresh_token: refreshToken });
+    const c = { refreshToken, auth, drive: driveApi({ version: "v3", auth }), leidaEn: Date.now() };
+    CONEXIONES.set(empresaId, c);
+    return c;
   }
   // Traduce los errores de Google a algo que se entienda.
   const conDrive = async (empresaId, fn) => {
-    try { return await fn(await cliente(empresaId)); }
+    try { const c = await cliente(empresaId); return await fn(c.drive, c.auth); }
     catch (e) {
       if (e && e.code === "failed-precondition") throw e;
       const txt = String((e && e.message) || "") + " " + JSON.stringify((e && e.response && e.response.data) || {});
+      if (/invalid_grant/.test(txt)) CONEXIONES.delete(empresaId); // la próxima vez relee la conexión (por si la reconectaron)
       const status = Number((e && (e.status || (e.response && e.response.status))) || e.code || 0);
       if (status === 404 || /File not found/i.test(txt)) {
         const nf = new Error("Ya no está en el Google Drive de la empresa (lo borraron desde el Drive, o pasaron más de 30 días en la papelera).");
@@ -102,11 +110,25 @@ function crearDrive(db, nuevoOAuthClient) {
       await d.files.update({ fileId: driveId, addParents: nuevoPadre, removeParents: viejos, fields: "id" });
     }),
     papelera: (empresaId, driveId, enPapelera) => conDrive(empresaId, d => d.files.update({ fileId: driveId, requestBody: { trashed: !!enPapelera }, fields: "id" })),
-    // Contenido original (stream) + tipo real según Drive.
+    // Contenido original (stream). El tipo ya está guardado en la lista: no se le pregunta a Drive (es más rápido).
     bajar: (empresaId, driveId) => conDrive(empresaId, async d => {
-      const meta = await d.files.get({ fileId: driveId, fields: "mimeType,size,name" });
       const r = await d.files.get({ fileId: driveId, alt: "media" }, { responseType: "stream" });
-      return { stream: r.data, mime: meta.data.mimeType, tamano: Number(meta.data.size || 0) };
+      return { stream: r.data };
+    }),
+    // Miniatura que arma Google Drive (fotos, PDF, documentos, videos). null = Drive no tiene (todavía).
+    miniatura: (empresaId, driveId, tam) => conDrive(empresaId, async (d, auth) => {
+      const f = await d.files.get({ fileId: driveId, fields: "thumbnailLink" });
+      const link = f.data.thumbnailLink;
+      if (!link) return null;
+      try {
+        const r = await auth.request({ url: link.replace(/=s\d+$/, "") + "=s" + (tam || 220), responseType: "arraybuffer" });
+        const h = r.headers || {};
+        const mime = (typeof h.get === "function" ? h.get("content-type") : h["content-type"]) || "image/jpeg";
+        return { buffer: Buffer.from(r.data), mime };
+      } catch (e) {
+        console.warn("miniatura: Drive no entregó la imagen chica", (e && (e.status || (e.response && e.response.status))) || "", String((e && e.message) || "").slice(0, 120));
+        throw e;
+      }
     }),
     exportar: (empresaId, driveId, mime) => conDrive(empresaId, async d => {
       const r = await d.files.export({ fileId: driveId, mimeType: mime }, { responseType: "stream" });

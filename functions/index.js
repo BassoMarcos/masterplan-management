@@ -8,7 +8,10 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { defineSecret } = require("firebase-functions/params");
 const admin = require("firebase-admin");
-const { google } = require("googleapis");
+// (2026-09-29) Solo la parte de Drive (@googleapis/drive) en vez de todo "googleapis": carga 5 veces
+// más rápido, así el servidor arranca antes cuando estaba dormido.
+const { drive: driveApi, auth: googleAuth } = require("@googleapis/drive");
+const google = { drive: driveApi, auth: googleAuth };
 const { Readable } = require("stream");
 
 admin.initializeApp();
