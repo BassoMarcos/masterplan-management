@@ -12,6 +12,7 @@ import AreaSecciones from "./pages/AreaSecciones";
 import DesarrollosSecciones from "./pages/DesarrollosSecciones";
 import DesarrollosLotes from "./pages/DesarrollosLotes";
 import Configuracion from "./pages/Configuracion";
+import Biblioteca from "./pages/Biblioteca";
 import { AREAS_DEFAULT } from "./config/appConfig";
 import AdministracionHub from "./pages/AdministracionHub";
 import AdministracionPanel from "./pages/AdministracionPanel";
@@ -169,6 +170,7 @@ function AppRoutes() {
       <Route path="/empleados" element={<PrivateRoute><Empleados /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId" element={<PrivateRoute><ProyectoPilares /></PrivateRoute>} />
       {/* ⚙️ Configuración: de la empresa, central del proyecto, y la de cada área (misma pantalla, filtrada) */}
+      <Route path="/biblioteca/:carpetaId?" element={<PrivateRoute><Biblioteca key="empresa" general /></PrivateRoute>} />
       <Route path="/configuracion/:seccionId?" element={<PrivateRoute><Configuracion modo="empresa" /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/configuracion/:grupoId?/:seccionId?" element={<PrivateRoute><Configuracion /></PrivateRoute>} />
       {AREAS_DEFAULT.map(a => (
@@ -189,6 +191,7 @@ function AppRoutes() {
       <Route path="/proyecto/:proyectoId/:pilarId" element={<PrivateRoute><AreaSecciones /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/desarrollos/lotes" element={<PrivateRoute><DesarrollosLotes /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/desarrollos/:seccionId" element={<PrivateRoute><DesarrollosSecciones /></PrivateRoute>} />
+      <Route path="/proyecto/:proyectoId/legales/documentacion/:carpetaId?" element={<PrivateRoute><Biblioteca key="proyecto" /></PrivateRoute>} />
       <Route path="/proyecto/:proyectoId/:pilarId/:seccionId" element={<PrivateRoute><SeccionPlaceholder /></PrivateRoute>} />
       <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
       <Route path="/superadmin/mapa" element={<SuperAdminRoute><Suspense fallback={<CargandoPage />}><MapaArquitectura /></Suspense></SuperAdminRoute>} />

@@ -63,12 +63,40 @@ service cloud.firestore {
     match /pizarras/{pizarraId} {
       allow read, write: if request.auth != null && pizarraId.split("_")[0] == request.auth.uid;
     }
+    // (2026-09-29) EMPLEADOS. Antes cualquiera con cuenta podía crearse un perfil "aprobado" con
+    // acceso total en cualquier empresa, o darse permisos solo. Ahora:
+    //  - cada uno crea SOLO su propia solicitud, siempre pendiente y sin permisos;
+    //  - puede tocar sus datos, pero NO su empresa, estado, permisos, acceso total ni legajo;
+    //  - la empresa (y quien tiene acceso total) maneja a sus empleados, pero no puede pasarlos a otra empresa.
+    function mismaEmpresa() {
+      return request.resource.data.empresaId == resource.data.empresaId;
+    }
     match /empleados/{empId} {
-      allow read, write: if request.auth != null && request.auth.uid == empId;
-      allow read, write: if request.auth != null && resource.data.empresaId == request.auth.uid;
-      allow create: if request.auth != null;
-      allow read, write: if esAccesoTotalDe(resource.data.empresaId);
+      allow create: if request.auth != null && request.auth.uid == empId
+        && request.resource.data.estado == "pendiente"
+        && request.resource.data.get("accesoTotal", false) == false
+        && request.resource.data.get("permisos", {}).size() == 0;
+      allow read, delete: if request.auth != null && request.auth.uid == empId;
+      allow update: if request.auth != null && request.auth.uid == empId
+        && !request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(["empresaId", "estado", "permisos", "accesoTotal", "legajo", "aprobadoEn"]);
+      allow read, delete: if request.auth != null && resource.data.empresaId == request.auth.uid;
+      allow update: if request.auth != null && resource.data.empresaId == request.auth.uid && mismaEmpresa();
+      allow read, delete: if esAccesoTotalDe(resource.data.empresaId);
+      allow update: if esAccesoTotalDe(resource.data.empresaId) && mismaEmpresa();
       allow read, write: if request.auth.token.email == "marky.basso98@gmail.com";
+    }
+    // (2026-09-29) BIBLIOTECA DE DOCUMENTOS: los archivos están en el Drive de cada empresa.
+    // La lista y los permisos los maneja SOLO el servidor (funciones "biblioteca" y "bibArchivo"),
+    // que revisa quién puede ver qué. Desde la app no se lee ni se escribe directo.
+    match /biblioteca_carpetas/{id} {
+      allow read, write: if false;
+    }
+    match /biblioteca_archivos/{id} {
+      allow read, write: if false;
+    }
+    match /biblioteca_raices/{id} {
+      allow read, write: if false;
     }
     match /comercial_datos/{docId} {
       allow read, write: if request.auth != null && resource.data.empresaId == request.auth.uid;

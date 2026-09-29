@@ -70,7 +70,9 @@ export async function desconectarDrive() {
   await fnDesconectar();
 }
 
-/** Sube un archivo al Drive de la empresa (pasa por el servidor). */
+/** Sube un archivo al Drive de la empresa (pasa por el servidor).
+ *  VIEJO: lo que se sube así NO aparece en la Biblioteca. Para archivos nuevos usar
+ *  guardarEnBiblioteca (utils/biblioteca.js), así todo queda siempre en la Biblioteca. */
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 export async function subirArchivo(file, subcarpeta = "General") {
   const base64 = await new Promise((resolve, reject) => {

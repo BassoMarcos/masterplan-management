@@ -47,7 +47,9 @@ cuando ocurre algo que le importa a un usuario puntual (campo `paraUid`):
   localmente. CRA trata los warnings de ESLint como errores
   (especialmente `no-unused-vars` y `no-mixed-operators`).
 - **Deploy:** push a `main` → GitHub Actions publica en Firebase Hosting (~2-3 min).
-- **Reglas de Firestore:** se publican MANUALMENTE desde la consola de Firebase.
-  Al cambiarlas, entregar el ruleset COMPLETO para copiar y pegar.
+- **Reglas de Firestore:** la fuente es `firestore.rules`. Se publican SOLAS al llegar a main,
+  después de pasar las pruebas del emulador (`pruebas/reglas/test.mjs`). No editarlas en la consola.
+- **Archivos:** todo archivo que se suba desde MasterPlan va por `guardarEnBiblioteca`
+  (`src/utils/biblioteca.js`): queda en el Google Drive de la empresa y aparece en la Biblioteca.
 - **Acceso total:** un empleado con `accesoTotal: true` tiene los mismos permisos
   que el dueño de la empresa.

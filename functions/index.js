@@ -156,13 +156,8 @@ exports.driveSubir = onCall(
       fields: "id,name,webViewLink",
     });
 
-    // Dejarlo visible por link para poder mostrarlo en la app
-    try {
-      await drive.permissions.create({
-        fileId: archivo.data.id,
-        requestBody: { role: "reader", type: "anyone" },
-      });
-    } catch (e) { /* no es crítico */ }
+    // 2026-09-29: los archivos YA NO se hacen públicos por link. Se ven desde la app, por el servidor,
+    // que revisa permisos (ver biblioteca/). Así nadie de afuera los puede abrir con el link.
 
     return {
       id: archivo.data.id,
@@ -172,3 +167,9 @@ exports.driveSubir = onCall(
     };
   }
 );
+
+// ── Biblioteca de documentos (por proyecto y general de la empresa). Ver biblioteca/index.js ──
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+const _bib = require("./biblioteca").armar({ admin, db, secretos: [OAUTH_CLIENT_ID, OAUTH_CLIENT_SECRET], nuevoOAuthClient });
+exports.biblioteca = _bib.biblioteca;
+exports.bibArchivo = _bib.bibArchivo;

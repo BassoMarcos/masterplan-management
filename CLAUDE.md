@@ -48,11 +48,20 @@
 - **Lotes** (2026-09-26): lista única en `proyectos/{id}/lotes`; se cargan en **Desarrollos → Manzanas y lotes** (`DesarrollosLotes.js` + `components/EditorLotes.js`) o en el asistente del proyecto. Administración solo elige la caja de cada lote. `diffLotes` guarda solo los campos cambiados para que las áreas no se pisen. Qué configura cada área: `ESQUEMA_ADMIN_FYJ.md` §13 (fuera del repo).
 - Mientras fj-app siga en uso, lo nuevo se construye acá y en fj-app solo se hacen arreglos críticos y de seguridad.
 
+## Biblioteca de documentos (2026-09-29)
+
+- Dos bibliotecas con la misma pantalla (`pages/Biblioteca.js`): la **general de la empresa** (📚 en Mis Proyectos, `/biblioteca/:carpetaId?`) y la **de cada proyecto** (Legales → Biblioteca de documentos, `/proyecto/:id/legales/documentacion/:carpetaId?`).
+- **Los archivos están SIEMPRE en el Google Drive de cada empresa** (`MasterPlan/Biblioteca de la empresa` y `MasterPlan/Biblioteca - <proyecto>`). MasterPlan guarda solo la lista y los permisos (`biblioteca_carpetas`, `biblioteca_archivos`, `biblioteca_raices`), que maneja SOLO el servidor: las reglas no dejan leerlas ni escribirlas desde la app.
+- Servidor: `functions/biblioteca/` → función `biblioteca` (listar, crearCarpeta, subir, renombrar, mover, eliminar, restaurar, papelera, arbol, buscar, acceso, personas, asegurarRuta) y `bibArchivo` (ver/bajar con el token de la sesión; Word/Excel/PowerPoint se muestran como PDF con una copia en "Vistas previas (no tocar)"). Los archivos ya NO son públicos por link.
+- Permisos: dueño y acceso total = todo. Empleados: general → `permisos.bibliotecaGeneral` (Empleados → 📚); proyecto → panel Legales "documentacion". Cada carpeta puede ser "solo estas personas" (lo de adentro hereda).
+- **Todo lo que otra parte de MasterPlan suba tiene que ir por `guardarEnBiblioteca` (`utils/biblioteca.js`)**, así aparece siempre en la Biblioteca. `subirArchivo` de `utils/drive.js` es viejo (no aparece en la Biblioteca).
+- Límite: 7 MB por archivo subiendo desde la app. Papelera: Google la vacía a los 30 días. Pendiente: "Agregar desde Drive" (Google Picker) para traer archivos que ya estaban en el Drive.
+
 ## Reglas de Firestore
 
 - La colección **`emails_empresa`** requiere `allow read: if true` para el chequeo de email pre-auth.
-- Las reglas de Firebase se entregan como rulesets completos para pegar en la consola.
 - **Fuente de verdad de las reglas: `firestore.rules` en este repo.** Se publican SOLAS: al cambiar en main, `.github/workflows/deploy-reglas.yml` corre las pruebas del emulador (`pruebas/reglas/test.mjs`) y, si pasan, hace `firebase deploy --only firestore:rules` con la cuenta de servicio `FIREBASE_SERVICE_ACCOUNT_DEPLOY`. **No editar las reglas a mano en la consola** (se pisarían con el próximo deploy). Al cambiarlas: editar el archivo, agregar casos a las pruebas, probar localmente con el emulador.
+- Empleados (2026-09-29): cada uno crea SOLO su solicitud (pendiente, sin permisos); no puede cambiarse empresa/estado/permisos/acceso total; la empresa no puede pasar un empleado a otra empresa. (Antes cualquiera podía crearse "aprobado" con acceso total en cualquier empresa.)
 - Regla general (2026-09-25): `match /proyectos/{proyectoId}/{coleccion}/{resto=**}` → pueden usar TODO lo de adentro de un proyecto el dueño de la empresa, sus empleados aprobados y el SuperAdmin. Cubre lotes, Desarrollos y lo que venga (clientes, contratos, cobros…): no hace falta tocar reglas al agregar colecciones dentro de un proyecto.
 
 ## EmailJS (email de bienvenida al aprobar cuenta)
@@ -68,7 +77,7 @@
 - Resolver los 12 lotes de Etapa 4 mal asignados a Azul (deberían ser Rosa; `calcTrimestrePorCuota` asigna mal el trimestre al cargar).
 - Construir los pilares **Legales** y **Desarrollos y Obras** (todavía no existen).
 - Pilar **Administración** intencionalmente vacío — espera la migración de la App de Administración.
-- **Almacenamiento de archivos**: decidido integrar la cuenta de Google Drive de cada empresa directamente (en vez de Cloudinary o Firebase Storage), para que cada empresa pague su propio storage y conserve sus archivos. Se acepta el mayor tiempo de desarrollo. Setup arranca desde Google Cloud Console.
+- **Almacenamiento de archivos**: los archivos van al Google Drive DE CADA EMPRESA (carpeta "MasterPlan" en su cuenta), así cada una paga su espacio y conserva sus archivos. Ver "Biblioteca de documentos".
 - **Plano de lotes para Comercial**: subir la imagen del plano del loteo, el admin marca cada lote, el vendedor elige el lote clickeándolo al completar la reserva, y el lote queda como reservado/vendido.
 
 ## Cómo trabaja Marcos

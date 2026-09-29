@@ -4,7 +4,8 @@ import { sendPasswordResetEmail } from "firebase/auth";
 import { doc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase/config";
 import { useAuth } from "../context/AuthContext";
-import { conectarDrive, estadoDrive, desconectarDrive, subirArchivo } from "../utils/drive";
+import { conectarDrive, estadoDrive, desconectarDrive } from "../utils/drive";
+import { guardarEnBiblioteca } from "../utils/biblioteca";
 import { s, SeccionTitulo } from "./configUI";
 
 // Piezas de ⚙️ Configuración → Empresa. Valen para TODOS los proyectos de la empresa.
@@ -158,8 +159,9 @@ export function DriveEmpresa() {
                   setSubiendo(true);
                   setPrueba("");
                   try {
-                    const r = await subirArchivo(f, "Pruebas");
-                    setPrueba("✓ Subido a tu Drive: " + r.nombre);
+                    // Va a la Biblioteca de la empresa (carpeta "Pruebas"), así se ve y se puede borrar desde ahí.
+                    const r = await guardarEnBiblioteca({ alcance: "empresa", ruta: ["Pruebas"], archivo: f });
+                    setPrueba("✓ Subido a tu Drive: " + r.nombre + " — lo ves en 📚 Biblioteca → Pruebas");
                   } catch (err) {
                     setPrueba("✗ Error: " + (err?.message || "no se pudo subir"));
                   }
