@@ -123,6 +123,8 @@ export function CodigoEmpresa() {
 export function DriveEmpresa() {
   const { empresaUid } = useAuth();
   const [ok, setOk] = useState(false);
+  const [vencida, setVencida] = useState(false);
+  const [problema, setProblema] = useState("");
   const [email, setEmail] = useState("");
   const [msg, setMsg] = useState("");
   const [prueba, setPrueba] = useState("");
@@ -133,7 +135,9 @@ export function DriveEmpresa() {
     let vivo = true;
     estadoDrive().then(r => {
       if (!vivo) return;
-      setOk(!!r.conectado);
+      setOk(!!r.conectado && !r.vencida);
+      setVencida(!!r.vencida);
+      setProblema(r.problema || "");
       setEmail(r.email || "");
     }).catch(() => {});
     return () => { vivo = false; };
@@ -142,9 +146,15 @@ export function DriveEmpresa() {
   return (
     <div>
       <SeccionTitulo icono="📁" nombre="Google Drive" desc="Conectá el Drive de tu empresa para guardar ahí los planos, boletos y archivos. Los archivos quedan en tu cuenta, no en la nuestra." />
+      {vencida && (
+        <div style={{ color: "var(--red, #dc2626)", fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
+          ⚠️ La conexión con Google Drive se venció{email ? " (" + email + ")" : ""}. Volvé a conectarla: los archivos que ya estaban no se pierden.
+        </div>
+      )}
       {ok ? (
         <>
           <div style={{ color: "var(--green, #16a34a)", fontWeight: 700, fontSize: 14 }}>✓ Drive conectado</div>
+          {problema && <div style={{ ...s.nota, color: "var(--red, #dc2626)", marginTop: 4 }}>{problema}</div>}
           {email && <div style={{ ...s.nota, marginTop: 4 }}>{email}</div>}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 12 }}>
             <label style={{ ...s.btnSec, display: "inline-block" }}>
@@ -180,11 +190,11 @@ export function DriveEmpresa() {
           style={s.btnPri}
           onClick={async () => {
             setMsg("");
-            try { const r = await conectarDrive(); setOk(true); setEmail(r?.email || ""); }
+            try { const r = await conectarDrive(); setOk(true); setVencida(false); setProblema(""); setEmail(r?.email || ""); }
             catch (e) { setMsg("No se pudo conectar: " + e.message); }
           }}
         >
-          🔗 Conectar Google Drive
+          {vencida ? "🔄 Volver a conectar Google Drive" : "🔗 Conectar Google Drive"}
         </button>
       )}
       {msg && <p style={{ ...s.nota, color: "var(--red, #dc2626)" }}>{msg}</p>}
