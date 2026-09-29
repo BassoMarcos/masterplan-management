@@ -261,6 +261,14 @@
 - Se saca `public/mapa.html` (y su rewrite en firebase.json) y el botón de Cuenta. Nueva ruta protegida `/superadmin/mapa` (botón 🧠 en el panel SuperAdmin) que muestra el mapa con los datos ADENTRO (`scripts/generar-mapa.js` arma `src/generado/mapaArquitectura.js` antes de build/start/test; carga aparte, solo al abrirlo).
 - Contexto: Marcos cree que hay competencia armando algo parecido a MasterPlan (no a M2). Pendiente de su ok: pasar el repo a privado (el código y las notas siguen públicos en GitHub).
 
+## 2026-09-29 — MasterPlan: Biblioteca de documentos (en el Drive de cada empresa)
+- Pedido de Marcos: una biblioteca por proyecto (Legales) + una general de la empresa; todo guardado en el Google Drive de cada empresa; que aparezca siempre lo que se sube desde MasterPlan; permisos por biblioteca y por carpeta; vista previa antes de bajar (fotos, PDF, documentos); crear carpetas, cambiar nombre, mover, eliminar — "cualquier cosa tipo compu".
+- Hecho: explorador con camino arriba, íconos o lista, subir archivos o carpetas enteras (botón o arrastrando desde la compu), arrastrar encima de una carpeta para mover, "Mover a…", menú con botón derecho, vista previa con flechas (Word/Excel/PowerPoint como PDF), descargar, papelera con restaurar (Google la vacía a los 30 días), buscar en toda la biblioteca, "Quién la ve" por carpeta. Empleados → permiso 📚 Biblioteca general.
+- Servidor nuevo (`functions/biblioteca/`): el "portero" revisa permisos en cada pedido; los empleados no necesitan cuenta de Drive. Los archivos dejan de ser públicos por link (`driveSubir` ya no los comparte).
+- Seguridad (de paso): se cerró un agujero en las reglas de `empleados` — cualquiera con cuenta podía crearse un perfil aprobado con acceso total en cualquier empresa, o darse permisos solo.
+- Probado: 45 pruebas de reglas en el emulador, 9 del servidor, conector de Drive con un Google de mentira, y 4 recorridos de la pantalla conectada al servidor real (dueño, empleada solo lectura, sin permiso, sin Drive, archivo grande).
+- Pendiente: "Agregar desde Drive" (Google Picker) para archivos que ya estaban en el Drive; archivos de más de 7 MB.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### App de Administración

@@ -150,6 +150,7 @@ export default function Proyectos() {
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <Notificaciones />
           <ThemeSelector />
+          {(esAdminEfectivo || (empleadoData?.permisos?.bibliotecaGeneral || "ninguno") !== "ninguno") && <button style={styles.logoutBtn} onClick={() => navigate("/biblioteca")}>📚 Biblioteca</button>}
           {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => navigate("/empleados")}>👥 Empleados</button>}
           {esAdminEfectivo && <button style={styles.logoutBtn} onClick={() => navigate("/configuracion")}>⚙️ Configuración</button>}
           <button style={styles.logoutBtn} onClick={async () => { await logout(); navigate("/"); }}>Salir</button>

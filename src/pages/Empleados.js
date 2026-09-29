@@ -74,6 +74,8 @@ export default function Empleados() {
         permIni.proyectos[proy.id][a.id] = obj;
       });
     });
+    // Biblioteca general de la empresa (las de cada proyecto van en Legales → Biblioteca de documentos)
+    permIni.bibliotecaGeneral = emp.permisos?.bibliotecaGeneral || "ninguno";
     setPermisos(permIni);
     setAccesoTotal(!!emp.accesoTotal);
   }
@@ -292,6 +294,24 @@ export default function Empleados() {
 
             {!accesoTotal && (
               <div>
+                <div style={styles.permisosTitle}>Biblioteca de la empresa</div>
+                <div style={{ ...styles.proyectoBox, ...styles.permisoRow, borderBottom: "1.5px solid var(--border)" }}>
+                  <div style={styles.permisoArea}>📚 Biblioteca general <span style={styles.todaLabel}>(documentos de la empresa)</span></div>
+                  <div style={styles.nivelesRow}>
+                    {NIVELES.map(n => (
+                      <button
+                        key={n.id}
+                        onClick={() => setPermisos(prev => ({ ...prev, bibliotecaGeneral: n.id }))}
+                        style={{
+                          ...styles.nivelBtn,
+                          ...((permisos.bibliotecaGeneral || "ninguno") === n.id ? { background: n.color, color: "#fff", borderColor: n.color } : {}),
+                        }}
+                      >
+                        {n.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
                 <div style={styles.permisosTitle}>Permisos por proyecto y área</div>
                 {proyectos.length === 0 && <p style={styles.empty}>No hay proyectos creados todavía.</p>}
                 {proyectos.map(proy => {
@@ -382,7 +402,8 @@ export default function Empleados() {
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function resumenPermisos(permisos) {
   const proys = permisos?.proyectos;
-  if (!proys) return "Sin acceso";
+  const bib = permisos?.bibliotecaGeneral && permisos.bibliotecaGeneral !== "ninguno" ? " · 📚 biblioteca" : "";
+  if (!proys) return bib ? "Solo biblioteca" : "Sin acceso";
   const tieneAcceso = (areaObj) => {
     if (!areaObj) return false;
     if (typeof areaObj === "string") return areaObj !== "ninguno"; // formato viejo
@@ -391,8 +412,8 @@ function resumenPermisos(permisos) {
   const conAcceso = Object.values(proys).filter(areas =>
     areas && Object.values(areas).some(tieneAcceso)
   ).length;
-  if (conAcceso === 0) return "Sin acceso a proyectos";
-  return conAcceso + " proyecto" + (conAcceso !== 1 ? "s" : "");
+  if (conAcceso === 0) return "Sin acceso a proyectos" + bib;
+  return conAcceso + " proyecto" + (conAcceso !== 1 ? "s" : "") + bib;
 }
 
 const styles = {
