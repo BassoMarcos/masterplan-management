@@ -278,6 +278,10 @@
 - Ahora es la tarjeta **📚 Biblioteca del proyecto** en la pantalla del proyecto (al lado de las áreas), con su propio permiso por proyecto en Empleados. Quien tenía acceso por Legales lo conserva hasta que se le guarden los permisos de nuevo. No depende de que Legales esté prendida.
 - Marcos va a ajustar después cómo se da el acceso.
 
+## 2026-09-29 — Biblioteca: se entera de lo que se borra en el Drive
+- Marcos borró un archivo directo en el Drive y seguía apareciendo en MasterPlan. Aclarado: el archivo está SOLO en el Drive; MasterPlan guarda la ficha (nombre, tamaño, carpeta, quién lo subió) y la miniatura.
+- Ahora al abrir cada carpeta se revisa el Drive: lo borrado/en papelera sale de la lista (a la papelera de MasterPlan), lo que ya no existe pierde también su miniatura, lo renombrado o movido se actualiza.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### App de Administración
