@@ -40,6 +40,9 @@ function crearStore(db) {
     },
     async crearArchivo(data) { return (await col("biblioteca_archivos").add(data)).id; },
     async actualizarArchivo(id, cambios) { await col("biblioteca_archivos").doc(id).update(cambios); },
+    // Borrar la FICHA de la lista (el archivo en el Drive no se toca).
+    async borrarArchivo(id) { await col("biblioteca_archivos").doc(id).delete(); },
+    async borrarCarpeta(id) { await col("biblioteca_carpetas").doc(id).delete(); },
     async eliminados(empresaId, alcance) {
       const base = (n) => col(n).where("empresaId", "==", empresaId).where("alcance", "==", alcance).where("eliminado", "==", true);
       return { carpetas: await q(base("biblioteca_carpetas")), archivos: await q(base("biblioteca_archivos")) };
@@ -115,6 +118,29 @@ function crearDrive(db, nuevoOAuthClient) {
       const r = await d.files.get({ fileId: driveId, alt: "media" }, { responseType: "stream" });
       return { stream: r.data };
     }),
+    // Lo que hay adentro de una carpeta del Drive (solo lo que creó MasterPlan), incluso lo que está en la papelera.
+    hijos: (empresaId, carpetaDriveId) => conDrive(empresaId, async d => {
+      const out = [];
+      let pageToken;
+      do {
+        const r = await d.files.list({ q: `'${carpetaDriveId}' in parents`, fields: "nextPageToken, files(id,name,trashed)", pageSize: 1000, pageToken });
+        out.push(...(r.data.files || []));
+        pageToken = r.data.nextPageToken;
+      } while (pageToken);
+      return out;
+    }),
+    // Cómo está un archivo o carpeta en el Drive: { existe, trashed, name, parents }.
+    estado: async (empresaId, driveId) => {
+      try {
+        return await conDrive(empresaId, async d => {
+          const r = await d.files.get({ fileId: driveId, fields: "id,name,trashed,parents" });
+          return { existe: true, trashed: !!r.data.trashed, name: r.data.name, parents: r.data.parents || [] };
+        });
+      } catch (e) {
+        if (e && e.code === "not-found") return { existe: false };
+        throw e;
+      }
+    },
     // Miniatura que arma Google Drive (fotos, PDF, documentos, videos). null = Drive no tiene (todavía).
     miniatura: (empresaId, driveId, tam) => conDrive(empresaId, async (d, auth) => {
       const f = await d.files.get({ fileId: driveId, fields: "thumbnailLink" });

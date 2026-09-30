@@ -256,6 +256,7 @@ async function restaurar(deps, uid, { alcance, tipo, id }) {
   const e = await entrar(deps, uid, alcance, { necesita: "editar" });
   const { item, cadena: cad } = await elemento(deps, e, tipo, id, { incluirPapelera: true });
   if (!item.eliminado) return { ok: true, sinCambios: true };
+  if (item.fueraDeDrive) throw error("not-found", "Ya no está en el Google Drive de la empresa (lo borraron para siempre o lo sacaron de la carpeta de la biblioteca).");
   await deps.drive.papelera(e.ctx.empresaId, item.driveId, false);
   // Si la carpeta donde estaba también está en la papelera (o ya no existe), vuelve al inicio de la biblioteca.
   const padreBorrado = tipo === "carpeta" ? cad.slice(1).some(c => c.eliminado) : cad.some(c => c.eliminado);
@@ -268,16 +269,19 @@ async function restaurar(deps, uid, { alcance, tipo, id }) {
   return { ok: true, alInicio: padreBorrado };
 }
 
+// desdeDrive: lo mandaron a la papelera directo en el Drive · fueraDeDrive: ya no está (no se puede recuperar).
+const comoSeElimino = (x) => ({ eliminadoEn: x.eliminadoEn || null, desdeDrive: x.eliminadoPor === "drive", fueraDeDrive: !!x.fueraDeDrive });
+
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 async function papelera(deps, uid, { alcance }) {
   const e = await entrar(deps, uid, alcance, { necesita: "editar" });
   const { carpetas, archivos } = await deps.store.eliminados(e.ctx.empresaId, alcance);
   const visibles = [];
   for (const c of carpetas) {
-    try { await elemento(deps, e, "carpeta", c.id, { incluirPapelera: true }); visibles.push({ tipo: "carpeta", ...publicaCarpeta(c, e.admin), eliminadoEn: c.eliminadoEn || null }); } catch (x) { /* sin acceso */ }
+    try { await elemento(deps, e, "carpeta", c.id, { incluirPapelera: true }); visibles.push({ tipo: "carpeta", ...publicaCarpeta(c, e.admin), ...comoSeElimino(c) }); } catch (x) { /* sin acceso */ }
   }
   for (const a of archivos) {
-    try { await elemento(deps, e, "archivo", a.id, { incluirPapelera: true }); visibles.push({ tipo: "archivo", ...publicaArchivo(a), eliminadoEn: a.eliminadoEn || null }); } catch (x) { /* sin acceso */ }
+    try { await elemento(deps, e, "archivo", a.id, { incluirPapelera: true }); visibles.push({ tipo: "archivo", ...publicaArchivo(a), ...comoSeElimino(a) }); } catch (x) { /* sin acceso */ }
   }
   // Google Drive vacía su papelera a los 30 días: lo más viejo ya no se puede recuperar.
   const limite = new Date(new Date(deps.ahora()).getTime() - 30 * 24 * 3600 * 1000).toISOString();
@@ -378,7 +382,82 @@ async function asegurarRuta(deps, uid, { alcance, ruta, desdeId }) {
   return { carpetaId: padreId };
 }
 
-const ACCIONES = { listar, crearCarpeta, subir, renombrar, mover, eliminar, restaurar, papelera, arbol, buscar, acceso, personas, asegurarRuta, miniaturas, guardarMiniatura };
+// ── Lo que se hizo DIRECTO en el Google Drive ──
+// Si alguien borra, manda a la papelera, cambia el nombre o mueve algo desde el Drive (sin pasar por
+// MasterPlan), la lista se pone al día. La app lo pide cada vez que se abre una carpeta, sin hacer esperar.
+//  - en la papelera del Drive → a la papelera de MasterPlan (se puede restaurar mientras Google lo guarde)
+//  - ya no existe, o lo sacaron de la biblioteca → papelera, marcado "ya no está", y se borra su miniatura
+//  - otro nombre → se actualiza · movido a otra carpeta de la biblioteca → se mueve en la lista también
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+async function sincronizar(deps, uid, { alcance, carpetaId }) {
+  const e = await entrar(deps, uid, alcance);
+  const { carpeta } = await carpetaVisible(deps, e, carpetaId || null);
+  const emp = e.ctx.empresaId;
+  const raiz = await deps.store.raiz(emp, alcance);
+  const aca = carpeta ? carpeta.driveId : (raiz && raiz.driveId);
+  if (!aca) return { cambios: 0 }; // todavía no se subió nada
+  if (!carpeta) {
+    // Si borraron la carpeta de la biblioteca entera en el Drive, se arma una nueva al subir lo próximo.
+    const est = await deps.drive.estado(emp, aca);
+    if (!est.existe || est.trashed) await deps.store.guardarRaiz(emp, alcance, { driveId: null });
+  }
+  const enDrive = new Map((await deps.drive.hijos(emp, aca)).map(f => [f.id, f]));
+  const carpetas = (await deps.store.carpetasHijas(emp, alcance, carpetaId || null)).filter(c => !c.eliminado);
+  const archivos = (await deps.store.archivosDe(emp, alcance, carpetaId || null)).filter(a => !a.eliminado);
+  const ahora = deps.ahora();
+  let todas = null;
+  let cambios = 0;
+  for (const [tipo, lista] of [["carpeta", carpetas], ["archivo", archivos]]) {
+    const act = (id, ch) => (tipo === "carpeta" ? deps.store.actualizarCarpeta(id, ch) : deps.store.actualizarArchivo(id, ch));
+    const campoPadre = tipo === "carpeta" ? "padreId" : "carpetaId";
+    for (const it of lista) {
+      const hijo = enDrive.get(it.driveId);
+      const f = hijo ? { existe: true, trashed: !!hijo.trashed, name: hijo.name, parents: [aca] } : await deps.drive.estado(emp, it.driveId);
+      if (!f.existe) {
+        await act(it.id, { eliminado: true, eliminadoEn: ahora, eliminadoPor: "drive", fueraDeDrive: true, miniatura: null });
+        cambios++;
+      } else if (f.trashed) {
+        await act(it.id, { eliminado: true, eliminadoEn: ahora, eliminadoPor: "drive" });
+        cambios++;
+      } else if (!f.parents.includes(aca)) {
+        if (!todas) todas = await deps.store.todasCarpetas(emp, alcance);
+        const destino = todas.find(c => !c.eliminado && c.id !== it.id && f.parents.includes(c.driveId));
+        if (destino) await act(it.id, { [campoPadre]: destino.id, actualizadoEn: ahora });
+        else if (raiz && raiz.driveId && f.parents.includes(raiz.driveId)) await act(it.id, { [campoPadre]: null, actualizadoEn: ahora });
+        else await act(it.id, { eliminado: true, eliminadoEn: ahora, eliminadoPor: "drive", fueraDeDrive: true, miniatura: null });
+        cambios++;
+      } else if (f.name && f.name !== it.nombre) {
+        await act(it.id, { nombre: f.name, actualizadoEn: ahora });
+        cambios++;
+      }
+    }
+  }
+  return { cambios };
+}
+
+// Sacar de la papelera algo que ya no se puede recuperar (ya no está en el Drive, o pasaron los 30 días).
+// Borra solo la FICHA de MasterPlan (y lo de adentro, si es una carpeta); el Drive no se toca.
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+async function quitarDeLaLista(deps, uid, { alcance, tipo, id }) {
+  const e = await entrar(deps, uid, alcance, { necesita: "editar" });
+  const { item } = await elemento(deps, e, tipo, id, { incluirPapelera: true });
+  const limite = new Date(new Date(deps.ahora()).getTime() - 30 * 24 * 3600 * 1000).toISOString();
+  const vencido = !!(item.eliminadoEn && item.eliminadoEn < limite);
+  if (!item.eliminado || !(item.fueraDeDrive || vencido)) throw error("failed-precondition", "Solo se puede quitar de la lista lo que ya no se puede recuperar.");
+  if (tipo === "archivo") { await deps.store.borrarArchivo(id); return { ok: true }; }
+  const todas = await deps.store.todasCarpetas(e.ctx.empresaId, alcance);
+  const sub = new Set([id]);
+  for (let crecio = true; crecio;) {
+    crecio = false;
+    for (const c of todas) if (c.padreId && sub.has(c.padreId) && !sub.has(c.id)) { sub.add(c.id); crecio = true; }
+  }
+  const archivos = await deps.store.todosArchivos(e.ctx.empresaId, alcance);
+  for (const a of archivos) if (sub.has(a.carpetaId)) await deps.store.borrarArchivo(a.id);
+  for (const cid of sub) await deps.store.borrarCarpeta(cid);
+  return { ok: true };
+}
+
+const ACCIONES = { listar, crearCarpeta, subir, renombrar, mover, eliminar, restaurar, papelera, arbol, buscar, acceso, personas, asegurarRuta, miniaturas, guardarMiniatura, sincronizar, quitarDeLaLista };
 
 module.exports = { ACCIONES, archivoPermitido, entrar, MAX_BYTES, error };
 

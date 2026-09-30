@@ -299,6 +299,23 @@ export default function Biblioteca({ general = false }) {
       }
     })();
   }, [archivosCargados, alcance, carpetaId, traer]);
+
+  // Lo que se cambió DIRECTO en el Drive (borrado, mandado a la papelera, renombrado, movido): se revisa
+  // al abrir cada carpeta, sin hacer esperar. Si hubo cambios, se vuelve a mostrar la lista.
+  const sincronizadas = useRef(new Map()); // carpeta → cuándo se revisó
+  useEffect(() => {
+    if (!datos) return;
+    const aca = alcance + "|" + (carpetaId || "");
+    if (Date.now() - (sincronizadas.current.get(aca) || 0) < 30000) return;
+    sincronizadas.current.set(aca, Date.now());
+    bib("sincronizar", { alcance, carpetaId }).then(r => {
+      if (r && r.cambios && carpetaActual.current === aca) {
+        cargar();
+        mostrarAviso("🔄 Se actualizó con cambios hechos directo en el Drive");
+      }
+    }).catch(() => { /* sin Drive: se avisa al subir */ });
+  }, [datos, alcance, carpetaId, cargar, mostrarAviso]);
+
   useEffect(() => {
     if (!vista) return undefined;
     const tecla = (e) => {
@@ -603,7 +620,8 @@ export default function Biblioteca({ general = false }) {
       )}
       {modal?.tipo === "papelera" && (
         <ModalPapelera alcance={alcance} onCerrar={() => setModal(null)}
-          onRestaurar={(item) => ejecutar("restaurar", { tipo: item.tipo, id: item.id }, (r) => (r.alInicio ? "♻️ Restaurado en el Inicio (su carpeta sigue en la papelera)" : "♻️ Restaurado"))} />
+          onRestaurar={(item) => ejecutar("restaurar", { tipo: item.tipo, id: item.id }, (r) => (r.alInicio ? "♻️ Restaurado en el Inicio (su carpeta sigue en la papelera)" : "♻️ Restaurado"))}
+          onQuitar={(item) => ejecutar("quitarDeLaLista", { tipo: item.tipo, id: item.id }, "🧹 Quitado de la lista")} />
       )}
     </div>
   );
@@ -803,7 +821,7 @@ function ModalAcceso({ alcance, carpeta, onGuardar, onCerrar }) {
 }
 
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
-function ModalPapelera({ alcance, onRestaurar, onCerrar }) {
+function ModalPapelera({ alcance, onRestaurar, onQuitar, onCerrar }) {
   const [items, setItems] = useState(null);
   const [error, setError] = useState("");
   const [ocupado, setOcupado] = useState(null);
@@ -813,7 +831,7 @@ function ModalPapelera({ alcance, onRestaurar, onCerrar }) {
   useEffect(() => { cargar(); }, [cargar]);
   return (
     <Modal titulo="🗑️ Papelera" onCerrar={onCerrar} ancho={560}>
-      <p style={st.nota}>Lo que se elimina queda acá (y en la papelera del Google Drive de la empresa). Google lo borra para siempre a los 30 días.</p>
+      <p style={st.nota}>Lo que se elimina queda acá (y en la papelera del Google Drive de la empresa). Google lo borra para siempre a los 30 días. Lo que borrás directo en el Drive también aparece acá.</p>
       {error ? <p style={st.subidaError}>{error}</p> : !items ? <p style={st.nota}>Cargando…</p>
         : items.length === 0 ? <p style={st.nota}>La papelera está vacía.</p>
         : (
@@ -823,10 +841,15 @@ function ModalPapelera({ alcance, onRestaurar, onCerrar }) {
                 <span style={{ fontSize: 20 }}>{it.tipo === "carpeta" ? "📁" : iconoArchivo(it.mime, it.nombre)}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={st.subidaNombre}>{it.nombre}</div>
-                  <div style={st.arbolNota}>Eliminado el {fechaCorta(it.eliminadoEn)}</div>
+                  <div style={st.arbolNota}>
+                    {it.fueraDeDrive ? "Ya no está en el Drive: no se puede recuperar"
+                      : it.vencido ? "Pasaron más de 30 días: Google ya lo borró"
+                      : (it.desdeDrive ? "Eliminado desde el Drive el " : "Eliminado el ") + fechaCorta(it.eliminadoEn)}
+                  </div>
                 </div>
-                {it.vencido
-                  ? <span style={st.arbolNota}>Ya no se puede (más de 30 días)</span>
+                {it.fueraDeDrive || it.vencido
+                  ? <button type="button" style={st.btnSec} disabled={ocupado === it.id} title="Saca la ficha de MasterPlan (el Drive no se toca)"
+                    onClick={async () => { setOcupado(it.id); await onQuitar(it); setOcupado(null); cargar(); }}>{ocupado === it.id ? "…" : "🧹 Quitar de la lista"}</button>
                   : <button type="button" style={st.btnSec} disabled={ocupado === it.id}
                     onClick={async () => { setOcupado(it.id); await onRestaurar(it); setOcupado(null); cargar(); }}>{ocupado === it.id ? "…" : "♻️ Restaurar"}</button>}
               </div>
