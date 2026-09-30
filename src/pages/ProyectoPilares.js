@@ -102,7 +102,8 @@ export default function ProyectoPilares() {
               <p style={styles.cardDesc}>{p.desc}</p>
             </div>
           ))}
-          {nivelBiblioteca !== "ninguno" && (
+          {/* La ve quien tiene toda la biblioteca, o trabaja en algún área (ve la carpeta de su área). */}
+          {(nivelBiblioteca !== "ninguno" || areasDelProyecto(PILARES, proyecto).length > 0) && (
             <div
               style={{ ...styles.card, ...styles.cardActivo, ...styles.cardBiblioteca }}
               onClick={() => navigate(`/proyecto/${proyectoId}/biblioteca`)}

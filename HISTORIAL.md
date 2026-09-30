@@ -282,6 +282,10 @@
 - Marcos borró un archivo directo en el Drive y seguía apareciendo en MasterPlan. Aclarado: el archivo está SOLO en el Drive; MasterPlan guarda la ficha (nombre, tamaño, carpeta, quién lo subió) y la miniatura.
 - Ahora al abrir cada carpeta se revisa el Drive: lo borrado/en papelera sale de la lista (a la papelera de MasterPlan), lo que ya no existe pierde también su miniatura, lo renombrado o movido se actualiza.
 
+## 2026-09-30 — Biblioteca: una carpeta por área
+- Pedido de Marcos: que en la biblioteca de cada proyecto estén creadas todas las áreas como carpetas, y que al entrar a la biblioteca desde cada área se abra esa carpeta, para tener todo ordenado.
+- Hecho: carpetas fijas por área (se crean solas, no se borran ni renombran), botón 📚 Biblioteca en cada área que abre su carpeta, y cada uno trabaja en la carpeta de su área con el mismo nivel que tiene en el área. "Toda la biblioteca" se sigue dando en Empleados. Marcos va a ajustar más adelante el acceso fino.
+
 ## Pendientes abiertos (backlog al momento de migrar)
 
 ### App de Administración
