@@ -335,7 +335,7 @@ export default function Empleados() {
                         {proy.nombre}
                       </div>
                       <div style={{ ...styles.permisoRow, ...styles.areaBloque }}>
-                        <div style={styles.permisoArea}>📚 Biblioteca del proyecto <span style={styles.todaLabel}>(archivos de todas las áreas)</span></div>
+                        <div style={styles.permisoArea}>📚 Toda la biblioteca del proyecto <span style={styles.todaLabel}>(la carpeta de cada área la ve igual quien trabaja en esa área)</span></div>
                         <div style={styles.nivelesRow}>
                           {NIVELES.map(n => (
                             <button

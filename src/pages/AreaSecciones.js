@@ -8,6 +8,7 @@ import ThemeSelector from "../components/ThemeSelector";
 import PizarraFlotante from "../components/PizarraFlotante";
 import Notificaciones from "../components/Notificaciones";
 import BotonConfiguracion from "../components/BotonConfiguracion";
+import BotonBiblioteca from "../components/BotonBiblioteca";
 import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, empleadoNivelPanel, areaActivaEnProyecto, panelActivoEnProyecto } from "../config/appConfig";
 
 // Entrada de las áreas que no tienen pantalla propia (hoy: Legales y Desarrollos y Obras).
@@ -78,6 +79,7 @@ export default function AreaSecciones() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <BotonBiblioteca proyectoId={proyecto?.id} areaId={pilarId} />
           <BotonConfiguracion proyecto={proyecto} areaId={pilarId} />
           <Notificaciones />
           <ThemeSelector />

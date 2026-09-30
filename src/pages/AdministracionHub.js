@@ -7,6 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import BotonConfiguracion from "../components/BotonConfiguracion";
+import BotonBiblioteca from "../components/BotonBiblioteca";
 import { AREAS_DEFAULT, areasVisibles, areasVisiblesEmpleado, panelesVisiblesEmpleado, empleadoNivelPanel, areaActivaEnProyecto, panelesDelProyecto } from "../config/appConfig";
 import { PANELES_ADMINISTRACION } from "./AdministracionPanel";
 import { administracionConfigurada } from "../config/adminConfigLogica";
@@ -73,6 +74,7 @@ export default function AdministracionHub() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <BotonBiblioteca proyectoId={proyecto?.id} areaId="administracion" />
           <BotonConfiguracion proyecto={proyecto} areaId="administracion" />
           <Notificaciones />
           <ThemeSelector />

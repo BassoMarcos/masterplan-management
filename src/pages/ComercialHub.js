@@ -7,6 +7,7 @@ import { doc, getDoc } from "firebase/firestore";
 import ThemeSelector from "../components/ThemeSelector";
 import Notificaciones from "../components/Notificaciones";
 import BotonConfiguracion from "../components/BotonConfiguracion";
+import BotonBiblioteca from "../components/BotonBiblioteca";
 import { panelesVisiblesEmpleado, empleadoNivelPanel, panelesDelProyecto } from "../config/appConfig";
 
 const PANEL_INFO = {
@@ -77,6 +78,7 @@ export default function ComercialHub() {
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <BotonBiblioteca proyectoId={proyecto?.id} areaId="comercial" />
           <BotonConfiguracion proyecto={proyecto} areaId="comercial" />
           <Notificaciones />
           <ThemeSelector />

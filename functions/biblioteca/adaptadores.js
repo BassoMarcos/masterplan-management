@@ -33,6 +33,11 @@ function crearStore(db) {
       return q(col("biblioteca_carpetas").where("empresaId", "==", empresaId).where("alcance", "==", alcance).where("padreId", "==", padreId || null));
     },
     async crearCarpeta(data) { return (await col("biblioteca_carpetas").add(data)).id; },
+    // Con id fijo (carpetas de las áreas): false si ya existía (otro pedido la creó al mismo tiempo).
+    async crearCarpetaConId(id, data) {
+      try { await col("biblioteca_carpetas").doc(id).create(data); return true; }
+      catch (e) { if (e && (e.code === 6 || /already exists/i.test(String(e.message)))) return false; throw e; }
+    },
     async actualizarCarpeta(id, cambios) { await col("biblioteca_carpetas").doc(id).update(cambios); },
     async archivo(id) { const d = await col("biblioteca_archivos").doc(id).get(); return d.exists ? d.data() : null; },
     async archivosDe(empresaId, alcance, carpetaId) {

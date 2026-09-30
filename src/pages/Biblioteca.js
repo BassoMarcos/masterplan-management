@@ -6,7 +6,8 @@
 //   /proyecto/:proyectoId/biblioteca/:carpetaId?             → la de cada proyecto (para todas las áreas)
 // Los archivos están en el Google Drive de CADA EMPRESA; el servidor revisa quién ve qué (utils/biblioteca.js).
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { AREAS_DEFAULT } from "../config/appConfig";
 import { useAuth } from "../context/AuthContext";
 import { db } from "../firebase/config";
 import { doc, getDoc } from "firebase/firestore";
@@ -18,6 +19,9 @@ const TIPO_INTERNO = "application/x-mp-biblioteca"; // lo que se arrastra DENTRO
 const tiposDe = (e) => Array.from((e.dataTransfer && e.dataTransfer.types) || []);
 const esInterno = (e) => tiposDe(e).includes(TIPO_INTERNO);
 const esDeLaCompu = (e) => tiposDe(e).includes("Files");
+// Carpetas fijas de las áreas (biblioteca de proyecto): se muestran con el ícono de su área.
+const ICONO_AREA = Object.fromEntries(AREAS_DEFAULT.map(a => [a.id, a.icono]));
+const iconoCarpeta = (c) => (c && c.area ? ICONO_AREA[c.area] || "📁" : "📁");
 const porNombre = (a, b) => a.nombre.localeCompare(b.nombre, "es", { numeric: true, sensitivity: "base" });
 // Se traen solos (al pasar el mouse / el anterior y el siguiente): los que se muestran tal cual, sin convertir.
 const rapidoDeTraer = (mime) => ["imagen", "pdf", "texto"].includes(tipoVista(mime));
@@ -61,6 +65,9 @@ export default function Biblioteca({ general = false }) {
   const { proyectoId, carpetaId: carpetaParam } = useParams();
   const carpetaId = carpetaParam || null;
   const navigate = useNavigate();
+  const location = useLocation();
+  // Si se entró desde un área (botón 📚), "Volver" regresa a esa área.
+  const volverA = useRef(location.state && location.state.volver);
   const { empresaData, empleadoData, esEmpleado } = useAuth();
   const alcance = general ? "empresa" : `p:${proyectoId}`;
   const base = general ? "/biblioteca" : `/proyecto/${proyectoId}/biblioteca`;
@@ -391,19 +398,20 @@ export default function Biblioteca({ general = false }) {
       o.push(["👁️", tipoVista(item.mime) ? "Vista previa" : "Ver detalles", () => abrirVista(item, lista)]);
       o.push(["⬇️", "Descargar", () => descargar(item)]);
     }
-    if (puedeEditar) {
+    const fija = tipo === "carpeta" && item.area; // carpeta de un área: no se renombra, ni se mueve, ni se borra
+    if (puedeEditar && !fija) {
       o.push(["✏️", "Cambiar nombre", () => setModal({ tipo: "renombrar", clase: tipo, item })]);
       o.push(["➡️", "Mover a…", () => setModal({ tipo: "mover", clase: tipo, item })]);
     }
     if (tipo === "carpeta" && admin) o.push(["🔒", "Quién la ve", () => setModal({ tipo: "acceso", clase: tipo, item })]);
-    if (puedeEditar) o.push(["🗑️", "Eliminar", () => eliminar(tipo, item), true]);
+    if (puedeEditar && !fija) o.push(["🗑️", "Eliminar", () => eliminar(tipo, item), true]);
     return o;
   }
 
   // ── Pantalla ──
   const titulo = general ? "Biblioteca de la empresa" : "Biblioteca del proyecto";
   const sub = general ? (empresaData?.nombre || empleadoData?.empresaNombre || "") : nombreProyecto;
-  const volver = () => navigate(general ? "/proyectos" : `/proyecto/${proyectoId}`);
+  const volver = () => navigate(volverA.current || (general ? "/proyectos" : `/proyecto/${proyectoId}`));
   const ruta = datos?.ruta || [];
   const buscando = busqueda.trim().length >= 2;
   const carpetas = datos?.carpetas || [];
@@ -416,7 +424,7 @@ export default function Biblioteca({ general = false }) {
     const abrir = () => (esCarpeta ? irA(item.id) : abrirVista(item, lista));
     const resaltado = esCarpeta && sobre === item.id;
     const comun = {
-      draggable: puedeEditar,
+      draggable: puedeEditar && !(esCarpeta && item.area),
       onDragStart: (e) => alEmpezarArrastre(e, tipo, item),
       onClick: abrir,
       onContextMenu: (e) => abrirMenu(e, tipo, item),
@@ -424,13 +432,13 @@ export default function Biblioteca({ general = false }) {
       "data-item": item.nombre,
       ...(esCarpeta ? destino(item.id, item.id) : { onMouseEnter: () => precargar(item), onMouseLeave: () => clearTimeout(precargaTimer.current) }),
     };
-    const icono = esCarpeta ? "📁" : iconoArchivo(item.mime, item.nombre);
+    const icono = esCarpeta ? iconoCarpeta(item) : iconoArchivo(item.mime, item.nombre);
     const mini = !esCarpeta && item.miniatura ? item.miniatura : null;
     const botonMenu = (
       <button type="button" aria-label="Opciones" style={modoLista ? { ...st.masBtn, position: "static", flexShrink: 0, width: 30 } : mini ? { ...st.masBtn, ...st.masBtnSobreFoto } : st.masBtn} onClick={(e) => abrirMenu(e, tipo, item)}>⋯</button>
     );
     const meta = esCarpeta
-      ? (detalle || "Carpeta")
+      ? (detalle || (item.area ? "Carpeta del área" : "Carpeta"))
       : [detalle, tamanoLegible(item.tamano), fechaCorta(item.creadoEn)].filter(Boolean).join(" · ");
     if (modoLista) {
       return (
@@ -482,8 +490,8 @@ export default function Biblioteca({ general = false }) {
             <span key={r.id} style={{ display: "inline-flex", alignItems: "center" }}>
               <span style={st.separador}>›</span>
               {i === ruta.length - 1
-                ? <span style={st.pasoActual}>{r.nombre}</span>
-                : <button type="button" style={{ ...st.paso, ...(sobre === "c_" + r.id ? st.resaltado : {}) }} onClick={() => irA(r.id)} {...destino(r.id, "c_" + r.id)}>{r.nombre}</button>}
+                ? <span style={st.pasoActual}>{r.area ? ICONO_AREA[r.area] + " " : ""}{r.nombre}</span>
+                : <button type="button" style={{ ...st.paso, ...(sobre === "c_" + r.id ? st.resaltado : {}) }} onClick={() => irA(r.id)} {...destino(r.id, "c_" + r.id)}>{r.area ? ICONO_AREA[r.area] + " " : ""}{r.nombre}</button>}
             </span>
           ))}
         </nav>
@@ -517,6 +525,7 @@ export default function Biblioteca({ general = false }) {
 
       <main style={st.main} {...zona}>
         {arrastre && <div style={st.soltarAca}>Soltá acá para guardar en {ruta.length ? `«${ruta[ruta.length - 1].nombre}»` : "la biblioteca"}</div>}
+        {!carpetaId && !buscando && datos && datos.nivel === "ninguno" && <p style={st.nota}>Ves las carpetas de las áreas donde trabajás. Para ver toda la biblioteca, pedile permiso al dueño de la empresa.</p>}
         {puedeEditar && !buscando && <p style={st.nota}>Todo se guarda en el Google Drive de la empresa · hasta {MAX_MB} MB por archivo · podés arrastrar archivos o carpetas desde la compu, y arrastrar cosas encima de una carpeta para moverlas.</p>}
 
         {cargando ? <p style={st.nota}>Cargando…</p>
@@ -620,9 +629,38 @@ export default function Biblioteca({ general = false }) {
       )}
       {modal?.tipo === "papelera" && (
         <ModalPapelera alcance={alcance} onCerrar={() => setModal(null)}
-          onRestaurar={(item) => ejecutar("restaurar", { tipo: item.tipo, id: item.id }, (r) => (r.alInicio ? "♻️ Restaurado en el Inicio (su carpeta sigue en la papelera)" : "♻️ Restaurado"))}
+          onRestaurar={(item) => ejecutar("restaurar", { tipo: item.tipo, id: item.id }, (r) => (r.alArea ? `♻️ Restaurado en la carpeta ${r.alArea} (su carpeta sigue en la papelera)` : r.alInicio ? "♻️ Restaurado en el Inicio (su carpeta sigue en la papelera)" : "♻️ Restaurado"))}
           onQuitar={(item) => ejecutar("quitarDeLaLista", { tipo: item.tipo, id: item.id }, "🧹 Quitado de la lista")} />
       )}
+    </div>
+  );
+}
+
+// Botón 📚 de cada área → busca (o crea) la carpeta de esa área y abre la biblioteca ahí.
+// /proyecto/:proyectoId/biblioteca/area/:areaId
+// 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
+export function BibliotecaArea() {
+  const { proyectoId, areaId } = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [error, setError] = useState("");
+  useEffect(() => {
+    let vivo = true;
+    bib("carpetaDeArea", { alcance: `p:${proyectoId}`, area: areaId })
+      .then(r => { if (vivo) navigate(`/proyecto/${proyectoId}/biblioteca/${r.carpetaId}`, { replace: true, state: location.state }); })
+      .catch(e => { if (vivo) setError(e.message); });
+    return () => { vivo = false; };
+  }, [proyectoId, areaId]); // eslint-disable-line react-hooks/exhaustive-deps
+  const volver = () => navigate((location.state && location.state.volver) || `/proyecto/${proyectoId}`);
+  return (
+    <div style={st.pagina}>
+      <div style={st.vacio}>
+        {error ? <>
+          <div style={{ fontSize: 42 }}>⚠️</div>
+          <p>{error}</p>
+          <button type="button" style={st.btnSec} onClick={volver}>← Volver</button>
+        </> : <p>{ICONO_AREA[areaId] || "📚"} Abriendo la carpeta del área…</p>}
+      </div>
     </div>
   );
 }
@@ -721,11 +759,12 @@ function ModalNombre({ titulo, boton, inicial, sinExtension, onAceptar, onCerrar
 // 6202 led ozram edsed aírutua atelpmoc us ed se ,socram ossab rop odaerc euf aedi/ogidoc/amargorp etse
 function ModalMover({ alcance, clase, item, onMover, onCerrar }) {
   const [carpetas, setCarpetas] = useState(null);
+  const [raiz, setRaiz] = useState(false); // ¿puede poner cosas en el inicio?
   const [error, setError] = useState("");
   const [elegida, setElegida] = useState(undefined); // undefined = nada elegido; null = Inicio
   const [ocupado, setOcupado] = useState(false);
   useEffect(() => {
-    bib("arbol", { alcance }).then(r => setCarpetas(r.carpetas)).catch(e => setError(e.message));
+    bib("arbol", { alcance }).then(r => { setCarpetas(r.carpetas); setRaiz(!!r.raiz); }).catch(e => setError(e.message));
   }, [alcance]);
   const actual = clase === "carpeta" ? (item.padreId || null) : (item.carpetaId || null);
   // Una carpeta no puede ir adentro de sí misma ni de sus subcarpetas.
@@ -738,7 +777,8 @@ function ModalMover({ alcance, clase, item, onMover, onCerrar }) {
       for (const c of carpetas) if (c.padreId && prohibidas.has(c.padreId) && !prohibidas.has(c.id)) { prohibidas.add(c.id); crecio = true; }
     }
   }
-  const hijas = (padreId) => (carpetas || []).filter(c => (c.padreId || null) === padreId).sort(porNombre);
+  const ordenArea = (c) => { const i = AREAS_DEFAULT.findIndex(a => a.id === c.area); return i < 0 ? 99 : i; };
+  const hijas = (padreId) => (carpetas || []).filter(c => (c.padreId || null) === padreId).sort((a, b) => ordenArea(a) - ordenArea(b) || porNombre(a, b));
   const filas = [];
   const armar = (padreId, nivel) => {
     for (const c of hijas(padreId)) {
@@ -748,13 +788,14 @@ function ModalMover({ alcance, clase, item, onMover, onCerrar }) {
     }
   };
   if (carpetas) armar(null, 1);
-  const opcion = (id, nombre, nivel, icono) => {
+  const opcion = (id, nombre, nivel, icono, editable) => {
     const esActual = id === actual;
     const sel = elegida === id;
+    const apagada = esActual || !editable;
     return (
-      <button key={id || "inicio"} type="button" disabled={esActual} onClick={() => setElegida(id)}
-        style={{ ...st.arbolFila, paddingLeft: 10 + nivel * 18, ...(sel ? st.arbolSel : {}), ...(esActual ? { opacity: 0.5, cursor: "default" } : {}) }}>
-        {icono} {nombre}{esActual && <span style={st.arbolNota}> (está acá)</span>}
+      <button key={id || "inicio"} type="button" disabled={apagada} onClick={() => setElegida(id)}
+        style={{ ...st.arbolFila, paddingLeft: 10 + nivel * 18, ...(sel ? st.arbolSel : {}), ...(apagada ? { opacity: 0.5, cursor: "default" } : {}) }}>
+        {icono} {nombre}{esActual ? <span style={st.arbolNota}> (está acá)</span> : !editable && <span style={st.arbolNota}> (solo ver)</span>}
       </button>
     );
   };
@@ -762,8 +803,8 @@ function ModalMover({ alcance, clase, item, onMover, onCerrar }) {
     <Modal titulo={`Mover «${item.nombre}» a…`} onCerrar={onCerrar} ancho={480}>
       {error ? <p style={st.subidaError}>{error}</p> : !carpetas ? <p style={st.nota}>Cargando carpetas…</p> : (
         <div style={st.arbol}>
-          {opcion(null, "Inicio", 0, "🏠")}
-          {filas.map(f => opcion(f.c.id, f.c.nombre, f.nivel, "📁"))}
+          {opcion(null, "Inicio", 0, "🏠", raiz)}
+          {filas.map(f => opcion(f.c.id, f.c.nombre, f.nivel, iconoCarpeta(f.c), f.c.editable !== false))}
         </div>
       )}
       <div style={st.modalAcciones}>
@@ -784,8 +825,8 @@ function ModalAcceso({ alcance, carpeta, onGuardar, onCerrar }) {
   const [sel, setSel] = useState(() => new Set(carpeta.personas || []));
   const [ocupado, setOcupado] = useState(false);
   useEffect(() => {
-    bib("personas", { alcance }).then(r => setPersonas(r.personas)).catch(e => setError(e.message));
-  }, [alcance]);
+    bib("personas", { alcance, carpetaId: carpeta.id }).then(r => setPersonas(r.personas)).catch(e => setError(e.message));
+  }, [alcance, carpeta.id]);
   const alternar = (uid) => setSel(prev => { const n = new Set(prev); if (n.has(uid)) n.delete(uid); else n.add(uid); return n; });
   return (
     <Modal titulo={`¿Quién ve «${carpeta.nombre}»?`} onCerrar={onCerrar} ancho={500}>
